@@ -58,8 +58,10 @@ export default function AuthScreen() {
 
     // Email Validation Logic
     const trimmedEmail = email.trim();
+    
+    // Relaxed Regex to allow standard @cit.edu formats
     const isExactCit = (emailText: string) => {
-        const citRegex = /^[a-zA-Z0-9]+(-|_)*[a-zA-Z0-9]*\.[a-zA-Z0-9]+(-|_)*[a-zA-Z0-9]*@cit\.edu$/;
+        const citRegex = /^[a-zA-Z0-9._-]+@cit\.edu$/;
         return citRegex.test(emailText);
     };
     const isGmail = (emailText: string) => {
@@ -80,6 +82,7 @@ export default function AuthScreen() {
                     setActiveTab('login');
                     setPassword('');
                     setConfirmPassword('');
+                    Alert.alert('Success', 'Email verified successfully! You can now log in.');
                 }}
                 onBack={() => setIsVerifying(false)}
             />
@@ -89,7 +92,7 @@ export default function AuthScreen() {
     // Supabase Authentication Functions
     async function handleAuth() {
         if (!isValidEmail) {
-            Alert.alert('Invalid Email', 'Please use your firstname.lastname@cit.edu or a @gmail.com account.');
+            Alert.alert('Invalid Email', 'Please use a valid @cit.edu or @gmail.com account.');
             return;
         }
 
@@ -109,7 +112,7 @@ export default function AuthScreen() {
             if (error) Alert.alert('Login Failed', error.message);
         } else {
             if (isGmail(trimmedEmail)) {
-                // Gmail: standard signUp, no OTP needed
+                // Gmail: standard signUp, no OTP needed (auto-verified by your DB trigger)
                 const { error } = await supabase.auth.signUp({
                     email: trimmedEmail,
                     password: password,
@@ -126,7 +129,7 @@ export default function AuthScreen() {
                 setPassword('');
                 setConfirmPassword('');
             } else if (isExactCit(trimmedEmail)) {
-                // CIT: signUp first to store credentials, then send OTP
+                // CIT: ONLY call signUp. Supabase handles sending the initial OTP automatically.
                 const { error: signUpError } = await supabase.auth.signUp({
                     email: trimmedEmail,
                     password: password,
@@ -138,18 +141,7 @@ export default function AuthScreen() {
                     return;
                 }
 
-                // Now send the OTP via signInWithOtp
-                const { error: otpError } = await supabase.auth.signInWithOtp({
-                    email: trimmedEmail,
-                    options: { shouldCreateUser: false },
-                });
-
-                if (otpError) {
-                    Alert.alert('Could Not Send Code', otpError.message);
-                    setLoading(false);
-                    return;
-                }
-
+                // Proceed directly to the verification screen
                 setIsVerifying(true);
             }
         }
