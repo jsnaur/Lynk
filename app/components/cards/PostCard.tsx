@@ -1,16 +1,10 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_CATEGORY_BG, FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 
 type PostCardProps = {
 	quest: FeedQuest;
-};
-
-const ICONS = {
-	posterAvatar:
-		'https://www.figma.com/api/mcp/asset/697877fa-ebed-46e9-bca6-81d94c8362a3',
-	xp: 'https://www.figma.com/api/mcp/asset/c37b8f18-44e6-492a-83bd-1643b946ef91',
-	token: 'https://www.figma.com/api/mcp/asset/edb4835d-7764-45a7-8219-8054a121d8c4',
 };
 
 const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
@@ -45,18 +39,18 @@ export default function PostCard({ quest }: PostCardProps) {
 
 				<View style={styles.footerRow}>
 					<View style={styles.posterWrap}>
-						<Image source={{ uri: ICONS.posterAvatar }} style={styles.posterAvatar} />
+						<Ionicons name="person-circle" size={22} color={FEED_COLORS.textSecondary} />
 						<Text style={styles.posterName}>{quest.posterName}</Text>
 					</View>
 
 					<View style={styles.rewardWrap}>
 						<View style={[styles.rewardPill, { backgroundColor: FEED_PILL_BG.xp }]}>
-							<Image source={{ uri: ICONS.xp }} style={styles.rewardIcon} />
+							<MaterialCommunityIcons name="star-four-points" size={14} color={FEED_COLORS.xp} />
 							<Text style={[styles.rewardValue, { color: FEED_COLORS.xp }]}>{quest.xp}</Text>
 						</View>
 
 						<View style={[styles.rewardPill, { backgroundColor: FEED_PILL_BG.token }]}>
-							<Image source={{ uri: ICONS.token }} style={styles.rewardIcon} />
+							<MaterialCommunityIcons name="lightning-bolt-circle" size={14} color={FEED_COLORS.token} />
 							<Text style={[styles.rewardValue, { color: FEED_COLORS.token }]}>{quest.token}</Text>
 						</View>
 					</View>
@@ -137,10 +131,6 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		gap: 6,
 	},
-	posterAvatar: {
-		width: 20,
-		height: 20,
-	},
 	posterName: {
 		fontSize: 12,
 		color: FEED_COLORS.textSecondary,
@@ -157,10 +147,6 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 3,
-	},
-	rewardIcon: {
-		width: 12,
-		height: 12,
 	},
 	rewardValue: {
 		fontSize: 11,
