@@ -28,11 +28,13 @@ export default function BottomNav({ activeTab = 'Feed' }: BottomNavProps) {
 
 					return (
 						<Pressable key={item.label} style={styles.item}>
-							<Ionicons
-								name={item.icon}
-								size={24}
-								color={active ? FEED_COLORS.favor : FEED_COLORS.textSecondary}
-							/>
+							<View style={[styles.iconBox, active && styles.iconBoxActive]}>
+								<Ionicons
+									name={item.icon}
+									size={24}
+									color={active ? FEED_COLORS.favor : FEED_COLORS.textSecondary}
+								/>
+							</View>
 							<Text style={[styles.itemLabel, active && styles.itemLabelActive]}>
 								{item.label}
 							</Text>
@@ -68,6 +70,16 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 		gap: 2,
+	},
+	iconBox: {
+		width: 40,
+		height: 40,
+		borderRadius: 12,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	iconBoxActive: {
+		backgroundColor: 'rgba(0,245,255,0.15)',
 	},
 	itemLabel: {
 		fontSize: 10,
