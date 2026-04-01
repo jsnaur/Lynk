@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, View, ActivityIndicator } from 'react-native';
 import AuthScreen from './app/screens/auth/AuthScreen';
+import HomeFeedScreen from './app/screens/main/HomeFeedScreen'; // Imported the HomeFeedScreen
 import { supabase } from './app/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 
@@ -57,8 +58,12 @@ export default function App() {
     );
   }
 
-  // Note: Once you have your main navigation set up, you can route based on the session:
-  // return session ? <MainNavigator /> : <AuthScreen />;
+  // Auth Guard: Route based on the active session
+  if (session && session.user) {
+    // Renders the main app screen when the user is logged in
+    return <HomeFeedScreen />; 
+  }
   
+  // Renders the Auth screen when no session exists
   return <AuthScreen />;
 }
