@@ -6,12 +6,14 @@ import { SvgUri } from 'react-native-svg';
 import { FEED_COLORS } from '../constants/colors';
 
 type BottomNavProps = {
-	activeTab?: 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
-	onTabPress?: (tab: NonNullable<BottomNavProps['activeTab']>) => void;
+	activeTab?: MainTab;
+	onTabPress?: (tab: MainTab) => void;
 };
 
+export type MainTab = 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
+
 type NavItem = {
-	label: BottomNavProps['activeTab'];
+	label: MainTab;
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -46,7 +48,7 @@ const NAV_ICON_URIS = {
 } as const;
 
 export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavProps) {
-	const [selectedTab, setSelectedTab] = useState<NonNullable<BottomNavProps['activeTab']>>(activeTab);
+	const [selectedTab, setSelectedTab] = useState<MainTab>(activeTab);
 
 	useEffect(() => {
 		setSelectedTab(activeTab);
@@ -63,7 +65,7 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 			<View pointerEvents="none" style={styles.tintLayer} />
 			<View style={styles.row}>
 				{NAV_ITEMS.map((item) => {
-					const tab = item.label as NonNullable<BottomNavProps['activeTab']>;
+					const tab = item.label;
 					const active = selectedTab === tab;
 					const iconUri = active ? NAV_ICON_URIS[tab].active : NAV_ICON_URIS[tab].inactive;
 

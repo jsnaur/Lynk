@@ -9,10 +9,14 @@ import {
 	View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import BottomNav from '../../components/BottomNav';
+import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
 import { FEED_FILTERS, FEED_QUESTS, FeedCategory } from '../../constants/categories';
 import { FEED_COLORS } from '../../constants/colors';
+
+type HomeFeedScreenProps = {
+	onTabPress?: (tab: MainTab) => void;
+};
 
 const FILTER_ACTIVE_COLORS: Record<FeedCategory, string> = {
 	favor: FEED_COLORS.favor,
@@ -42,7 +46,7 @@ const ASSETS = {
 	karma: 'https://www.figma.com/api/mcp/asset/02102752-bb60-4ddb-ad7d-c37658b24ba3',
 };
 
-export default function HomeFeedScreen() {
+export default function HomeFeedScreen({ onTabPress }: HomeFeedScreenProps) {
 	const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
 
 	const filteredQuests = useMemo(() => {
@@ -115,7 +119,7 @@ export default function HomeFeedScreen() {
 				</ScrollView>
 			</SafeAreaView>
 
-			<BottomNav activeTab="Feed" />
+			<BottomNav activeTab="Feed" onTabPress={onTabPress} />
 		</View>
 	);
 }
