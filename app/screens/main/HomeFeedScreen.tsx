@@ -1,8 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
 	Image,
 	Pressable,
+	RefreshControl,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -48,14 +49,23 @@ const ASSETS = {
 
 export default function HomeFeedScreen({ onTabPress }: HomeFeedScreenProps) {
 	const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
+	const [refreshing, setRefreshing] = useState(false);
 
 	const filteredQuests = useMemo(() => {
 		if (activeFilter === 'all') {
 			return FEED_QUESTS;
 		}
-
 		return FEED_QUESTS.filter((quest) => quest.category === activeFilter);
 	}, [activeFilter]);
+
+	// Simulates a network fetch when the user pulls down the feed
+	const onRefresh = useCallback(() => {
+		setRefreshing(true);
+		setTimeout(() => {
+			// In the future, re-fetch FEED_QUESTS from Supabase here
+			setRefreshing(false);
+		}, 1500);
+	}, []);
 
 	return (
 		<View style={styles.root}>
@@ -112,10 +122,27 @@ export default function HomeFeedScreen({ onTabPress }: HomeFeedScreenProps) {
 				<ScrollView
 					contentContainerStyle={styles.feedContent}
 					showsVerticalScrollIndicator={false}
+					refreshControl={
+						<RefreshControl 
+							refreshing={refreshing} 
+							onRefresh={onRefresh} 
+							tintColor={FEED_COLORS.favor} // iOS spinner color
+							colors={[FEED_COLORS.favor]}  // Android spinner color
+						/>
+					}
 				>
-					{filteredQuests.map((quest) => (
-						<PostCard key={quest.id} quest={quest} />
-					))}
+					{filteredQuests.length === 0 ? (
+						<View style={styles.emptyStateContainer}>
+							<Text style={styles.emptyStateTitle}>No quests found</Text>
+							<Text style={styles.emptyStateSubtitle}>
+								Try changing your filters or check back later.
+							</Text>
+						</View>
+					) : (
+						filteredQuests.map((quest) => (
+							<PostCard key={quest.id} quest={quest} />
+						))
+					)}
 				</ScrollView>
 			</SafeAreaView>
 
@@ -218,5 +245,21 @@ const styles = StyleSheet.create({
 		padding: 16,
 		gap: 12,
 		paddingBottom: 112,
+	},
+	emptyStateContainer: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		paddingVertical: 64,
+	},
+	emptyStateTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+		color: FEED_COLORS.textPrimary,
+		marginBottom: 8,
+	},
+	emptyStateSubtitle: {
+		fontSize: 14,
+		color: FEED_COLORS.textSecondary,
+		textAlign: 'center',
 	},
 });
