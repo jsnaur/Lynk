@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { AppState, View, ActivityIndicator } from 'react-native';
 import AuthScreen from './app/screens/auth/AuthScreen';
-import HomeFeedScreen from './app/screens/main/HomeFeedScreen'; // Imported the HomeFeedScreen
+import HomeFeedScreen from './app/screens/main/HomeFeedScreen';
+import ProfileDashboardScreen from './app/screens/main/ProfileDashboardScreen';
 import { supabase } from './app/lib/supabase';
 import { Session } from '@supabase/supabase-js';
+import { MainTab } from './app/components/BottomNav';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [activeTab, setActiveTab] = useState<MainTab>('Feed');
 
   useEffect(() => {
     // 1. Fetch the initial session on startup
@@ -60,8 +63,17 @@ export default function App() {
 
   // Auth Guard: Route based on the active session
   if (session && session.user) {
-    // Renders the main app screen when the user is logged in
-    return <HomeFeedScreen />; 
+    const handleMainTabPress = (tab: MainTab) => {
+      if (tab === 'Profile' || tab === 'Feed') {
+        setActiveTab(tab);
+      }
+    };
+
+    if (activeTab === 'Profile') {
+      return <ProfileDashboardScreen onTabPress={handleMainTabPress} />;
+    }
+
+    return <HomeFeedScreen onTabPress={handleMainTabPress} />;
   }
   
   // Renders the Auth screen when no session exists
