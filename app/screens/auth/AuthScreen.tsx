@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Asset } from 'expo-asset';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { SvgUri } from 'react-native-svg';
+import TextureSvg from '../../../assets/AuthAssets/texture.svg';
 import {
     ActivityIndicator,
     Alert,
@@ -30,10 +29,9 @@ const ASSETS = {
         'https://www.figma.com/api/mcp/asset/320eb0a8-8dec-4b42-afb2-4d9554882dbd',
     mascot:
         'https://www.figma.com/api/mcp/asset/44639b1b-a95d-43b4-a76a-a23fe54c1843',
-    texture: Asset.fromModule(require('../../../assets/AuthAssets/texture.svg')).uri,
 };
 
-export default function AuthScreen() {
+export default function AuthScreen({ navigation }: any) {
     const { width, height } = useWindowDimensions();
     const [activeTab, setActiveTab] = useState<AuthTab>('login');
 
@@ -155,14 +153,13 @@ export default function AuthScreen() {
                         style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
                     />
                     <View pointerEvents="none" style={styles.textureOverlay}>
-                        <SvgUri
+                        {/* Replace <SvgUri ... /> with your imported component: */}
+                        <TextureSvg
                             width={width}
                             height={height}
                             preserveAspectRatio="xMidYMid slice"
-                            uri={ASSETS.texture}
                         />
                     </View>
-
                     <SafeAreaView style={styles.safeArea}>
                         <ScrollView
                             contentContainerStyle={styles.scrollContent}
@@ -341,6 +338,16 @@ export default function AuthScreen() {
                                         <Text style={styles.termsLink}>Terms & Privacy Policy</Text>
                                     </Text>
                                 )}
+
+                                {/* Dev Link to test the new screen easily */}
+                                <Pressable 
+                                    style={{ marginTop: 24, alignItems: 'center' }}
+                                    onPress={() => navigation?.navigate('ProfileSetup')}
+                                >
+                                    <Text style={{ color: COLORS.textSecondary, textDecorationLine: 'underline', fontSize: 14 }}>
+                                        [Dev] Go to Profile Setup
+                                    </Text>
+                                </Pressable>
                             </View>
                         </ScrollView>
                     </SafeAreaView>
