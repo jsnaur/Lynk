@@ -52,6 +52,10 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
 
+    const onProfilePress = useCallback(() => {
+        onTabPress?.('Profile');
+    }, [onTabPress]);
+
     const filteredQuests = useMemo(() => {
         if (activeFilter === 'all') {
             return FEED_QUESTS;
@@ -73,9 +77,17 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
             <StatusBar style="light" />
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <View style={styles.avatarChip}>
-                        <Image source={{ uri: ASSETS.avatar }} style={styles.avatar} />
-                    </View>
+                    <Pressable
+                        style={styles.profileButton}
+                        onPress={onProfilePress}
+                        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Open profile"
+                    >
+                        <View style={styles.avatarChip}>
+                            <Image source={{ uri: ASSETS.avatar }} style={styles.avatar} />
+                        </View>
+                    </Pressable>
 
                     <Text style={styles.logo}>LYNK</Text>
 
@@ -179,6 +191,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
+    },
+    profileButton: {
+        borderRadius: 24,
+        position: 'relative',
+        zIndex: 3,
+        elevation: 3,
     },
     avatar: {
         width: 32,
