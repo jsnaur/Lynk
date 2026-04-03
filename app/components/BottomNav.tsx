@@ -1,9 +1,18 @@
-import { Asset } from 'expo-asset';
 import { BlurView } from 'expo-blur';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SvgUri } from 'react-native-svg';
-import { FEED_COLORS } from '../constants/colors';
+
+// 1. Import SVGs directly as React Components instead of using require()
+import FeedActive from '../../assets/NavAssets/FeedActive.svg';
+import FeedInactive from '../../assets/NavAssets/FeedInactive.svg';
+import QuestActive from '../../assets/NavAssets/QuestActive.svg';
+import QuestInactive from '../../assets/NavAssets/QuestInactive.svg';
+import PostActive from '../../assets/NavAssets/PostActive.svg';
+import PostInactive from '../../assets/NavAssets/PostInactive.svg';
+import ShopActive from '../../assets/NavAssets/ShopActive.svg';
+import ShopInactive from '../../assets/NavAssets/ShopInactive.svg';
+import ProfileActive from '../../assets/NavAssets/ProfileActive.svg';
+import ProfileInactive from '../../assets/NavAssets/ProfileInactive.svg';
 
 type BottomNavProps = {
 	activeTab?: MainTab;
@@ -24,27 +33,13 @@ const NAV_ITEMS: NavItem[] = [
 	{ label: 'Profile' },
 ];
 
-const NAV_ICON_URIS = {
-	Feed: {
-		active: Asset.fromModule(require('../../assets/NavAssets/FeedActive.svg')).uri,
-		inactive: Asset.fromModule(require('../../assets/NavAssets/FeedInactive.svg')).uri,
-	},
-	Quests: {
-		active: Asset.fromModule(require('../../assets/NavAssets/QuestActive.svg')).uri,
-		inactive: Asset.fromModule(require('../../assets/NavAssets/QuestInactive.svg')).uri,
-	},
-	Post: {
-		active: Asset.fromModule(require('../../assets/NavAssets/PostActive.svg')).uri,
-		inactive: Asset.fromModule(require('../../assets/NavAssets/PostInactive.svg')).uri,
-	},
-	Shop: {
-		active: Asset.fromModule(require('../../assets/NavAssets/ShopActive.svg')).uri,
-		inactive: Asset.fromModule(require('../../assets/NavAssets/ShopInactive.svg')).uri,
-	},
-	Profile: {
-		active: Asset.fromModule(require('../../assets/NavAssets/ProfileActive.svg')).uri,
-		inactive: Asset.fromModule(require('../../assets/NavAssets/ProfileInactive.svg')).uri,
-	},
+// 2. Map the imported components
+const NAV_ICONS = {
+	Feed: { active: FeedActive, inactive: FeedInactive },
+	Quests: { active: QuestActive, inactive: QuestInactive },
+	Post: { active: PostActive, inactive: PostInactive },
+	Shop: { active: ShopActive, inactive: ShopInactive },
+	Profile: { active: ProfileActive, inactive: ProfileInactive },
 } as const;
 
 export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavProps) {
@@ -67,7 +62,9 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 				{NAV_ITEMS.map((item) => {
 					const tab = item.label;
 					const active = selectedTab === tab;
-					const iconUri = active ? NAV_ICON_URIS[tab].active : NAV_ICON_URIS[tab].inactive;
+                    
+                    // 3. Select the correct component based on active state
+					const IconComponent = active ? NAV_ICONS[tab].active : NAV_ICONS[tab].inactive;
 
 					return (
 						<Pressable
@@ -79,7 +76,8 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 							}}
 						>
 							<View style={[styles.iconBox, active && styles.iconBoxActive]}>
-								<SvgUri uri={iconUri} width={56} height={56} />
+                                {/* 4. Render it directly as a component */}
+								<IconComponent width={56} height={56} />
 							</View>
 						</Pressable>
 					);
