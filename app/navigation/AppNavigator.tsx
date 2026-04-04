@@ -13,11 +13,20 @@ const AppNavigator = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check current session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      // DEVELOPMENT ONLY: Force sign out on app startup to allow testing multiple users.
+      // The __DEV__ flag ensures this clear-out only happens in your local development environment.
+      if (__DEV__) {
+        await supabase.auth.signOut();
+      }
+
+      // 1. Check current session on mount
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // 2. Listen for auth changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
