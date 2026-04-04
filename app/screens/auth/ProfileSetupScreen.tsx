@@ -22,7 +22,6 @@ const PROFILE_GRAD_YEAR_KEY = "@lynk/profileGradYear";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ProfileSetup">;
 
-//add lng og mga majors
 const majorOptions = [
   "Computer Science",
   "Information Technology",
@@ -45,7 +44,6 @@ const majorOptions = [
   "Hotel Management",
 ];
 
-
 const avatarAssets = [
   Avatar1,
   Avatar2,
@@ -66,7 +64,6 @@ const frameDefs = [
   { id: "8", assetIndex: 1 }
 ] as const;
 
-
 const buildFrames = () =>
   frameDefs.map((def) => ({
     ...def,
@@ -84,7 +81,6 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
   const [majorOpen, setMajorOpen] = useState<boolean>(false);
   const [graduationYear, setGraduationYear] = useState<string>("");
 
- 
   const SelectedAvatar = useMemo(() => {
     return FRAMES.find((f) => f.id === selectedId)?.Component;
   }, [selectedId]);
@@ -111,7 +107,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
         await AsyncStorage.setItem(PROFILE_MAJOR_KEY, selectedMajor);
         await AsyncStorage.setItem(PROFILE_GRAD_YEAR_KEY, graduationYear.trim());
       } catch {
-       
+        // Handle error if needed
       }
     }
     setMajorOpen(false);
