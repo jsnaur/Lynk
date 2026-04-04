@@ -74,10 +74,11 @@ export default function AuthScreen({ navigation }: any) {
                 email={trimmedEmail}
                 onVerified={() => {
                     setIsVerifying(false);
-                    setActiveTab('login');
+                    setActiveTab('login'); // Reset background tab state
                     setPassword('');
                     setConfirmPassword('');
-                    Alert.alert('Success', 'Email verified successfully! You can now log in.');
+                    // User Flow Fix: Navigate to Profile Setup upon successful OTP
+                    navigation.navigate('ProfileSetup');
                 }}
                 onBack={() => setIsVerifying(false)}
             />
@@ -111,10 +112,12 @@ export default function AuthScreen({ navigation }: any) {
                     return;
                 }
 
-                Alert.alert('Registration Successful', 'Your account has been created. Please log in.');
-                setActiveTab('login');
+                setActiveTab('login'); // Reset background tab state
                 setPassword('');
                 setConfirmPassword('');
+                // User Flow Fix: Proceed directly to Profile Setup for Gmail
+                navigation.navigate('ProfileSetup');
+
             } else if (isExactCit(trimmedEmail)) {
                 // CIT: Proceed to OTP Verification
                 const { error: signUpError } = await supabase.auth.signUp({
