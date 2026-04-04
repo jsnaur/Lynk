@@ -91,10 +91,16 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
                     <Text style={styles.logo}>LYNK</Text>
 
-                    <View style={styles.karmaChip}>
+                    <Pressable
+                        style={({ pressed }) => [styles.karmaChip, pressed && styles.karmaChipPressed]}
+                        onPress={() => onTabPress?.('Shop')}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Open shop"
+                    >
                         <Image source={{ uri: ASSETS.karma }} style={styles.karmaIcon} />
                         <Text style={styles.karmaText}>1,240</Text>
-                    </View>
+                    </Pressable>
                 </View>
 
                 <View style={styles.filterBar}>
@@ -226,6 +232,9 @@ const styles = StyleSheet.create({
         gap: 4,
         paddingVertical: 6,
         paddingHorizontal: 10,
+    },
+    karmaChipPressed: {
+        opacity: 0.85,
     },
     karmaIcon: {
         width: 16,
