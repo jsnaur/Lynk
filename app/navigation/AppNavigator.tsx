@@ -2,26 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import { supabase } from '../lib/supabase'; //
+import ProfileSetupScreen from '../screens/auth/ProfileSetupScreen';
+import { supabase } from '../lib/supabase'; 
 import { Session } from '@supabase/supabase-js';
 import { View, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
+    // Check if the user has completed their profile setup
+    const checkSessionAndProfile = async (currentSession: Session | null) => {
+      if (currentSession) {
+        const displayName = await AsyncStorage.getItem("@lynk/profileDisplayName");
+        // If there's no display name in storage, they are considered a new user
+        setIsNewUser(!displayName);
+      }
+    };
+
     const initializeAuth = async () => {
-      // DEVELOPMENT ONLY: Force sign out on app startup to allow testing multiple users.
-      // The __DEV__ flag ensures this clear-out only happens in your local development environment.
       if (__DEV__) {
-        await supabase.auth.signOut();
+        // await supabase.auth.signOut();
       }
 
       // 1. Check current session on mount
       const { data: { session } } = await supabase.auth.getSession();
+      await checkSessionAndProfile(session);
+      
       setSession(session);
       setLoading(false);
     };
@@ -30,12 +42,15 @@ const AppNavigator = () => {
 
     // 2. Listen for auth changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      await checkSessionAndProfile(session);
+      
       setSession(session);
       setLoading(false);
       
       // If a refresh token error occurs, Supabase usually triggers SIGNED_OUT
       if (_event === 'SIGNED_OUT') {
         setSession(null);
+        setIsNewUser(false);
       }
     });
 
@@ -55,7 +70,18 @@ const AppNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {session && session.user ? (
-        <Stack.Screen name="Main" component={MainNavigator} />
+        // Swap initial route dynamically based on whether profile is completed
+        isNewUser ? (
+          <>
+            <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+            <Stack.Screen name="Main" component={MainNavigator} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Main" component={MainNavigator} />
+            <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+          </>
+        )
       ) : (
         <Stack.Screen name="AuthFlow" component={AuthNavigator} />
       )}

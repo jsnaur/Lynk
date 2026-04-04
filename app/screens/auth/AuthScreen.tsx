@@ -77,8 +77,7 @@ export default function AuthScreen({ navigation }: any) {
                     setActiveTab('login'); // Reset background tab state
                     setPassword('');
                     setConfirmPassword('');
-                    // User Flow Fix: Navigate to Profile Setup upon successful OTP
-                    navigation.navigate('ProfileSetup');
+                    // AppNavigator handles auto-routing to ProfileSetup.
                 }}
                 onBack={() => setIsVerifying(false)}
             />
@@ -115,8 +114,7 @@ export default function AuthScreen({ navigation }: any) {
                 setActiveTab('login'); // Reset background tab state
                 setPassword('');
                 setConfirmPassword('');
-                // User Flow Fix: Proceed directly to Profile Setup for Gmail
-                navigation.navigate('ProfileSetup');
+                // AppNavigator handles auto-routing to ProfileSetup.
 
             } else if (isExactCit(trimmedEmail)) {
                 // CIT: Proceed to OTP Verification
@@ -156,7 +154,6 @@ export default function AuthScreen({ navigation }: any) {
                         style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
                     />
                     <View pointerEvents="none" style={styles.textureOverlay}>
-                        {/* Replace <SvgUri ... /> with your imported component: */}
                         <TextureSvg
                             width={width}
                             height={height}
@@ -341,16 +338,6 @@ export default function AuthScreen({ navigation }: any) {
                                         <Text style={styles.termsLink}>Terms & Privacy Policy</Text>
                                     </Text>
                                 )}
-
-                                {/* Dev Link to test the new screen easily */}
-                                <Pressable 
-                                    style={{ marginTop: 24, alignItems: 'center' }}
-                                    onPress={() => navigation?.navigate('ProfileSetup')}
-                                >
-                                    <Text style={{ color: COLORS.textSecondary, textDecorationLine: 'underline', fontSize: 14 }}>
-                                        [Dev] Go to Profile Setup
-                                    </Text>
-                                </Pressable>
                             </View>
                         </ScrollView>
                     </SafeAreaView>

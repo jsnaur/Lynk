@@ -3,9 +3,7 @@ import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AuthStackParamList } from "../../navigation/AuthNavigator";
 import { styles } from "./ProfileSetupScreen.styles";
-
 
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
 import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
@@ -20,7 +18,7 @@ const PROFILE_DISPLAY_NAME_KEY = "@lynk/profileDisplayName";
 const PROFILE_MAJOR_KEY = "@lynk/profileMajor";
 const PROFILE_GRAD_YEAR_KEY = "@lynk/profileGradYear";
 
-type Props = NativeStackScreenProps<AuthStackParamList, "ProfileSetup">;
+type Props = NativeStackScreenProps<any, "ProfileSetup">;
 
 const majorOptions = [
   "Computer Science",
@@ -87,7 +85,10 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
 
   const handleSkip = useCallback(() => {
     setMajorOpen(false);
-    navigation.goBack();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Main" as never }],
+    });
   }, [navigation]);
 
   const handleContinue = useCallback(async () => {
@@ -111,12 +112,12 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
       }
     }
     setMajorOpen(false);
-    const rootNavigation = navigation.getParent();
-    if (rootNavigation) {
-      rootNavigation.navigate("Main" as never);
-      return;
-    }
-    navigation.goBack();
+    
+    // Switch to Main Stack safely
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Main" as never }],
+    });
   }, [navigation, selectedId, displayName, selectedMajor, graduationYear]);
 
   return (
