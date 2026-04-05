@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
 	utilityInfoFormFlexBox: {
 		alignItems: "center",
-		overflow: "hidden"
+		overflow: "visible"
 	},
 	setupProgressHeaderFlexBox: {
 		gap: 16,
@@ -132,7 +132,8 @@ export const styles = StyleSheet.create({
 		paddingBottom: 24,
 		gap: 14,
 		paddingHorizontal: 24,
-		alignSelf: "stretch"
+		alignSelf: "stretch",
+		zIndex: 200
 	},
 	fieldGroupLabel: {
 		fontSize: 13,
@@ -158,7 +159,12 @@ export const styles = StyleSheet.create({
 	},
 	dropdownWrapper: {
 		width: 326,
-		alignSelf: "center"
+		alignSelf: "center",
+		position: "relative",
+		overflow: "visible"
+	},
+	dropdownWrapperOnTop: {
+		zIndex: 120
 	},
 	dropdownValue: {
 		flex: 1,
@@ -167,8 +173,44 @@ export const styles = StyleSheet.create({
 		textAlign: "left",
 		fontFamily: "DMSans-Regular"
 	},
+	placeholderText: {
+		color: "#8a8a9a"
+	},
 	dropdownPressed: {
 		opacity: 0.85
+	},
+	majorSelectFieldOpen: {
+		borderBottomLeftRadius: 0,
+		borderBottomRightRadius: 0,
+		borderBottomWidth: 0
+	},
+	majorDropdownList: {
+		position: "absolute",
+		top: 52,
+		left: 0,
+		borderWidth: 1,
+		borderTopWidth: 0,
+		borderColor: "#3a3a48",
+		backgroundColor: "#31313c",
+		borderBottomLeftRadius: 14,
+		borderBottomRightRadius: 14,
+		overflow: "hidden",
+		zIndex: 120,
+		elevation: 8,
+		width: 326
+	},
+	majorDropdownScroll: {
+		maxHeight: 280
+	},
+	majorDropdownContent: {
+		paddingVertical: 8
+	},
+	majorDropdownOption: {
+		paddingVertical: 8,
+		paddingHorizontal: 16
+	},
+	majorDropdownOptionPressed: {
+		backgroundColor: "rgba(240, 240, 245, 0.08)"
 	},
 	dropdownList: {
 		marginTop: 8,
@@ -195,12 +237,46 @@ export const styles = StyleSheet.create({
 		fontSize: 15,
 		fontFamily: "DMSans-Regular"
 	},
+	yearSelectFieldOpen: {
+		borderBottomLeftRadius: 0,
+		borderBottomRightRadius: 0,
+		borderBottomWidth: 0
+	},
+	yearDropdownList: {
+		position: "absolute",
+		top: 52,
+		left: 0,
+		borderWidth: 1,
+		borderTopWidth: 0,
+		borderColor: "#3a3a48",
+		backgroundColor: "#31313c",
+		borderBottomLeftRadius: 14,
+		borderBottomRightRadius: 14,
+		overflow: "hidden",
+		zIndex: 120,
+		elevation: 8,
+		width: 326
+	},
+	yearDropdownScroll: {
+		maxHeight: 280
+	},
+	yearDropdownContent: {
+		paddingVertical: 8
+	},
+	yearDropdownOption: {
+		paddingVertical: 8,
+		paddingHorizontal: 16
+	},
+	yearDropdownOptionPressed: {
+		backgroundColor: "rgba(240, 240, 245, 0.08)"
+	},
 	chevronIcon: {
 		width: 16,
 		height: 16
 	},
 	avatarSelectionBlock: {
-		paddingBottom: 32
+		paddingBottom: 32,
+		zIndex: 1
 	},
 	dividerLineL: {
 		height: 1,
