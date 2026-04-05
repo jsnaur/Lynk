@@ -42,6 +42,16 @@ const majorOptions = [
   "Hotel Management",
 ];
 
+const graduationYearOptions = [
+  "2026",
+  "2027",
+  "2028",
+  "2029",
+  "2030",
+  "2031",
+  "2032",
+];
+
 const avatarAssets = [
   Avatar1,
   Avatar2,
@@ -75,9 +85,10 @@ const defaultSelectedId = FRAMES[0].id;
 const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
   const [selectedId, setSelectedId] = useState<string>(defaultSelectedId);
   const [displayName, setDisplayName] = useState<string>("");
-  const [selectedMajor, setSelectedMajor] = useState<string>(majorOptions[0]);
+  const [selectedMajor, setSelectedMajor] = useState<string>("");
   const [majorOpen, setMajorOpen] = useState<boolean>(false);
   const [graduationYear, setGraduationYear] = useState<string>("");
+  const [yearOpen, setYearOpen] = useState<boolean>(false);
 
   const SelectedAvatar = useMemo(() => {
     return FRAMES.find((f) => f.id === selectedId)?.Component;
@@ -85,6 +96,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
 
   const handleSkip = useCallback(() => {
     setMajorOpen(false);
+    setYearOpen(false);
     navigation.reset({
       index: 0,
       routes: [{ name: "Main" as never }],
@@ -112,6 +124,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
       }
     }
     setMajorOpen(false);
+    setYearOpen(false);
     
     // Switch to Main Stack safely
     navigation.reset({
@@ -150,16 +163,27 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
           />
         </View>
 
-        <View style={styles.dropdownWrapper}>
+        <View style={[styles.dropdownWrapper, majorOpen && styles.dropdownWrapperOnTop]}>
           <Pressable
-            onPress={() => setMajorOpen((v) => !v)}
+            onPress={() => {
+              setMajorOpen((v) => !v);
+              setYearOpen(false);
+            }}
             style={({ pressed }) => [
               styles.dropdownSelectField,
               styles.fieldLayout,
+              majorOpen && styles.majorSelectFieldOpen,
               pressed && styles.dropdownPressed,
             ]}
           >
-            <Text style={styles.dropdownValue}>{selectedMajor}</Text>
+            <Text
+              style={[
+                styles.dropdownValue,
+                !selectedMajor && styles.placeholderText,
+              ]}
+            >
+              {selectedMajor || "Select your major..."}
+            </Text>
             <Ionicons
               name={majorOpen ? "chevron-up" : "chevron-down"}
               size={16}
@@ -168,9 +192,10 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
           </Pressable>
 
           {majorOpen && (
-            <View style={styles.dropdownList}>
+            <View style={styles.majorDropdownList}>
               <ScrollView
-                style={styles.dropdownScroll}
+                style={styles.majorDropdownScroll}
+                contentContainerStyle={styles.majorDropdownContent}
                 nestedScrollEnabled
                 showsVerticalScrollIndicator
               >
@@ -182,8 +207,8 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
                       setMajorOpen(false);
                     }}
                     style={({ pressed }) => [
-                      styles.dropdownOption,
-                      pressed && styles.dropdownOptionPressed,
+                      styles.majorDropdownOption,
+                      pressed && styles.majorDropdownOptionPressed,
                     ]}
                   >
                     <Text style={styles.dropdownOptionText}>{major}</Text>
@@ -194,16 +219,60 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
           )}
         </View>
 
-        <View style={styles.fieldLayout}>
-          <TextInput
-            value={graduationYear}
-            onChangeText={setGraduationYear}
-            placeholder="Graduation Year"
-            placeholderTextColor="#8a8a9a"
-            style={styles.textInput}
-            keyboardType="number-pad"
-            maxLength={4}
-          />
+        <View style={[styles.dropdownWrapper, yearOpen && styles.dropdownWrapperOnTop]}>
+          <Pressable
+            onPress={() => {
+              setYearOpen((v) => !v);
+              setMajorOpen(false);
+            }}
+            style={({ pressed }) => [
+              styles.dropdownSelectField,
+              styles.fieldLayout,
+              yearOpen && styles.yearSelectFieldOpen,
+              pressed && styles.dropdownPressed,
+            ]}
+          >
+            <Text
+              style={[
+                styles.dropdownValue,
+                !graduationYear && styles.placeholderText,
+              ]}
+            >
+              {graduationYear || "Graduation Year"}
+            </Text>
+            <Ionicons
+              name={yearOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color="#8a8a9a"
+            />
+          </Pressable>
+
+          {yearOpen && (
+            <View style={styles.yearDropdownList}>
+              <ScrollView
+                style={styles.yearDropdownScroll}
+                contentContainerStyle={styles.yearDropdownContent}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator
+              >
+                {graduationYearOptions.map((year) => (
+                  <Pressable
+                    key={year}
+                    onPress={() => {
+                      setGraduationYear(year);
+                      setYearOpen(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.yearDropdownOption,
+                      pressed && styles.yearDropdownOptionPressed,
+                    ]}
+                  >
+                    <Text style={styles.dropdownOptionText}>{year}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
       </View>
 
