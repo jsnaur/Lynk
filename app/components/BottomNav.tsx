@@ -1,8 +1,8 @@
 import { BlurView } from 'expo-blur';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, Platform } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 
-// 1. Import SVGs directly as React Components instead of using require()
 import FeedActive from '../../assets/NavAssets/FeedActive.svg';
 import FeedInactive from '../../assets/NavAssets/FeedInactive.svg';
 import QuestActive from '../../assets/NavAssets/QuestActive.svg';
@@ -14,12 +14,12 @@ import ShopInactive from '../../assets/NavAssets/ShopInactive.svg';
 import ProfileActive from '../../assets/NavAssets/ProfileActive.svg';
 import ProfileInactive from '../../assets/NavAssets/ProfileInactive.svg';
 
+export type MainTab = 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
+
 type BottomNavProps = {
 	activeTab?: MainTab;
 	onTabPress?: (tab: MainTab) => void;
 };
-
-export type MainTab = 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
 
 type NavItem = {
 	label: MainTab;
@@ -33,7 +33,6 @@ const NAV_ITEMS: NavItem[] = [
 	{ label: 'Profile' },
 ];
 
-// 2. Map the imported components
 const NAV_ICONS = {
 	Feed: { active: FeedActive, inactive: FeedInactive },
 	Quests: { active: QuestActive, inactive: QuestInactive },
@@ -44,25 +43,35 @@ const NAV_ICONS = {
 
 export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavProps) {
 	const [selectedTab, setSelectedTab] = useState<MainTab>(activeTab);
+	const isFocused = useIsFocused();
 
 	useEffect(() => {
 		setSelectedTab(activeTab);
 	}, [activeTab]);
 
 	return (
-		<View style={styles.wrapper}>
-			<BlurView
-				intensity={25}
-				tint="dark"
-				style={styles.blurLayer}
-			/>
+		<View style={styles.wrapper} collapsable={false}>
+			{/* CRITICAL FIX: Only render dimezisBlurView when the screen is focused.
+				When navigating to Settings, we swap it to a solid translucent background 
+				to prevent Android's rendering engine from crashing and causing white screens.
+				iOS handles background blur natively without crashing, so it stays active.
+			*/}
+			{isFocused || Platform.OS === 'ios' ? (
+				<BlurView
+					intensity={25}
+					tint="dark"
+					style={styles.blurLayer}
+					experimentalBlurMethod="dimezisBlurView"
+				/>
+			) : (
+				<View style={[styles.blurLayer, { backgroundColor: 'rgba(22,24,30,0.85)' }]} />
+			)}
+			
 			<View pointerEvents="none" style={styles.tintLayer} />
 			<View style={styles.row}>
 				{NAV_ITEMS.map((item) => {
 					const tab = item.label;
 					const active = selectedTab === tab;
-                    
-                    // 3. Select the correct component based on active state
 					const IconComponent = active ? NAV_ICONS[tab].active : NAV_ICONS[tab].inactive;
 
 					return (
@@ -75,7 +84,6 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 							}}
 						>
 							<View style={[styles.iconBox, active && styles.iconBoxActive]}>
-                                {/* 4. Render it directly as a component */}
 								<IconComponent width={56} height={56} />
 							</View>
 						</Pressable>
