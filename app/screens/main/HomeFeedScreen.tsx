@@ -153,7 +153,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         </View>
                     ) : (
                         filteredQuests.map((quest) => (
-                            <PostCard key={quest.id} quest={quest} />
+                            <PostCard
+                                key={quest.id}
+                                quest={quest}
+                                onPress={() => navigation?.navigate?.('QuestDetail', { quest })}
+                            />
                         ))
                     )}
                 </ScrollView>
