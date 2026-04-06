@@ -54,7 +54,6 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 			<BlurView
 				intensity={25}
 				tint="dark"
-				experimentalBlurMethod="dimezisBlurView"
 				style={styles.blurLayer}
 			/>
 			<View pointerEvents="none" style={styles.tintLayer} />
