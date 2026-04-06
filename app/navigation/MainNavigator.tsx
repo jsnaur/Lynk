@@ -64,7 +64,12 @@ const MainTabsScreen = ({ navigation }: { navigation: any }) => {
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        contentStyle: { backgroundColor: '#1A1A1F' }
+      }}
+    >
       <Stack.Screen name="HomeFeed" component={MainTabsScreen} />
       <Stack.Screen
         name="QuestDetail"
