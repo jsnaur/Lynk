@@ -10,21 +10,39 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import { FEED_COLORS } from '../../constants/colors';
+import { supabase } from '../../lib/supabase';
+
+// Local Avatars
+import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
+import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
+import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
+import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
+import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
+import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
 
 type ProfileDashboardScreenProps = {
     onTabPress?: (tab: MainTab) => void;
-    navigation?: any; // Added to support React Navigation from feature-login
+    navigation?: any;
 };
 
 const ASSETS = {
-    avatar: 'https://www.figma.com/api/mcp/asset/242a87e8-990b-41c3-9a76-d8fd81d4e673',
     accessory: 'https://www.figma.com/api/mcp/asset/896aa530-68d4-4277-823f-edaae0d25958',
     verified: 'https://www.figma.com/api/mcp/asset/8dda60a4-f071-4d2e-bbe5-0932df03db77',
     karma: 'https://www.figma.com/api/mcp/asset/2c747f0b-508a-41c2-a932-193d4ffc47a8',
     token: 'https://www.figma.com/api/mcp/asset/28cb6206-7d98-4074-8184-9534b6107164',
 };
+
+const avatarAssets = [
+    Avatar1,
+    Avatar2,
+    Avatar3,
+    Avatar4,
+    Avatar5,
+    Avatar6
+];
 
 const ACTIVE_QUESTS = [
     { id: 'aq-1', title: 'Help Feed Cats', role: 'You posted', status: 'Awaiting approval', stripe: FEED_COLORS.favor, roleColor: FEED_COLORS.textSecondary, statusColor: FEED_COLORS.textSecondary },
@@ -70,9 +88,36 @@ function QuestRow({ title, role, status, stripe, roleColor, statusColor }: Quest
 }
 
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
+    const [profile, setProfile] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                if (data) {
+                    setProfile(data);
+                }
+            }
+        };
+        fetchProfile();
+    }, []);
+
     const karmaValue = 1240;
     const karmaGoal = 2000;
     const karmaProgress = Math.min(1, karmaValue / karmaGoal);
+
+    const SelectedAvatar = profile?.avatar_index !== undefined && profile.avatar_index !== null 
+        ? avatarAssets[profile.avatar_index] 
+        : avatarAssets[0];
+
+    const shortYear = profile?.graduation_year ? profile.graduation_year.slice(-2) : '27';
+    const majorDisplay = profile?.major || 'Undeclared';
+    const displayName = profile?.display_name || 'Anonymous';
 
     return (
         <View style={styles.root}>
@@ -81,7 +126,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Profile</Text>
                     <Pressable 
-                        style={styles.settingsButton}
+                        style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]}
+                        hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
                     >
                         <Ionicons name="settings-sharp" size={20} color={FEED_COLORS.textSecondary} />
@@ -93,7 +139,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         <View style={styles.identityRow}>
                             <View style={styles.avatarColumn}>
                                 <View style={styles.avatarFrame}>
-                                    <Image source={{ uri: ASSETS.avatar }} style={styles.avatarLayer} />
+                                    <SelectedAvatar width={72} height={72} style={styles.avatarSvg} />
                                     <Image source={{ uri: ASSETS.accessory }} style={styles.avatarLayer} />
                                     <View style={styles.levelBadge}>
                                         <Text style={styles.levelBadgeText}>7</Text>
@@ -106,10 +152,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
                             <View style={styles.identityTextColumn}>
                                 <View style={styles.nameRow}>
-                                    <Text style={styles.nameText}>Markuu</Text>
+                                    <Text style={styles.nameText}>{displayName}</Text>
                                     <Image source={{ uri: ASSETS.verified }} style={styles.verifiedBadge} />
                                 </View>
-                                <Text style={styles.subtitle}>Computer Engineering - Class of '27</Text>
+                                <Text style={styles.subtitle}>{majorDisplay} - Class of '{shortYear}</Text>
 
                                 <View style={styles.statsRow}>
                                     <StatChip value="24" label="Renown" />
@@ -259,6 +305,12 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: FEED_COLORS.border,
         overflow: 'hidden',
+        position: 'relative',
+    },
+    avatarSvg: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
     },
     avatarLayer: {
         position: 'absolute',

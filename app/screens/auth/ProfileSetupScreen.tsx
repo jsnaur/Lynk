@@ -1,10 +1,9 @@
 import React, { FC, useCallback, useMemo, useState } from "react";
-import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
+import { View, Text, Pressable, TextInput, ScrollView, Alert, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { styles } from "./ProfileSetupScreen.styles";
-import { supabase } from '../../lib/supabase';
+import { supabase } from "../../lib/supabase";
 
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
 import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
@@ -13,11 +12,6 @@ import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
 import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
 import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
 import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
-
-const PROFILE_AVATAR_ASSET_INDEX_KEY = "@lynk/profileAvatarAssetIndex";
-const PROFILE_DISPLAY_NAME_KEY = "@lynk/profileDisplayName";
-const PROFILE_MAJOR_KEY = "@lynk/profileMajor";
-const PROFILE_GRAD_YEAR_KEY = "@lynk/profileGradYear";
 
 type Props = NativeStackScreenProps<any, "ProfileSetup">;
 
@@ -95,21 +89,9 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
     return FRAMES.find((f) => f.id === selectedId)?.Component;
   }, [selectedId]);
 
-  const handleSkip = useCallback(async () => {
+  const handleSkip = useCallback(() => {
     setMajorOpen(false);
     setYearOpen(false);
-
-    try {
-      // Mark as complete in Supabase so it doesn't prompt on next login
-      await supabase.auth.updateUser({
-        data: { profile_setup_complete: true }
-      });
-      // Fallback filler for local storage checks
-      await AsyncStorage.setItem(PROFILE_DISPLAY_NAME_KEY, "Anonymous");
-    } catch (error) {
-      console.error('Error skipping profile setup:', error);
-    }
-
     navigation.reset({
       index: 0,
       routes: [{ name: "Main" as never }],
@@ -120,35 +102,32 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
     const selected = FRAMES.find((f) => f.id === selectedId);
     if (selected) {
       try {
-        const finalDisplayName = displayName.trim() || "Anonymous";
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          Alert.alert("Error", "Could not verify user session.");
+          return;
+        }
 
-        await AsyncStorage.setItem(
-          PROFILE_AVATAR_ASSET_INDEX_KEY,
-          String(selected.assetIndex)
-        );
-
-        await AsyncStorage.setItem(
-          PROFILE_DISPLAY_NAME_KEY,
-          finalDisplayName
-        );
-
-        await AsyncStorage.setItem(PROFILE_MAJOR_KEY, selectedMajor);
-        await AsyncStorage.setItem(PROFILE_GRAD_YEAR_KEY, graduationYear.trim());
-
-        // Save persistently to Supabase metadata to span across devices
-        await supabase.auth.updateUser({
-          data: {
-            profile_setup_complete: true,
-            display_name: finalDisplayName,
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            avatar_index: selected.assetIndex,
+            display_name: displayName.trim(),
             major: selectedMajor,
-            graduation_year: graduationYear.trim(),
-            avatar_asset_index: selected.assetIndex,
-          }
-        });
-      } catch (error) {
-        console.error('Error continuing profile setup:', error);
+            graduation_year: graduationYear.trim()
+          })
+          .eq('id', user.id);
+
+        if (updateError) {
+          Alert.alert("Error", "Failed to save profile. Please try again.");
+          return;
+        }
+      } catch (err) {
+        console.error(err);
       }
     }
+
     setMajorOpen(false);
     setYearOpen(false);
     
@@ -184,7 +163,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             onChangeText={setDisplayName}
             placeholder="Display Name (visible to campus)"
             placeholderTextColor="#8a8a9a"
-            style={styles.textInput}
+            style={[styles.textInput, localStyles.textInputColorOverride]}
             autoCapitalize="words"
           />
         </View>
@@ -205,7 +184,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             <Text
               style={[
                 styles.dropdownValue,
-                !selectedMajor && styles.placeholderText,
+                selectedMajor ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
               ]}
             >
               {selectedMajor || "Select your major..."}
@@ -261,7 +240,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             <Text
               style={[
                 styles.dropdownValue,
-                !graduationYear && styles.placeholderText,
+                graduationYear ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
               ]}
             >
               {graduationYear || "Graduation Year"}
@@ -313,8 +292,8 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
 
         {/* SELECTED AVATAR */}
         <View style={[styles.avatarPreviewRow, styles.setupCtaBarFlexBox]}>
-          <View style={styles.selectedAvatarFrameIcon}>
-            {SelectedAvatar && <SelectedAvatar width={64} height={64} />}
+          <View style={[styles.selectedAvatarFrameIcon, localStyles.selectedAvatarContainer]}>
+            {SelectedAvatar && <SelectedAvatar width={72} height={72} style={localStyles.selectedAvatarSvg} />}
           </View>
 
           <View style={styles.textCommon}>
@@ -340,15 +319,16 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
                 style={({ pressed }) => [
                   styles.avatarGridItem,
                   styles.avatarItemLayout,
-                  isSelected && styles.avatarGridItem8,
-                  pressed && styles.avatarPressed
+                  localStyles.gridAvatarContainer,
+                  isSelected && localStyles.gridAvatarSelected,
+                  pressed && { opacity: 0.8 }
                 ]}
               >
-                <AvatarComponent width={48} height={48} />
+                <AvatarComponent width={48} height={48} style={localStyles.gridAvatarSvg} />
 
                 {isSelected && (
-                  <View style={styles.selectionCheckBadgeIcon}>
-                    <SelectedCheckIcon width={12} height={12} />
+                  <View style={localStyles.checkBadge}>
+                    <SelectedCheckIcon width={10} height={10} />
                   </View>
                 )}
               </Pressable>
@@ -377,10 +357,11 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
           style={({ pressed }) => [
             styles.ctaButton2,
             styles.ctaLayout,
-            pressed && styles.ctaPressedPrimary
+            localStyles.ctaButtonActive,
+            pressed && { opacity: 0.8 }
           ]}
         >
-          <Text style={[styles.buttonLabel2, styles.buttonPosition]}>
+          <Text style={[styles.buttonLabel2, styles.buttonPosition, localStyles.ctaTextActive]}>
             Continue →
           </Text>
         </Pressable>
@@ -388,5 +369,76 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
     </View>
   );
 };
+
+// Local stylesheet overrides for direct UI fixes
+const localStyles = StyleSheet.create({
+  textInputColorOverride: {
+    color: '#FFFFFF',
+  },
+  dropdownTextActive: {
+    color: '#FFFFFF',
+  },
+  dropdownTextPlaceholder: {
+    color: '#8a8a9a',
+  },
+  selectedAvatarContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 20,
+    backgroundColor: '#1E1E1E',
+    borderWidth: 2,
+    borderColor: '#333333',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  selectedAvatarSvg: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+  },
+  gridAvatarContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: '#1E1E1E',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    position: 'relative',
+    margin: 4,
+  },
+  gridAvatarSelected: {
+    borderColor: '#00F5FF',
+  },
+  gridAvatarSvg: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+  },
+  checkBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#00F5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1E1E1E'
+  },
+  ctaButtonActive: {
+    backgroundColor: '#00F5FF',
+    borderColor: '#00F5FF',
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaTextActive: {
+    color: '#000000',
+    fontWeight: 'bold',
+  }
+});
 
 export default ProfileSetupScreen;
