@@ -1,7 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Image,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -12,6 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
+import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
+import SelectedAvatarContent from '../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg';
+import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import { FEED_FILTERS, FEED_QUESTS, FeedCategory } from '../../constants/categories';
 import { FEED_COLORS } from '../../constants/colors';
 
@@ -43,14 +45,21 @@ function withAlpha(hexColor: string, alpha: number) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-const ASSETS = {
-    avatar: 'https://www.figma.com/api/mcp/asset/6715062c-bca9-48f9-ba13-f6c2c3c9eae8',
-    karma: 'https://www.figma.com/api/mcp/asset/02102752-bb60-4ddb-ad7d-c37658b24ba3',
-};
+const SKELETON_CARD_COUNT = 4;
 
 export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScreenProps) {
     const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+
+    useEffect(() => {
+        // Mimic a real initial fetch so users get immediate visual feedback.
+        const timeoutId = setTimeout(() => {
+            setInitialLoading(false);
+        }, 1100);
+
+        return () => clearTimeout(timeoutId);
+    }, []);
 
     const onProfilePress = useCallback(() => {
         onTabPress?.('Profile');
@@ -85,7 +94,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         accessibilityLabel="Open profile"
                     >
                         <View style={styles.avatarChip}>
-                            <Image source={{ uri: ASSETS.avatar }} style={styles.avatar} />
+                            <SelectedAvatarContent width={32} height={32} />
                         </View>
                     </Pressable>
 
@@ -98,7 +107,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         accessibilityRole="button"
                         accessibilityLabel="Open shop"
                     >
-                        <Image source={{ uri: ASSETS.karma }} style={styles.karmaIcon} />
+                        <TokenPixelIcon width={16} height={16} />
                         <Text style={styles.karmaText}>1,240</Text>
                     </Pressable>
                 </View>
@@ -150,7 +159,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         />
                     }
                 >
-                    {filteredQuests.length === 0 ? (
+                    {initialLoading ? (
+                        Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                            <PostCardSkeleton key={`post-skeleton-${index}`} />
+                        ))
+                    ) : filteredQuests.length === 0 ? (
                         <View style={styles.emptyStateContainer}>
                             <Text style={styles.emptyStateTitle}>No quests found</Text>
                             <Text style={styles.emptyStateSubtitle}>
