@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { styles } from "./ProfileSetupScreen.styles";
+import { supabase } from '../../lib/supabase';
 
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
 import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
@@ -94,9 +95,21 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
     return FRAMES.find((f) => f.id === selectedId)?.Component;
   }, [selectedId]);
 
-  const handleSkip = useCallback(() => {
+  const handleSkip = useCallback(async () => {
     setMajorOpen(false);
     setYearOpen(false);
+
+    try {
+      // Mark as complete in Supabase so it doesn't prompt on next login
+      await supabase.auth.updateUser({
+        data: { profile_setup_complete: true }
+      });
+      // Fallback filler for local storage checks
+      await AsyncStorage.setItem(PROFILE_DISPLAY_NAME_KEY, "Anonymous");
+    } catch (error) {
+      console.error('Error skipping profile setup:', error);
+    }
+
     navigation.reset({
       index: 0,
       routes: [{ name: "Main" as never }],
@@ -107,6 +120,8 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
     const selected = FRAMES.find((f) => f.id === selectedId);
     if (selected) {
       try {
+        const finalDisplayName = displayName.trim() || "Anonymous";
+
         await AsyncStorage.setItem(
           PROFILE_AVATAR_ASSET_INDEX_KEY,
           String(selected.assetIndex)
@@ -114,13 +129,24 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
 
         await AsyncStorage.setItem(
           PROFILE_DISPLAY_NAME_KEY,
-          displayName.trim()
+          finalDisplayName
         );
 
         await AsyncStorage.setItem(PROFILE_MAJOR_KEY, selectedMajor);
         await AsyncStorage.setItem(PROFILE_GRAD_YEAR_KEY, graduationYear.trim());
-      } catch {
-        // Handle error if needed
+
+        // Save persistently to Supabase metadata to span across devices
+        await supabase.auth.updateUser({
+          data: {
+            profile_setup_complete: true,
+            display_name: finalDisplayName,
+            major: selectedMajor,
+            graduation_year: graduationYear.trim(),
+            avatar_asset_index: selected.assetIndex,
+          }
+        });
+      } catch (error) {
+        console.error('Error continuing profile setup:', error);
       }
     }
     setMajorOpen(false);

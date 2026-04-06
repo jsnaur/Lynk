@@ -1,12 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 
-export default function SettingsScreen() {
-  const navigation = useNavigation();
-
+export default function SettingsScreen({ navigation }: any) {
   const handleLogout = async () => {
     Alert.alert(
       "Log Out",
@@ -18,8 +16,8 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await supabase.auth.signOut();
               await AsyncStorage.removeItem("@lynk/profileDisplayName");
+              await supabase.auth.signOut();
             } catch (error) {
               Alert.alert("Error", "Failed to log out.");
             }
@@ -30,68 +28,75 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.root}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Settings</Text>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.spacer} />
       </View>
+
+      {/* Content */}
       <View style={styles.content}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
           <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1A1A1F',
+    // Fallback manual padding to avoid the SafeArea freeze bug
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
   },
   header: {
+    height: 64,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#2A2A35',
   },
   backButton: {
-    padding: 10,
-    marginLeft: -10,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#333333',
+    paddingVertical: 10,
+    paddingRight: 20,
   },
   spacer: {
-    width: 50,
+    width: 44,
   },
-  title: {
+  headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: '#FFFFFF',
   },
   content: {
     flex: 1,
     padding: 20,
   },
   logoutButton: {
-    backgroundColor: '#FF3B30',
-    paddingVertical: 15,
-    borderRadius: 8,
+    backgroundColor: '#2A2A35',
+    flexDirection: 'row',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 10,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
   },
   logoutText: {
-    color: '#FFFFFF',
+    color: '#FF3B30',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
