@@ -18,18 +18,26 @@ const AppNavigator = () => {
   useEffect(() => {
     // Check if the user has completed their profile setup
     const checkSessionAndProfile = async (currentSession: Session | null) => {
-      if (currentSession) {
+      if (currentSession?.user) {
+        // 1. Check Supabase cross-device user metadata first
+        if (currentSession.user.user_metadata?.profile_setup_complete) {
+          setIsNewUser(false);
+          return;
+        }
+
+        // 2. Fallback to local storage (for backwards compatibility if they haven't synced yet)
         const displayName = await AsyncStorage.getItem("@lynk/profileDisplayName");
-        // If there's no display name in storage, they are considered a new user
         setIsNewUser(!displayName);
+      } else {
+        setIsNewUser(false);
       }
     };
 
     const initializeAuth = async () => {
+      // Force logout on every app reload in development (QR code scan)
+      // This guarantees the AuthScreen shows up first for testing.
       if (__DEV__) {
-        // Force log out on app start in development
         await supabase.auth.signOut();
-        await AsyncStorage.removeItem("@lynk/profileDisplayName");
       }
 
       // 1. Check current session on mount
