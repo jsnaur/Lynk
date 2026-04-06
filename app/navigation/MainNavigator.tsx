@@ -65,7 +65,15 @@ const MainNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeFeed" component={MainTabsScreen} />
-      <Stack.Screen name="QuestDetail" component={QuestDetailScreen} />
+      <Stack.Screen
+        name="QuestDetail"
+        component={QuestDetailScreen}
+        options={{
+          presentation: 'transparentModal',
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: 'transparent' },
+        }}
+      />
       <Stack.Screen name="QuestResolution" component={QuestResolutionScreen} />
     </Stack.Navigator>
   );

@@ -1,10 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_CATEGORY_BG, FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 
 type PostCardProps = {
 	quest: FeedQuest;
+	onPress?: () => void;
 };
 
 const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
@@ -13,12 +14,12 @@ const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
 	item: { label: 'ITEM', color: FEED_COLORS.item },
 };
 
-export default function PostCard({ quest }: PostCardProps) {
+export default function PostCard({ quest, onPress }: PostCardProps) {
 	const categoryMeta = CATEGORY_META[quest.category];
 	const categoryBg = FEED_CATEGORY_BG[quest.category];
 
 	return (
-		<View style={styles.card}>
+		<Pressable style={styles.card} onPress={onPress}>
 			<View style={[styles.stripe, { backgroundColor: categoryMeta.color }]} />
 
 			<View style={styles.body}>
@@ -56,7 +57,7 @@ export default function PostCard({ quest }: PostCardProps) {
 					</View>
 				</View>
 			</View>
-		</View>
+		</Pressable>
 	);
 }
 
