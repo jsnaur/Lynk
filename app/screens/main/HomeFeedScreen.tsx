@@ -14,8 +14,9 @@ import PostCard from '../../components/cards/PostCard';
 import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
 import SelectedAvatarContent from '../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
-import { FEED_FILTERS, FEED_QUESTS, FeedCategory } from '../../constants/categories';
+import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_COLORS } from '../../constants/colors';
+import { supabase } from '../../lib/supabase';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
@@ -45,21 +46,70 @@ function withAlpha(hexColor: string, alpha: number) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Utility to format timestamp nicely
+function timeAgo(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays}d ago`;
+}
+
 const SKELETON_CARD_COUNT = 4;
 
 export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScreenProps) {
     const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
+    const [quests, setQuests] = useState<FeedQuest[]>([]);
 
-    useEffect(() => {
-        // Mimic a real initial fetch so users get immediate visual feedback.
-        const timeoutId = setTimeout(() => {
+    const fetchQuests = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('quests')
+                .select('*, profiles(display_name, first_name)')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const formattedQuests: FeedQuest[] = data.map((q: any) => ({
+                id: q.id,
+                category: q.category.toLowerCase() as FeedCategory,
+                ago: timeAgo(q.created_at),
+                title: q.title,
+                preview: q.description,
+                posterName: q.profiles?.display_name || q.profiles?.first_name || 'Anonymous',
+                xp: 50 + q.bonus_xp, // Assuming BASE_XP is 50
+                token: q.token_bounty,
+            }));
+            
+            setQuests(formattedQuests);
+        } catch (error) {
+            console.error('Error fetching quests:', error);
+        } finally {
             setInitialLoading(false);
-        }, 1100);
+            setRefreshing(false);
+        }
+    };
 
-        return () => clearTimeout(timeoutId);
+    // Load quests on mount
+    useEffect(() => {
+        fetchQuests();
     }, []);
+
+    // Refresh listener for active screen transitions (optional based on navigator setup)
+    useEffect(() => {
+        const unsubscribe = navigation?.addListener?.('focus', () => {
+            fetchQuests();
+        });
+        return unsubscribe;
+    }, [navigation]);
 
     const onProfilePress = useCallback(() => {
         onTabPress?.('Profile');
@@ -67,18 +117,14 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     const filteredQuests = useMemo(() => {
         if (activeFilter === 'all') {
-            return FEED_QUESTS;
+            return quests;
         }
-        return FEED_QUESTS.filter((quest) => quest.category === activeFilter);
-    }, [activeFilter]);
+        return quests.filter((quest) => quest.category === activeFilter);
+    }, [activeFilter, quests]);
 
-    // Simulates a network fetch when the user pulls down the feed
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        setTimeout(() => {
-            // In the future, re-fetch FEED_QUESTS from Supabase here
-            setRefreshing(false);
-        }, 1500);
+        fetchQuests();
     }, []);
 
     return (
