@@ -27,7 +27,9 @@ const AppNavigator = () => {
 
     const initializeAuth = async () => {
       if (__DEV__) {
-        // await supabase.auth.signOut();
+        // Force log out on app start in development
+        await supabase.auth.signOut();
+        await AsyncStorage.removeItem("@lynk/profileDisplayName");
       }
 
       // 1. Check current session on mount
