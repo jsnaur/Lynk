@@ -19,6 +19,7 @@ import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
 import { FEED_CATEGORY_BG, FEED_COLORS } from '../../constants/colors';
+import { supabase } from '../../lib/supabase';
 
 const BASE_XP = 50;
 const BONUS_XP_STEP = 25;
@@ -55,6 +56,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [bonusXp, setBonusXp] = useState(25);
   const [tokenBounty, setTokenBounty] = useState(3);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const titleTrim = title.trim();
   const descTrim = description.trim();
@@ -90,9 +92,36 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     });
   }, []);
 
+  const publishToSupabase = async () => {
+    setIsPublishing(true);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('You must be logged in to post.');
+
+      const { error } = await supabase.from('quests').insert({
+        user_id: user.id,
+        category: category?.toLowerCase(), // normalize to 'favor', 'study', 'item'
+        title: titleTrim,
+        description: descTrim,
+        location: locTrim,
+        bonus_xp: bonusXp,
+        token_bounty: tokenBounty,
+      });
+
+      if (error) throw error;
+      
+      navigation.goBack();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to publish quest.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const onPublish = useCallback(() => {
     setSubmitAttempted(true);
     if (!isValid) return;
+
     Alert.alert(
       'Publish quest?',
       `Category: ${category}\nTotal XP: ${BASE_XP + bonusXp}${tokenBounty > 0 ? `\nTokens: ${tokenBounty}` : ''}`,
@@ -100,11 +129,11 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         { text: 'Keep editing', style: 'cancel' },
         {
           text: 'Publish',
-          onPress: () => navigation.goBack(),
+          onPress: publishToSupabase,
         },
       ],
     );
-  }, [isValid, category, bonusXp, tokenBounty, navigation]);
+  }, [isValid, category, titleTrim, descTrim, locTrim, bonusXp, tokenBounty, navigation]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -122,6 +151,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             <Pressable
               onPress={() => navigation.goBack()}
               style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
+              disabled={isPublishing}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
@@ -129,8 +159,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             <Pressable
               onPress={onPublish}
               style={({ pressed }) => [styles.publishBtn, pressed && styles.pressed]}
+              disabled={isPublishing}
             >
-              <Text style={styles.publishText}>Publish</Text>
+              <Text style={styles.publishText}>{isPublishing ? '...' : 'Publish'}</Text>
             </Pressable>
           </View>
 
