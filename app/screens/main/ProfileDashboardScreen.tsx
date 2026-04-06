@@ -80,7 +80,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Profile</Text>
-                    <Pressable style={styles.settingsButton}>
+                    <Pressable 
+                        style={styles.settingsButton}
+                        onPress={() => navigation?.navigate('Settings')}
+                    >
                         <Ionicons name="settings-sharp" size={20} color={FEED_COLORS.textSecondary} />
                     </Pressable>
                 </View>
