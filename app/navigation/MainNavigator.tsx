@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeFeedScreen from '../screens/main/HomeFeedScreen';
 import ProfileDashboardScreen from '../screens/main/ProfileDashboardScreen';
+import QuestScreen from '../screens/main/QuestScreen';
 import QuestDetailScreen from '../screens/main/QuestDetailScreen';
 import QuestResolutionScreen from '../screens/main/QuestResolutionScreen';
 import PostScreen from '../screens/main/PostScreen';
@@ -17,10 +18,10 @@ const MainTabsScreen = ({ navigation }: { navigation: any }) => {
 
   const handleTabPress = useCallback(
     (tab: MainTab) => {
-      if (tab === 'Feed' || tab === 'Profile' || tab === 'Shop') {
+      if (tab === 'Feed' || tab === 'Quests' || tab === 'Profile' || tab === 'Shop') {
         setActiveTab(tab);
       } else if (tab === 'Post') {
-        if (activeTab === 'Feed' || activeTab === 'Profile' || activeTab === 'Shop') {
+        if (activeTab === 'Feed' || activeTab === 'Quests' || activeTab === 'Profile' || activeTab === 'Shop') {
           tabBeforePostRef.current = activeTab;
         }
         setActiveTab('Post');
@@ -40,6 +41,15 @@ const MainTabsScreen = ({ navigation }: { navigation: any }) => {
   if (activeTab === 'Profile') {
     return (
       <ProfileDashboardScreen
+        navigation={navigation}
+        onTabPress={handleTabPress}
+      />
+    );
+  }
+
+  if (activeTab === 'Quests') {
+    return (
+      <QuestScreen
         navigation={navigation}
         onTabPress={handleTabPress}
       />
