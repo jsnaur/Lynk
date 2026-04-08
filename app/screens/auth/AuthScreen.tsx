@@ -21,6 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, styles } from './AuthScreenStyles';
 import { supabase } from '../../lib/supabase';
 import OtpVerificationScreen from './OtpVerificationScreen';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 type AuthTab = 'login' | 'register';
 
@@ -31,7 +33,9 @@ const ASSETS = {
         'https://www.figma.com/api/mcp/asset/44639b1b-a95d-43b4-a76a-a23fe54c1843',
 };
 
-export default function AuthScreen({ navigation }: any) {
+type Props = NativeStackScreenProps<AuthStackParamList, 'Auth'>;
+
+export default function AuthScreen({ navigation }: Props) {
     const { width, height } = useWindowDimensions();
     const [activeTab, setActiveTab] = useState<AuthTab>('login');
 
@@ -307,7 +311,7 @@ export default function AuthScreen({ navigation }: any) {
                                 )}
 
                                 {activeTab === 'login' && (
-                                    <Pressable style={styles.forgotWrap}>
+                                    <Pressable style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPass1')}>
                                         <Text style={styles.forgotText}>Forgot password?</Text>
                                     </Pressable>
                                 )}
