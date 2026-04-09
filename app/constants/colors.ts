@@ -10,6 +10,7 @@ export const FEED_COLORS = {
 	item: '#39FF14',
 	xp: '#C084FC',
 	token: '#FFD700',
+	error: '#FF4d4d',
 } as const;
 
 export const FEED_CATEGORY_BG = {
