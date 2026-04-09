@@ -29,10 +29,15 @@ type ProfileDashboardScreenProps = {
 };
 
 const ASSETS = {
-    accessory: 'https://www.figma.com/api/mcp/asset/896aa530-68d4-4277-823f-edaae0d25958',
-    verified: 'https://www.figma.com/api/mcp/asset/8dda60a4-f071-4d2e-bbe5-0932df03db77',
-    karma: 'https://www.figma.com/api/mcp/asset/2c747f0b-508a-41c2-a932-193d4ffc47a8',
-    token: 'https://www.figma.com/api/mcp/asset/28cb6206-7d98-4074-8184-9534b6107164',
+    accessory: 'https://www.figma.com/api/mcp/asset/eddef234-71de-4a76-bba8-086db30f7c97',
+    verified: 'https://www.figma.com/api/mcp/asset/e14a2d2f-bee2-4cf5-abd5-83f33578a1ca',
+    badgeHat: 'https://www.figma.com/api/mcp/asset/1ca6024c-b3bd-4898-ba61-040ec117b71c',
+    badgeMedal: 'https://www.figma.com/api/mcp/asset/16e8e54c-996f-400c-b946-5d7587ab4a4a',
+    badgeHat2: 'https://www.figma.com/api/mcp/asset/66c9ef59-3276-4cbe-87b0-91abdb64ea3d',
+    karma: 'https://www.figma.com/api/mcp/asset/a97d1fe5-98da-4525-b666-eaa79c38e046',
+    token: 'https://www.figma.com/api/mcp/asset/eff720aa-b00d-4ab8-9dce-e4ec941c920a',
+    settings: 'https://www.figma.com/api/mcp/asset/7af5c0bf-74a1-44f1-b120-c9cc2ab021e8',
+    quest: 'https://www.figma.com/api/mcp/asset/da79129e-c5ee-47c2-a0f5-e2ae82e3071c',
 };
 
 const avatarAssets = [
@@ -44,46 +49,16 @@ const avatarAssets = [
     Avatar6
 ];
 
-const ACTIVE_QUESTS = [
-    { id: 'aq-1', title: 'Help Feed Cats', role: 'You posted', status: 'Awaiting approval', stripe: FEED_COLORS.favor, roleColor: FEED_COLORS.textSecondary, statusColor: FEED_COLORS.textSecondary },
-    { id: 'aq-2', title: 'Need Tutor for Calculus', role: 'You accepted', status: 'In progress', stripe: FEED_COLORS.study, roleColor: FEED_COLORS.favor, statusColor: FEED_COLORS.xp },
-    { id: 'aq-3', title: 'Borrow Sci-Cal', role: 'You posted', status: 'Pending resolution', stripe: FEED_COLORS.item, roleColor: FEED_COLORS.textSecondary, statusColor: FEED_COLORS.item },
-] as const;
-
 type QuestRowProps = {
     title: string;
-    role: string;
-    status: string;
-    stripe: string;
-    roleColor: string;
-    statusColor: string;
+    count: string;
 };
 
-function StatChip({ value, label }: { value: string; label: string }) {
+function BadgeSlot({ image }: { image: string }) {
     return (
-        <View style={styles.statChip}>
-            <Text style={styles.statValue}>{value}</Text>
-            <Text style={styles.statLabel}>{label}</Text>
+        <View style={styles.badgeSlot}>
+            <Image source={{ uri: image }} style={styles.badgeImage} />
         </View>
-    );
-}
-
-function QuestRow({ title, role, status, stripe, roleColor, statusColor }: QuestRowProps) {
-    return (
-        <Pressable style={styles.questRow}>
-            <View style={[styles.questStripe, { backgroundColor: stripe }]} />
-            <View style={styles.questTextWrap}>
-                <Text style={styles.questTitle} numberOfLines={1}>
-                    {title}
-                </Text>
-                <View style={styles.questMetaRow}>
-                    <Text style={[styles.questMetaText, { color: roleColor }]}>{role}</Text>
-                    <View style={styles.separatorDot} />
-                    <Text style={[styles.questMetaText, { color: statusColor }]}>{status}</Text>
-                </View>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={FEED_COLORS.border} />
-        </Pressable>
     );
 }
 
@@ -130,24 +105,19 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
                     >
-                        <Ionicons name="settings-sharp" size={20} color={FEED_COLORS.textSecondary} />
+                        <Image source={require('../../../assets/NavAssets/settings.png')} style={styles.settingsIcon} />
                     </Pressable>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    {/* Identity Hero Block */}
                     <View style={styles.identityBlock}>
                         <View style={styles.identityRow}>
                             <View style={styles.avatarColumn}>
                                 <View style={styles.avatarFrame}>
                                     <SelectedAvatar width={72} height={72} style={styles.avatarSvg} />
                                     <Image source={{ uri: ASSETS.accessory }} style={styles.avatarLayer} />
-                                    <View style={styles.levelBadge}>
-                                        <Text style={styles.levelBadgeText}>7</Text>
-                                    </View>
                                 </View>
-                                <Pressable>
-                                    <Text style={styles.changeText}>Change</Text>
-                                </Pressable>
                             </View>
 
                             <View style={styles.identityTextColumn}>
@@ -155,24 +125,32 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                     <Text style={styles.nameText}>{displayName}</Text>
                                     <Image source={{ uri: ASSETS.verified }} style={styles.verifiedBadge} />
                                 </View>
-                                <Text style={styles.subtitle}>{majorDisplay} - Class of '{shortYear}</Text>
-
-                                <View style={styles.statsRow}>
-                                    <StatChip value="24" label="Renown" />
-                                    <View style={styles.statDivider} />
-                                    <StatChip value="11" label="Quests" />
-                                    <View style={styles.statDivider} />
-                                    <StatChip value="31" label="Kudos" />
-                                </View>
+                                <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
+                                <Text style={styles.bioText}>This is my bio. Sample text.</Text>
+                                <Pressable>
+                                    <Text style={styles.editProfileText}>Edit Profile</Text>
+                                </Pressable>
                             </View>
                         </View>
-
-                        <Pressable style={styles.editButton}>
-                            <Ionicons name="create-outline" size={14} color={FEED_COLORS.textSecondary} />
-                            <Text style={styles.editButtonText}>Edit Profile</Text>
-                        </Pressable>
                     </View>
 
+                    {/* Badges Section */}
+                    <View style={styles.badgesBlock}>
+                        <View style={styles.blockHeaderRow}>
+                            <Text style={styles.blockTitle}>Badges</Text>
+                            <Pressable style={styles.setLink}>
+                                <Text style={styles.setLinkText}>Set</Text>
+                                <Ionicons name="chevron-forward" size={14} color={FEED_COLORS.favor} />
+                            </Pressable>
+                        </View>
+                        <View style={styles.badgeRow}>
+                            <BadgeSlot image={ASSETS.badgeHat} />
+                            <BadgeSlot image={ASSETS.badgeMedal} />
+                            <BadgeSlot image={ASSETS.badgeHat2} />
+                        </View>
+                    </View>
+
+                    {/* Reputation Block */}
                     <View style={styles.reputationBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Reputation</Text>
@@ -184,7 +162,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         <View style={styles.karmaLabelRow}>
                             <View style={styles.karmaTitleCluster}>
                                 <Image source={{ uri: ASSETS.karma }} style={styles.karmaIcon} />
-                                <Text style={styles.karmaTitle}>KARMA</Text>
+                                <Text style={styles.karmaTitle}>EXPERIENCE</Text>
                             </View>
                             <Text style={styles.karmaValueText}>1,240 / 2,000</Text>
                         </View>
@@ -218,27 +196,25 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 <Ionicons name="chevron-forward" size={16} color={FEED_COLORS.token} />
                             </View>
                         </Pressable>
+
+                        {/* My Quests Row */}
+                        <Pressable style={styles.questsShortcut}>
+                            <View style={styles.questsLeftCluster}>
+                                <Image source={{ uri: ASSETS.quest }} style={styles.questIcon} />
+                                <View>
+                                    <Text style={styles.questsTitle}>My Quests</Text>
+                                    <Text style={styles.questsSubtitle}>3 active · 2 completed</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={16} color={FEED_COLORS.border} />
+                        </Pressable>
                     </View>
 
-                    <View style={styles.activeQuestsBlock}>
-                        <View style={styles.blockHeaderRow}>
-                            <Text style={styles.blockTitle}>Active Quests</Text>
-                            <View style={styles.activeCountBadge}>
-                                <Text style={styles.activeCountText}>3</Text>
-                            </View>
-                        </View>
-
-                        {ACTIVE_QUESTS.map((quest) => (
-                            <QuestRow
-                                key={quest.id}
-                                title={quest.title}
-                                role={quest.role}
-                                status={quest.status}
-                                stripe={quest.stripe}
-                                roleColor={quest.roleColor}
-                                statusColor={quest.statusColor}
-                            />
-                        ))}
+                    {/* Log Out Button */}
+                    <View style={styles.logOutContainer}>
+                        <Pressable style={styles.logOutButton}>
+                            <Text style={styles.logOutButtonText}>Log Out</Text>
+                        </Pressable>
                     </View>
                 </ScrollView>
             </SafeAreaView>
@@ -267,7 +243,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     headerTitle: {
-        fontSize: 34,
+        fontSize: 22,
         fontWeight: '700',
         color: FEED_COLORS.textPrimary,
         letterSpacing: 0.2,
@@ -279,27 +255,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    settingsIcon: {
+        width: 24,
+        height: 24,
+    },
     scrollContent: {
         paddingBottom: 112,
     },
     identityBlock: {
         paddingHorizontal: 24,
         paddingVertical: 20,
-        gap: 20,
         borderBottomWidth: 1,
         borderBottomColor: FEED_COLORS.border,
     },
     identityRow: {
         flexDirection: 'row',
-        gap: 16,
+        gap: 18,
     },
     avatarColumn: {
         alignItems: 'center',
         gap: 8,
     },
     avatarFrame: {
-        width: 96,
-        height: 96,
+        width: 100,
+        height: 100,
         borderRadius: 20,
         backgroundColor: FEED_COLORS.surface2,
         borderWidth: 2,
@@ -309,38 +288,15 @@ const styles = StyleSheet.create({
     },
     avatarSvg: {
         position: 'absolute',
-        top: 12,
-        left: 12,
+        top: 14,
+        left: 14,
     },
     avatarLayer: {
         position: 'absolute',
-        left: 12,
-        top: 12,
+        left: 14,
+        top: 14,
         width: 72,
         height: 72,
-    },
-    levelBadge: {
-        position: 'absolute',
-        right: 4,
-        bottom: 4,
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        backgroundColor: FEED_COLORS.favor,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: FEED_COLORS.bg,
-    },
-    levelBadgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: FEED_COLORS.bg,
-    },
-    changeText: {
-        fontSize: 12,
-        color: FEED_COLORS.favor,
-        fontWeight: '500',
     },
     identityTextColumn: {
         flex: 1,
@@ -353,7 +309,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     nameText: {
-        fontSize: 32,
+        fontSize: 20,
         fontWeight: '700',
         color: FEED_COLORS.textPrimary,
     },
@@ -365,51 +321,19 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: FEED_COLORS.textSecondary,
     },
-    statsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingTop: 6,
-    },
-    statChip: {
-        flex: 1,
-        alignItems: 'center',
-        gap: 2,
-        paddingVertical: 8,
-    },
-    statValue: {
-        fontSize: 30,
-        fontWeight: '700',
+    bioText: {
+        fontSize: 13,
         color: FEED_COLORS.textPrimary,
-    },
-    statLabel: {
-        fontSize: 11,
-        color: FEED_COLORS.textSecondary,
-    },
-    statDivider: {
-        height: 28,
-        width: 1,
-        backgroundColor: FEED_COLORS.border,
-    },
-    editButton: {
-        height: 40,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: FEED_COLORS.border,
-        backgroundColor: FEED_COLORS.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'row',
-        gap: 6,
-    },
-    editButtonText: {
-        fontSize: 16,
         fontWeight: '500',
-        color: FEED_COLORS.textSecondary,
     },
-    reputationBlock: {
+    editProfileText: {
+        fontSize: 12,
+        color: FEED_COLORS.favor,
+    },
+    badgesBlock: {
         paddingHorizontal: 24,
         paddingVertical: 20,
-        gap: 12,
+        gap: 16,
         borderBottomWidth: 1,
         borderBottomColor: FEED_COLORS.border,
     },
@@ -419,9 +343,44 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     blockTitle: {
-        fontSize: 24,
+        fontSize: 16,
         fontWeight: '600',
         color: FEED_COLORS.textPrimary,
+    },
+    setLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    setLinkText: {
+        fontSize: 14,
+        fontWeight: '400',
+        color: FEED_COLORS.favor,
+    },
+    badgeRow: {
+        flexDirection: 'row',
+        gap: 8,
+        justifyContent: 'space-between',
+    },
+    badgeSlot: {
+        flex: 1,
+        height: 112,
+        borderRadius: 14,
+        backgroundColor: FEED_COLORS.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    badgeImage: {
+        width: 72,
+        height: 72,
+    },
+    reputationBlock: {
+        paddingHorizontal: 24,
+        paddingVertical: 20,
+        gap: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: FEED_COLORS.border,
     },
     rankChip: {
         paddingHorizontal: 10,
@@ -473,11 +432,13 @@ const styles = StyleSheet.create({
     levelRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        paddingHorizontal: 0,
     },
     levelRangeText: {
-        fontSize: 9,
-        fontWeight: '600',
+        fontSize: 8,
+        fontWeight: '700',
         color: FEED_COLORS.textSecondary,
+        fontFamily: 'monospace',
     },
     tokenCard: {
         height: 64,
@@ -514,7 +475,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     tokenValue: {
-        fontSize: 34,
+        fontSize: 22,
         fontWeight: '700',
         color: FEED_COLORS.token,
     },
@@ -522,64 +483,52 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: FEED_COLORS.textSecondary,
     },
-    activeQuestsBlock: {
-        paddingHorizontal: 24,
-        paddingVertical: 20,
-        gap: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
-    },
-    activeCountBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 10,
-        backgroundColor: 'rgba(57,255,20,0.12)',
-        borderWidth: 1,
-        borderColor: 'rgba(57,255,20,0.25)',
-    },
-    activeCountText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: FEED_COLORS.item,
-    },
-    questRow: {
-        height: 78,
-        borderRadius: 12,
+    questsShortcut: {
+        height: 52,
+        paddingHorizontal: 16,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: FEED_COLORS.border,
         backgroundColor: FEED_COLORS.surface,
-        paddingHorizontal: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    questsLeftCluster: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
     },
-    questStripe: {
-        width: 3,
-        height: 52,
-        borderRadius: 2,
+    questIcon: {
+        width: 26,
+        height: 26,
     },
-    questTextWrap: {
-        flex: 1,
-        paddingVertical: 8,
-        gap: 3,
-    },
-    questTitle: {
+    questsTitle: {
         fontSize: 14,
         fontWeight: '600',
         color: FEED_COLORS.textPrimary,
     },
-    questMetaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    questMetaText: {
+    questsSubtitle: {
         fontSize: 11,
+        color: FEED_COLORS.textSecondary,
     },
-    separatorDot: {
-        width: 3,
-        height: 3,
-        borderRadius: 2,
-        backgroundColor: FEED_COLORS.textSecondary,
+    logOutContainer: {
+        paddingHorizontal: 24,
+        paddingVertical: 20,
+        gap: 12,
+    },
+    logOutButton: {
+        height: 40,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,77,77,0.3)',
+        borderWidth: 1,
+        borderColor: '#ff4d4d',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logOutButtonText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#ff4d4d',
     },
 });
