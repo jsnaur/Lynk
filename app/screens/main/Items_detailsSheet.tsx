@@ -110,7 +110,7 @@ export default function ItemsDetailsSheet({
 
           {!owned && !canAfford && (
             <View style={styles.warnBanner}>
-              <Ionicons name="warning-outline" size={18} color="#ffb020" />
+              <Ionicons name="warning-outline" size={18} color={FEED_COLORS.warning} />
               <Text style={styles.warnText}>Not enough tokens. Complete quests to earn more.</Text>
             </View>
           )}
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderWidth: 1,
     borderColor: FEED_COLORS.border,
-    backgroundColor: '#1a1a22',
+    backgroundColor: FEED_COLORS.bg,
     zIndex: 2,
     elevation: 12,
   },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   warnText: {
     flex: 1,
     fontSize: 13,
-    color: '#ffb020',
+    color: FEED_COLORS.warning,
     fontFamily: 'DMSans-Regular',
   },
   actions: {

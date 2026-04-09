@@ -42,7 +42,7 @@ function FieldError({ message, visible }: { message: string; visible: boolean })
   if (!visible) return null;
   return (
     <View style={styles.fieldErrorRow}>
-      <Ionicons name="alert-circle" size={14} color="#ff6b6b" />
+      <Ionicons name="alert-circle" size={14} color={FEED_COLORS.error} />
       <Text style={styles.fieldErrorText}>{message}</Text>
     </View>
   );
@@ -352,7 +352,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             {submitAttempted && !isValid && (
               <View style={styles.summaryCard}>
                 <View style={styles.summaryHeader}>
-                  <Ionicons name="warning" size={18} color="#ffb020" />
+                  <Ionicons name="warning" size={18} color={FEED_COLORS.error} />
                   <Text style={styles.summaryTitle}>Complete required fields</Text>
                 </View>
                 {validationIssues.map((msg) => (
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ff6b6b',
+    backgroundColor: FEED_COLORS.error,
   },
   counter: {
     fontSize: 12,
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   },
   fieldErrorText: {
     fontSize: 12,
-    color: '#ff6b6b',
+    color: FEED_COLORS.error,
     fontFamily: 'DMSans-Regular',
     flex: 1,
   },
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#ffb020',
+    backgroundColor: FEED_COLORS.error,
   },
   summaryText: {
     fontSize: 13,

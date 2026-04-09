@@ -8,7 +8,7 @@ export const COLORS = {
     accentDim:     'rgba(0,229,200,0.12)',
     text:          '#F0F0F5',
     textSecondary: '#7A7A8C',
-    error:         '#FF4D6A',
+    error:         '#FF4D4D',
     border:        '#35353F',
 };
 

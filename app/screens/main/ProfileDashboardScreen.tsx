@@ -522,13 +522,13 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: 'rgba(255,77,77,0.3)',
         borderWidth: 1,
-        borderColor: '#ff4d4d',
+        borderColor: FEED_COLORS.error,
         alignItems: 'center',
         justifyContent: 'center',
     },
     logOutButtonText: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#ff4d4d',
+        color: FEED_COLORS.error,
     },
 });

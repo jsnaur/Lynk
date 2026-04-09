@@ -9,7 +9,8 @@ export const COLORS = {
 	border: '#3A3A48',
 	accent: '#00F5FF',
 	accentText: '#0E1013',
-	error: '#FF4D6D',
+	error: '#FF4D4D',
+	warning: '#FFA500',
 };
 
 export const styles = StyleSheet.create({

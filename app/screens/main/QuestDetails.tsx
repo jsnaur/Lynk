@@ -14,6 +14,8 @@ import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
+import { FEED_COLORS } from '../../constants/colors';
+import { FEED_CATEGORY_BG } from '../../constants/colors';
 
 type QuestDetailParams = {
   quest?: FeedQuest;
@@ -25,9 +27,9 @@ type QuestDetailsProps = {
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
-  favor: '#00f5ff',
-  study: '#00ff90',
-  item: '#ffa640',
+  favor: FEED_COLORS.favor,
+  study: FEED_COLORS.study,
+  item: FEED_COLORS.item,
 };
 
 const DEFAULT_COMMENTS = [
@@ -89,7 +91,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             <Ionicons
               name={liked ? 'heart' : 'heart-outline'}
               size={18}
-              color={liked ? '#ff5b8a' : '#8a8a9a'}
+              color={liked ? FEED_COLORS.heart : FEED_COLORS.textSecondary}
             />
           </Pressable>
         </View>
@@ -150,7 +152,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
           {comments.map((comment) => (
             <View key={comment.id} style={styles.commentRow}>
-              <Ionicons name="person-circle-outline" size={28} color="#8a8a9a" />
+              <Ionicons name="person-circle-outline" size={28} color={FEED_COLORS.textSecondary} />
               <View style={styles.commentContent}>
                 <View style={styles.rowBetween}>
                   <Text style={styles.commentAuthor}>{comment.author}</Text>
@@ -167,11 +169,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             value={message}
             onChangeText={setMessage}
             placeholder="Add a comment..."
-            placeholderTextColor="#777789"
+            placeholderTextColor={FEED_COLORS.textSecondary}
             style={styles.input}
           />
           <Pressable style={styles.sendButton} onPress={onSubmitComment}>
-            <Ionicons name="send" size={16} color="#1a1a1f" />
+            <Ionicons name="send" size={16} color={FEED_COLORS.bg} />
           </Pressable>
         </View>
       </View>
@@ -187,7 +189,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     height: '92%',
-    backgroundColor: '#1a1a1f',
+    backgroundColor: FEED_COLORS.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
@@ -195,7 +197,7 @@ const styles = StyleSheet.create({
   header: {
     height: 64,
     borderBottomWidth: 1,
-    borderBottomColor: '#30303a',
+    borderBottomColor: FEED_COLORS.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -208,12 +210,12 @@ const styles = StyleSheet.create({
     minWidth: 72,
   },
   backText: {
-    color: '#00f5ff',
+    color: FEED_COLORS.favor,
     fontSize: 14,
     fontWeight: '600',
   },
   headerTitle: {
-    color: '#f0f0f5',
+    color: FEED_COLORS.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -224,8 +226,8 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#343444',
-    backgroundColor: '#24242d',
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
     padding: 14,
     gap: 12,
   },
@@ -253,22 +255,22 @@ const styles = StyleSheet.create({
   },
   statusPill: {
     borderRadius: 999,
-    backgroundColor: 'rgba(57,255,20,0.12)',
+    backgroundColor: FEED_CATEGORY_BG.item,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   statusText: {
-    color: '#39ff14',
+    color: FEED_COLORS.item,
     fontSize: 12,
     fontWeight: '600',
   },
   title: {
-    color: '#f0f0f5',
+    color: FEED_COLORS.textPrimary,
     fontSize: 21,
     fontWeight: '700',
   },
   preview: {
-    color: '#9a9aab',
+    color: FEED_COLORS.textSecondary,
     lineHeight: 21,
     fontSize: 14,
   },
@@ -278,12 +280,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   poster: {
-    color: '#f0f0f5',
+    color: FEED_COLORS.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   time: {
-    color: '#8a8a9a',
+    color: FEED_COLORS.textSecondary,
     fontSize: 11,
   },
   locationChip: {
@@ -292,14 +294,14 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   locationText: {
-    color: '#9a9aab',
+    color: FEED_COLORS.textSecondary,
     fontSize: 11,
   },
   rewardBox: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#343444',
-    backgroundColor: '#2d2d37',
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -314,18 +316,18 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 72,
-    backgroundColor: '#4a4a5c',
+    backgroundColor: FEED_COLORS.border,
   },
   rewardValue: {
-    color: '#c084fc',
+    color: FEED_COLORS.xp,
     fontSize: 20,
     fontWeight: '700',
   },
   tokenValue: {
-    color: '#ffd700',
+    color: FEED_COLORS.token,
   },
   rewardLabel: {
-    color: '#8a8a9a',
+    color: FEED_COLORS.textSecondary,
     fontSize: 11,
     letterSpacing: 0.6,
   },
@@ -336,10 +338,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00f5ff',
+    backgroundColor: FEED_COLORS.favor,
   },
   acceptText: {
-    color: '#121218',
+    color: FEED_COLORS.bg,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -352,18 +354,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   commentsTitle: {
-    color: '#f0f0f5',
+    color: FEED_COLORS.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   countChip: {
-    backgroundColor: '#2e2e38',
+    backgroundColor: FEED_COLORS.surface,
     borderRadius: 999,
     paddingVertical: 2,
     paddingHorizontal: 8,
   },
   countText: {
-    color: '#8a8a9a',
+    color: FEED_COLORS.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -372,8 +374,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#30303a',
-    backgroundColor: '#23232c',
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
     padding: 10,
     gap: 10,
     flexDirection: 'row',
@@ -383,22 +385,22 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   commentAuthor: {
-    color: '#f0f0f5',
+    color: FEED_COLORS.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   commentTime: {
-    color: '#8a8a9a',
+    color: FEED_COLORS.textSecondary,
     fontSize: 11,
   },
   commentText: {
-    color: '#9a9aab',
+    color: FEED_COLORS.textSecondary,
     fontSize: 13,
   },
   inputBar: {
     borderTopWidth: 1,
-    borderTopColor: '#30303a',
-    backgroundColor: '#1a1a1f',
+    borderTopColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 14,
@@ -411,16 +413,16 @@ const styles = StyleSheet.create({
     minHeight: 42,
     borderRadius: 21,
     borderWidth: 1,
-    borderColor: '#3a3a48',
-    backgroundColor: '#2c2c36',
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
     paddingHorizontal: 14,
-    color: '#f0f0f5',
+    color: FEED_COLORS.textPrimary,
   },
   sendButton: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#00f5ff',
+    backgroundColor: FEED_COLORS.favor,
     alignItems: 'center',
     justifyContent: 'center',
   },
