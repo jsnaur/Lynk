@@ -23,21 +23,24 @@ import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
 import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
 import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
 
+// Profile Assets - SVGs
+import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
+import SettingsIcon from "../../../assets/ProfileAssets/Settings_Icon.svg";
+import QuestIcon from "../../../assets/ProfileAssets/Quest_Icon.svg";
+
+// Profile Assets - PNGs
+const ASSETS = {
+    accessory: require("../../../assets/ProfileAssets/Accessory_Face.png"),
+    badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
+    badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
+    badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
+    experience: require("../../../assets/ProfileAssets/Experience_Pixel.png"),
+    token: require("../../../assets/ProfileAssets/Token_Pixel.png"),
+};
+
 type ProfileDashboardScreenProps = {
     onTabPress?: (tab: MainTab) => void;
     navigation?: any;
-};
-
-const ASSETS = {
-    accessory: 'https://www.figma.com/api/mcp/asset/eddef234-71de-4a76-bba8-086db30f7c97',
-    verified: 'https://www.figma.com/api/mcp/asset/e14a2d2f-bee2-4cf5-abd5-83f33578a1ca',
-    badgeHat: 'https://www.figma.com/api/mcp/asset/1ca6024c-b3bd-4898-ba61-040ec117b71c',
-    badgeMedal: 'https://www.figma.com/api/mcp/asset/16e8e54c-996f-400c-b946-5d7587ab4a4a',
-    badgeHat2: 'https://www.figma.com/api/mcp/asset/66c9ef59-3276-4cbe-87b0-91abdb64ea3d',
-    karma: 'https://www.figma.com/api/mcp/asset/a97d1fe5-98da-4525-b666-eaa79c38e046',
-    token: 'https://www.figma.com/api/mcp/asset/eff720aa-b00d-4ab8-9dce-e4ec941c920a',
-    settings: 'https://www.figma.com/api/mcp/asset/7af5c0bf-74a1-44f1-b120-c9cc2ab021e8',
-    quest: 'https://www.figma.com/api/mcp/asset/da79129e-c5ee-47c2-a0f5-e2ae82e3071c',
 };
 
 const avatarAssets = [
@@ -54,10 +57,10 @@ type QuestRowProps = {
     count: string;
 };
 
-function BadgeSlot({ image }: { image: string }) {
+function BadgeSlot({ image }: { image: any }) {
     return (
         <View style={styles.badgeSlot}>
-            <Image source={{ uri: image }} style={styles.badgeImage} />
+            <Image source={image} style={styles.badgeImage} />
         </View>
     );
 }
@@ -105,8 +108,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
                     >
-                        {/* FIX: Replaced missing local image with Ionicons */}
-                        <Ionicons name="settings-outline" size={24} color={FEED_COLORS.textPrimary} />
+                        <SettingsIcon width={24} height={24} />
                     </Pressable>
                 </View>
 
@@ -117,14 +119,14 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             <View style={styles.avatarColumn}>
                                 <View style={styles.avatarFrame}>
                                     <SelectedAvatar width={72} height={72} style={styles.avatarSvg} />
-                                    <Image source={{ uri: ASSETS.accessory }} style={styles.avatarLayer} />
+                                    <Image source={ASSETS.accessory} style={styles.avatarLayer} />
                                 </View>
                             </View>
 
                             <View style={styles.identityTextColumn}>
                                 <View style={styles.nameRow}>
                                     <Text style={styles.nameText}>{displayName}</Text>
-                                    <Image source={{ uri: ASSETS.verified }} style={styles.verifiedBadge} />
+                                    <VerifiedIcon width={18} height={18} />
                                 </View>
                                 <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
                                 <Text style={styles.bioText}>This is my bio. Sample text.</Text>
@@ -145,9 +147,9 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </Pressable>
                         </View>
                         <View style={styles.badgeRow}>
-                            <BadgeSlot image={ASSETS.badgeHat} />
+                            <BadgeSlot image={ASSETS.badgeShield} />
                             <BadgeSlot image={ASSETS.badgeMedal} />
-                            <BadgeSlot image={ASSETS.badgeHat2} />
+                            <BadgeSlot image={ASSETS.badgeHat} />
                         </View>
                     </View>
 
@@ -162,7 +164,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
                         <View style={styles.karmaLabelRow}>
                             <View style={styles.karmaTitleCluster}>
-                                <Image source={{ uri: ASSETS.karma }} style={styles.karmaIcon} />
+                                <Image source={ASSETS.experience} style={styles.karmaIcon} />
                                 <Text style={styles.karmaTitle}>EXPERIENCE</Text>
                             </View>
                             <Text style={styles.karmaValueText}>1,240 / 2,000</Text>
@@ -184,7 +186,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
                         <Pressable style={styles.tokenCard}>
                             <View style={styles.tokenLeftCluster}>
-                                <Image source={{ uri: ASSETS.token }} style={styles.tokenIcon} />
+                                <Image source={ASSETS.token} style={styles.tokenIcon} />
                                 <View>
                                     <Text style={styles.tokenTitle}>Token Balance</Text>
                                     <Text style={styles.tokenSubtitle}>Spend in the Shop</Text>
@@ -201,20 +203,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         {/* My Quests Row */}
                         <Pressable style={styles.questsShortcut}>
                             <View style={styles.questsLeftCluster}>
-                                <Image source={{ uri: ASSETS.quest }} style={styles.questIcon} />
+                                <QuestIcon width={26} height={26} />
                                 <View>
                                     <Text style={styles.questsTitle}>My Quests</Text>
                                     <Text style={styles.questsSubtitle}>3 active · 2 completed</Text>
                                 </View>
                             </View>
                             <Ionicons name="chevron-forward" size={16} color={FEED_COLORS.border} />
-                        </Pressable>
-                    </View>
-
-                    {/* Log Out Button */}
-                    <View style={styles.logOutContainer}>
-                        <Pressable style={styles.logOutButton}>
-                            <Text style={styles.logOutButtonText}>Log Out</Text>
                         </Pressable>
                     </View>
                 </ScrollView>
@@ -380,8 +375,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 20,
         gap: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
     },
     rankChip: {
         paddingHorizontal: 10,
@@ -485,7 +478,7 @@ const styles = StyleSheet.create({
         color: FEED_COLORS.textSecondary,
     },
     questsShortcut: {
-        height: 52,
+        height: 64,
         paddingHorizontal: 16,
         borderRadius: 14,
         borderWidth: 1,
