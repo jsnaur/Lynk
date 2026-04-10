@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -20,15 +20,15 @@ import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
 import { FEED_CATEGORY_BG, FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
+import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
+import type { GuildAppraisal } from '../../services/AppraiserService';
 
-const BASE_XP = 50;
 const BONUS_XP_STEP = 25;
-const BONUS_XP_MAX = 200;
-const TOKEN_MIN = 0;
-const TOKEN_MAX = 50;
 const TITLE_MIN = 8;
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
+
+const { GUILD_BASE_XP, BONUS_XP_MAX, TOKEN_MIN, TOKEN_MAX } = APPRAISER_CONSTANTS;
 
 type QuestCategory = 'Favor' | 'Study' | 'Item';
 
@@ -53,8 +53,8 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [bonusXp, setBonusXp] = useState(25);
-  const [tokenBounty, setTokenBounty] = useState(3);
+  const [bonusXp, setBonusXp] = useState(DEFAULT_APPRAISAL.bonusXp);
+  const [tokenBounty, setTokenBounty] = useState(DEFAULT_APPRAISAL.tokenBounty);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -73,6 +73,21 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   }, [category, titleTrim, descTrim, locTrim]);
 
   const isValid = validationIssues.length === 0;
+
+  const appraisal = useMemo(() => {
+    const categoryLower = category?.toLowerCase() as any;
+    return appraiseQuest({
+      category: categoryLower,
+      title: titleTrim,
+      description: descTrim,
+      location: locTrim,
+    });
+  }, [category, titleTrim, descTrim, locTrim]);
+
+  useEffect(() => {
+    setBonusXp(appraisal.bonusXp);
+    setTokenBounty(appraisal.tokenBounty);
+  }, [appraisal.bonusXp, appraisal.tokenBounty]);
 
   const changeBonusXp = useCallback((delta: number) => {
     setBonusXp((v) => {
@@ -124,7 +139,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
     Alert.alert(
       'Publish quest?',
-      `Category: ${category}\nTotal XP: ${BASE_XP + bonusXp}${tokenBounty > 0 ? `\nTokens: ${tokenBounty}` : ''}`,
+      `Guild Appraiser: ${appraisal.tier} tier (${appraisal.confidence} confidence)\nCategory: ${category}\nTotal XP: ${GUILD_BASE_XP + bonusXp}${
+        bonusXp > 0 ? `\nTokens: ${tokenBounty}` : ''
+      }`,
       [
         { text: 'Keep editing', style: 'cancel' },
         {
@@ -133,7 +150,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         },
       ],
     );
-  }, [isValid, category, titleTrim, descTrim, locTrim, bonusXp, tokenBounty, navigation]);
+  }, [isValid, category, appraisal, bonusXp, tokenBounty, publishToSupabase]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -270,13 +287,45 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             </View>
 
             <View style={styles.section}>
+              <View style={styles.appraiserCard}>
+                <View style={styles.appraiserHeader}>
+                  <View style={styles.appraiserTitleRow}>
+                    <Ionicons name="sparkles-outline" size={18} color={FEED_COLORS.xp} />
+                    <Text style={styles.appraiserLabel}>GUILD APPRAISER</Text>
+                  </View>
+                  <View style={styles.appraiserBadge}>
+                    <Text style={styles.appraiserBadgeText}>{appraisal.tier}</Text>
+                  </View>
+                </View>
+                <Text style={styles.appraiserHeadline}>
+                  Recommended reward: +{appraisal.bonusXp} XP and {appraisal.tokenBounty} TK
+                </Text>
+                <Text style={styles.appraiserCopy}>{appraisal.rationale}</Text>
+                <View style={styles.appraiserStatsRow}>
+                  <View style={styles.appraiserStat}>
+                    <Text style={styles.appraiserStatValue}>+{appraisal.bonusXp}</Text>
+                    <Text style={styles.appraiserStatLabel}>XP boost</Text>
+                  </View>
+                  <View style={styles.appraiserStat}>
+                    <Text style={[styles.appraiserStatValue, { color: FEED_COLORS.token }]}>
+                      {appraisal.tokenBounty}
+                    </Text>
+                    <Text style={styles.appraiserStatLabel}>Token bounty</Text>
+                  </View>
+                  <View style={styles.appraiserStat}>
+                    <Text style={styles.appraiserStatValue}>{appraisal.confidence}</Text>
+                    <Text style={styles.appraiserStatLabel}>Confidence</Text>
+                  </View>
+                </View>
+              </View>
+
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerLabel}>SET REWARD</Text>
                 <View style={styles.dividerLine} />
               </View>
               <Text style={styles.hint}>
-                Higher bounties get picked up faster. Base quest XP is {BASE_XP}.
+                Higher bounties get picked up faster. Base quest XP is {GUILD_BASE_XP}.
               </Text>
 
               <View style={styles.rewardRow}>
@@ -285,7 +334,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>Bonus XP</Text>
                     <Text style={styles.rewardSub}>
-                      Total: +{BASE_XP + bonusXp} XP
+                      Total: +{GUILD_BASE_XP + bonusXp} XP
                     </Text>
                   </View>
                 </View>
@@ -685,5 +734,84 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: FEED_COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
+  },
+  appraiserCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(192,132,252,0.28)',
+    backgroundColor: 'rgba(192,132,252,0.08)',
+    padding: 14,
+    gap: 10,
+  },
+  appraiserHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  appraiserTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  appraiserLabel: {
+    fontSize: 8,
+    fontFamily: 'PressStart2P-Regular',
+    color: FEED_COLORS.textPrimary,
+  },
+  appraiserBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: FEED_COLORS.surface,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+  },
+  appraiserBadgeText: {
+    fontSize: 11,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: FEED_COLORS.textPrimary,
+  },
+  appraiserHeadline: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: FEED_COLORS.textPrimary,
+  },
+  appraiserCopy: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: FEED_COLORS.textSecondary,
+    fontFamily: 'DMSans-Regular',
+  },
+  appraiserStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  appraiserStat: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: FEED_COLORS.surface,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+    alignItems: 'center',
+    gap: 2,
+  },
+  appraiserStatValue: {
+    fontSize: 15,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: FEED_COLORS.xp,
+    textAlign: 'center',
+  },
+  appraiserStatLabel: {
+    fontSize: 10,
+    fontFamily: 'DMSans-Regular',
+    color: FEED_COLORS.textSecondary,
+    textAlign: 'center',
   },
 });
