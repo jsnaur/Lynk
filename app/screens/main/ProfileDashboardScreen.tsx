@@ -105,7 +105,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
                     >
-                        <Image source={require('../../../assets/NavAssets/settings.png')} style={styles.settingsIcon} />
+                        {/* FIX: Replaced missing local image with Ionicons */}
+                        <Ionicons name="settings-outline" size={24} color={FEED_COLORS.textPrimary} />
                     </Pressable>
                 </View>
 
