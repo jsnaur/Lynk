@@ -6,7 +6,6 @@ import ProfileSetupScreen from '../screens/auth/ProfileSetupScreen';
 import { supabase } from '../lib/supabase'; 
 import { Session } from '@supabase/supabase-js';
 import { View, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,18 +15,25 @@ const AppNavigator = () => {
   const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
-    // Check if the user has completed their profile setup
+    // Check if the user has completed their profile setup by checking the DB
     const checkSessionAndProfile = async (currentSession: Session | null) => {
       if (currentSession?.user) {
-        // 1. Check Supabase cross-device user metadata first
-        if (currentSession.user.user_metadata?.profile_setup_complete) {
-          setIsNewUser(false);
-          return;
-        }
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', currentSession.user.id)
+            .single();
 
-        // 2. Fallback to local storage (for backwards compatibility if they haven't synced yet)
-        const displayName = await AsyncStorage.getItem("@lynk/profileDisplayName");
-        setIsNewUser(!displayName);
+          if (data && data.display_name) {
+            setIsNewUser(false);
+          } else {
+            setIsNewUser(true);
+          }
+        } catch (error) {
+          console.error("Error checking profile:", error);
+          setIsNewUser(true);
+        }
       } else {
         setIsNewUser(false);
       }
