@@ -23,6 +23,9 @@ import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
 import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
 import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
 
+// Icons
+import SettingsIcon from "../../../assets/ProfileAssets/Settings_Icon.svg";
+
 type ProfileDashboardScreenProps = {
     onTabPress?: (tab: MainTab) => void;
     navigation?: any;
@@ -105,7 +108,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
                     >
-                        <Image source={require('../../../assets/NavAssets/settings.png')} style={styles.settingsIcon} />
+                        <SettingsIcon width={24} height={24} />
                     </Pressable>
                 </View>
 
