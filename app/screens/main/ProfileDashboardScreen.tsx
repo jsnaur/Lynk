@@ -506,4 +506,23 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: FEED_COLORS.textSecondary,
     },
+    logOutContainer: {
+        paddingHorizontal: 24,
+        paddingVertical: 20,
+        gap: 12,
+    },
+    logOutButton: {
+        height: 40,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,77,77,0.3)',
+        borderWidth: 1,
+        borderColor: FEED_COLORS.error,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logOutButtonText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: FEED_COLORS.error,
+    },
 });

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
 import { supabase } from "../../lib/supabase";
+import { FEED_COLORS } from "../../constants/colors";
 
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
 import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
@@ -162,7 +163,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             value={displayName}
             onChangeText={setDisplayName}
             placeholder="Display Name (visible to campus)"
-            placeholderTextColor="#8a8a9a"
+            placeholderTextColor={FEED_COLORS.textSecondary}
             style={[styles.textInput, localStyles.textInputColorOverride]}
             autoCapitalize="words"
           />
@@ -192,7 +193,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             <Ionicons
               name={majorOpen ? "chevron-up" : "chevron-down"}
               size={16}
-              color="#8a8a9a"
+              color={FEED_COLORS.textSecondary}
             />
           </Pressable>
 
@@ -248,7 +249,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             <Ionicons
               name={yearOpen ? "chevron-up" : "chevron-down"}
               size={16}
-              color="#8a8a9a"
+              color={FEED_COLORS.textSecondary}
             />
           </Pressable>
 

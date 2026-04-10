@@ -11,6 +11,8 @@ export const FEED_COLORS = {
 	xp: '#C084FC',
 	token: '#FFD700',
 	error: '#FF4d4d',
+	warning : '#FFA500',
+	heart: '#FF5B8A',
 } as const;
 
 export const FEED_CATEGORY_BG = {

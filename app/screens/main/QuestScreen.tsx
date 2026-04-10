@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: '#2A2A33',
+    backgroundColor: FEED_COLORS.surface,
     borderRadius: 14,
     padding: 4,
     gap: 4,
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     left: 4,
     height: 38,
     borderRadius: 10,
-    backgroundColor: '#3B3B47',
+    backgroundColor: FEED_COLORS.border,
   },
   segment: {
     flex: 1,
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   resolveText: {
-    color: '#111115',
+    color: FEED_COLORS.bg,
     fontSize: 12,
     lineHeight: 14,
     fontWeight: '800',
