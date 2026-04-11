@@ -102,9 +102,10 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     const fetchQuests = async () => {
         try {
+            // Explicitly join on quests_user_id_fkey to avoid ambiguity
             const { data, error } = await supabase
                 .from('quests')
-                .select('*, profiles(display_name, first_name, avatar_index)')
+                .select('*, profiles!quests_user_id_fkey(display_name, first_name, avatar_index)')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
