@@ -11,19 +11,19 @@ import { forgotStyles } from './ForgotPass.styles';
 export default function ForgotPass2({ navigation, route }: any) {
   const [timeLeftSec, setTimeLeftSec] = useState(15 * 60);
 
+  const email = route?.params?.email ?? '';
   const maskedEmail = useMemo(() => {
-    const value = route.params.email;
+    const value = String(email).trim();
     const [name, domain] = value.split('@');
-    if (!name || !domain) return value;
+    if (!name || !domain) return value || 'your email';
     if (name.length <= 2) return `${name[0] || '*'}*@${domain}`;
     return `${name.slice(0, 2)}***@${domain}`;
-  }, [route.params.email]);
+  }, [email]);
 
   useEffect(() => {
     const timerId = setInterval(() => {
       setTimeLeftSec((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
-
     return () => clearInterval(timerId);
   }, []);
 
@@ -37,9 +37,9 @@ export default function ForgotPass2({ navigation, route }: any) {
     try {
       await Linking.openURL('mailto:');
     } catch {
-      // Fall through to next screen even when no mail app is available.
+      // Continue even if no mail app
     }
-    navigation.navigate('ForgotPass3', { email: route.params.email });
+    navigation.navigate('ForgotPass3', { email: email || 'user@example.com' });
   };
 
   return (
@@ -77,7 +77,7 @@ export default function ForgotPass2({ navigation, route }: any) {
             </View>
             <View style={forgotStyles.stepRow}>
               <UncheckedIcon width={20} height={20} />
-              <Text style={forgotStyles.stepText}>Tap the reset link - it opens the app</Text>
+              <Text style={forgotStyles.stepText}>Tap the reset link — it opens the app</Text>
             </View>
             <View style={forgotStyles.stepRow}>
               <UncheckedIcon width={20} height={20} />

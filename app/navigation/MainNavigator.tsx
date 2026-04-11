@@ -4,7 +4,6 @@ import HomeFeedScreen from '../screens/main/HomeFeedScreen';
 import ProfileDashboardScreen from '../screens/main/ProfileDashboardScreen';
 import QuestScreen from '../screens/main/QuestScreen';
 import QuestDetailScreen from '../screens/main/QuestDetailScreen';
-import QuestResolutionScreen from '../screens/main/QuestResolutionScreen';
 import PostScreen from '../screens/main/PostScreen';
 import ShopScreen from '../screens/main/Shop';
 import SettingsScreen from '../screens/main/SettingsScreen';
@@ -90,7 +89,6 @@ const MainNavigator = () => {
           contentStyle: { backgroundColor: 'transparent' },
         }}
       />
-      <Stack.Screen name="QuestResolution" component={QuestResolutionScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );

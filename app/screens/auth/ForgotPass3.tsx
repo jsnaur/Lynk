@@ -3,7 +3,6 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
 import LockIcon from '../../../assets/ForgotPassAssets/Lock_Icon.svg';
-import ClockIcon from '../../../assets/ForgotPassAssets/Clock_Icon.svg';
 import CheckIcon from '../../../assets/ForgotPassAssets/Check_Icon.svg';
 import UncheckedIcon from '../../../assets/ForgotPassAssets/Unchecked_icon.svg';
 import { forgotStyles } from './ForgotPass.styles';
@@ -14,6 +13,8 @@ export default function ForgotPass3({ navigation, route }: any) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [timeLeftSec, setTimeLeftSec] = useState(11 * 60 + 23);
+
+  const email = route?.params?.email ?? '';
 
   const hasLength = password.length >= 8;
   const hasUpper = /[A-Z]/.test(password);
@@ -41,7 +42,7 @@ export default function ForgotPass3({ navigation, route }: any) {
   }, [timeLeftSec]);
 
   const handleReset = () => {
-    Alert.alert('Password reset complete', `Your password for ${route.params.email} has been updated.`);
+    Alert.alert('Password reset complete', `Your password for ${email} has been updated.`);
     navigation.navigate('Auth');
   };
 
@@ -68,7 +69,7 @@ export default function ForgotPass3({ navigation, route }: any) {
 
           <View style={forgotStyles.pass3Badge}>
             <CheckIcon width={14} height={14} />
-            <Text style={forgotStyles.pass3BadgeText}>Secure link verified - expires in {timerLabel}</Text>
+            <Text style={forgotStyles.pass3BadgeText}>Secure link verified — expires in {timerLabel}</Text>
           </View>
 
           <View style={forgotStyles.passInputWrap}>
