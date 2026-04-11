@@ -24,7 +24,7 @@ type AiAppraisalResponse = {
 const GUILD_BASE_XP = 50;
 const BONUS_XP_MAX = 200;
 const TOKEN_MIN = 0;
-const TOKEN_MAX = 50;
+const TOKEN_MAX = 10;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 function clamp(value: number, min: number, max: number) {
@@ -194,6 +194,17 @@ export function appraiseQuest({
   description: string;
   location: string;
 }): GuildAppraisal {
+  if (!description.trim()) {
+    return {
+      bonusXp: 0,
+      tokenBounty: 0,
+      totalXp: GUILD_BASE_XP,
+      tier: 'Scout',
+      confidence: 'Light',
+      rationale: 'Add a description to get a reward recommendation.',
+    };
+  }
+
   const locationWords = countWords(location);
   const urgentSignal = /urgent|asap|today|tonight|deadline|soon|before|by\s+\w+/i.test(description);
 
@@ -215,11 +226,18 @@ export function appraiseQuest({
   );
 
   const bonusXp = clamp(totalXp - GUILD_BASE_XP, 0, BONUS_XP_MAX);
-  const tokenBounty = clamp(
-    Math.round(totalXp / 16 + difficultyScore / 10 + (urgentSignal ? 3 : 0) + (category === 'item' ? 2 : 0)),
-    TOKEN_MIN,
-    TOKEN_MAX,
-  );
+  // Keep token rewards conservative: easy quests should be ~1, hard quests cap at 7-10.
+  const effortSignal = difficultyScore + (urgentSignal ? 6 : 0) + (category === 'study' ? 2 : 0);
+  let tokenBounty = 1;
+
+  if (effortSignal >= 40) tokenBounty = 10;
+  else if (effortSignal >= 34) tokenBounty = 9;
+  else if (effortSignal >= 28) tokenBounty = 8;
+  else if (effortSignal >= 22) tokenBounty = 7;
+  else if (effortSignal >= 16) tokenBounty = 5;
+  else if (effortSignal >= 10) tokenBounty = 3;
+
+  tokenBounty = clamp(tokenBounty, 1, TOKEN_MAX);
 
   const tier = totalXp >= 170 ? 'Champion' : totalXp >= 120 ? 'Knight' : 'Scout';
   const confidence = difficultyScore >= 22 ? 'Strong' : difficultyScore >= 12 ? 'Good' : 'Light';
