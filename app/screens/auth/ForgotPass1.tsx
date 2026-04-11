@@ -13,21 +13,21 @@ export default function ForgotPass1({ navigation }: any) {
 
   const showError = useMemo(() => trimmedEmail.length > 0 && !isValidEmail(trimmedEmail), [trimmedEmail]);
   const canContinue = trimmedEmail.length > 0 && !showError;
-
-  return (
+  	
+  	return (
     <SafeAreaView style={forgotStyles.root}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
           <View style={forgotStyles.backRow}>
             <BackIcon width={24} height={24} />
             <Text style={forgotStyles.backText}>Back to Login</Text>
-          </View>
+              							</View>
         </Pressable>
 
         <View style={forgotStyles.card}>
           <View style={forgotStyles.iconWrap}>
             <EmailLogo width={34} height={34} />
-          </View>
+              							</View>
 
           <Text style={forgotStyles.title}>Forgot Password</Text>
           <Text style={forgotStyles.subtitle}>
@@ -46,7 +46,7 @@ export default function ForgotPass1({ navigation }: any) {
               style={[forgotStyles.input, showError && forgotStyles.inputError]}
             />
             {showError && <Text style={forgotStyles.errorText}>Please enter a valid email address.</Text>}
-          </View>
+              							</View>
 
           <Pressable
             disabled={!canContinue}
@@ -64,3 +64,4 @@ export default function ForgotPass1({ navigation }: any) {
     </SafeAreaView>
   );
 }
+              							

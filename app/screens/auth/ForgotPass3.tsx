@@ -1,158 +1,293 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
-import LockIcon from '../../../assets/ForgotPassAssets/Lock_Icon.svg';
-import ClockIcon from '../../../assets/ForgotPassAssets/Clock_Icon.svg';
-import CheckIcon from '../../../assets/ForgotPassAssets/Check_Icon.svg';
-import UncheckedIcon from '../../../assets/ForgotPassAssets/Unchecked_icon.svg';
-import { forgotStyles } from './ForgotPass.styles';
+import * as React from "react";
+import {StyleSheet, Text, View, ScrollView, Image} from "react-native";
 
-export default function ForgotPass3({ navigation, route }: any) {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [timeLeftSec, setTimeLeftSec] = useState(11 * 60 + 23);
+const PWRecoveryState3 = () => {
+  	
+  	return (
+    		<View style={styles.pwRecoveryState3}>
+      			<View style={styles.recoveryNavBar}>
+        				<View style={styles.backButton}>
+          					<Image style={styles.backIcon} resizeMode="cover" />
+          					<Text style={styles.backLabel}>Back to Login</Text>
+        				</View>
+      			</View>
+      			<ScrollView style={styles.recoveryContentBlocksetNew} contentContainerStyle={styles.setNewPasswordContainerContent}>
+        				<Image style={styles.iconBlock} resizeMode="cover" />
+        				<View style={[styles.textBlock, styles.textBlockFlexBox]}>
+          					<Text style={[styles.recoveryTitle, styles.buttonLabelTypo]}>New Password</Text>
+          					<Text style={styles.recoveryBody}>Create a strong password{'\n'}for your LYNK account.</Text>
+        				</View>
+        				<View style={[styles.tokenValidityBanner, styles.tokenBorder]}>
+          					<Image style={styles.checkIcon} resizeMode="cover" />
+          					<Text style={[styles.bannerText, styles.bannerTypo]}>Secure link verified — expires in 11:23</Text>
+        				</View>
+        				<View style={[styles.tokenValidityBannerExpired, styles.tokenBorder]}>
+          					<Image style={styles.checkIcon} resizeMode="cover" />
+          					<Text style={[styles.bannerText2, styles.bannerTypo]}>This link has expired.</Text>
+          					<Text style={[styles.requestNewLink, styles.bannerTypo]}>Request a new one.</Text>
+        				</View>
+        				<View style={[styles.newPasswordInput, styles.ctaButtonLayout]}>
+          					<Image style={styles.inputIcon} resizeMode="cover" />
+          					<Text style={styles.inputField}>New password</Text>
+          					<Image style={styles.inputIcon} resizeMode="cover" />
+        				</View>
+        				<View style={[styles.textBlock, styles.textBlockFlexBox]}>
+          					<View style={[styles.strengthBarTrack, styles.strengthBarTrackFlexBox]}>
+            						<View style={styles.strengthSegment} />
+            						<View style={styles.strengthSegment} />
+            						<View style={styles.strengthSegment} />
+            						<View style={styles.strengthSegment} />
+          					</View>
+          					<View style={styles.strengthLabel}>
+            						<Text style={[styles.strengthLabel2, styles.reqTypo]}>Weak</Text>
+            						<Text style={[styles.strengthLabel2, styles.reqTypo]}>Fair</Text>
+            						<Text style={[styles.strengthLabel2, styles.reqTypo]}>Good</Text>
+            						<Text style={[styles.strengthLabel2, styles.reqTypo]}>Strong</Text>
+          					</View>
+        				</View>
+        				<View style={styles.strengthBarTrackFlexBox}>
+          					<View style={[styles.requirementRow, styles.textBlockFlexBox]}>
+            						<Image style={styles.reqIconunmet} resizeMode="cover" />
+            						<Text style={[styles.reqText, styles.reqTypo]}>At least 8 characters</Text>
+          					</View>
+          					<View style={[styles.requirementRow, styles.textBlockFlexBox]}>
+            						<Image style={styles.reqIconunmet} resizeMode="cover" />
+            						<Text style={[styles.reqText2, styles.reqTypo]}>One uppercase letter</Text>
+          					</View>
+          					<View style={[styles.requirementRow, styles.textBlockFlexBox]}>
+            						<Image style={styles.reqIconunmet} resizeMode="cover" />
+            						<Text style={[styles.reqText2, styles.reqTypo]}>One number</Text>
+          					</View>
+          					<View style={[styles.requirementRow, styles.textBlockFlexBox]}>
+            						<Image style={styles.reqIconunmet} resizeMode="cover" />
+            						<Text style={[styles.reqText, styles.reqTypo]}>One special character</Text>
+          					</View>
+        				</View>
+        				<View style={[styles.newPasswordInput, styles.ctaButtonLayout]}>
+          					<Image style={styles.inputIcon} resizeMode="cover" />
+          					<Text style={styles.inputField}>Confirm new password</Text>
+          					<Image style={styles.inputIcon} resizeMode="cover" />
+        				</View>
+        				<View style={[styles.ctaButton, styles.ctaButtonLayout]}>
+          					<Text style={[styles.buttonLabel, styles.buttonLabelTypo]}>Set New Password</Text>
+        				</View>
+      			</ScrollView>
+    		</View>);
+};
 
-  const hasLength = password.length >= 8;
-  const hasUpper = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[^A-Za-z0-9]/.test(password);
-  const matches = password === confirmPassword;
-  const showMismatchError = confirmPassword.length > 0 && !matches;
-  const strength = [hasLength, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
-  const canSubmit = useMemo(
-    () => hasLength && hasUpper && hasNumber && hasSpecial && matches,
-    [hasLength, hasUpper, hasNumber, hasSpecial, matches],
-  );
+const styles = StyleSheet.create({
+  	setNewPasswordContainerContent: {
+    		flexDirection: "column",
+    		paddingHorizontal: 32,
+    		paddingTop: 40,
+    		alignItems: "center",
+    		justifyContent: "center",
+    		gap: 24
+  	},
+  	textBlockFlexBox: {
+    		gap: 6,
+    		justifyContent: "center",
+    		alignItems: "center",
+    		overflow: "hidden"
+  	},
+  	buttonLabelTypo: {
+    		color: "#f0f0f5",
+    		fontFamily: "DMSans-Bold",
+    		fontWeight: "700",
+    		textAlign: "center"
+  	},
+  	tokenBorder: {
+    		gap: 8,
+    		paddingVertical: 10,
+    		paddingHorizontal: 14,
+    		borderRadius: 10,
+    		borderWidth: 1,
+    		justifyContent: "center",
+    		flexDirection: "row",
+    		borderStyle: "solid",
+    		alignItems: "center",
+    		overflow: "hidden"
+  	},
+  	bannerTypo: {
+    		fontSize: 13,
+    		lineHeight: 22,
+    		textAlign: "center",
+    		fontFamily: "DMSans-Regular"
+  	},
+  	ctaButtonLayout: {
+    		borderRadius: 14,
+    		alignSelf: "stretch",
+    		overflow: "hidden"
+  	},
+  	strengthBarTrackFlexBox: {
+    		gap: 4,
+    		justifyContent: "center",
+    		overflow: "hidden"
+  	},
+  	reqTypo: {
+    		fontSize: 12,
+    		textAlign: "center",
+    		fontFamily: "DMSans-Regular"
+  	},
+  	pwRecoveryState3: {
+    		width: "100%",
+    		height: 844,
+    		backgroundColor: "#1a1a1f",
+    		alignItems: "center",
+    		overflow: "hidden"
+  	},
+  	recoveryNavBar: {
+    		borderBottomWidth: 1,
+    		paddingHorizontal: 20,
+    		paddingTop: 60,
+    		paddingBottom: 12,
+    		flexDirection: "row",
+    		borderColor: "#3a3a48",
+    		borderStyle: "solid",
+    		alignSelf: "stretch",
+    		alignItems: "center",
+    		overflow: "hidden"
+  	},
+  	backButton: {
+    		paddingHorizontal: 15,
+    		paddingVertical: 12,
+    		gap: 10,
+    		flexDirection: "row",
+    		alignItems: "center",
+    		overflow: "hidden"
+  	},
+  	backIcon: {
+    		height: 20,
+    		width: 13
+  	},
+  	backLabel: {
+    		textAlign: "center",
+    		fontFamily: "DMSans-Regular",
+    		color: "#00f5ff",
+    		fontSize: 16
+  	},
+  	recoveryContentBlocksetNew: {
+    		width: 390,
+    		maxWidth: 390,
+    		flex: 1
+  	},
+  	iconBlock: {
+    		width: 64,
+    		height: 64,
+    		borderRadius: 18
+  	},
+  	textBlock: {
+    		alignSelf: "stretch"
+  	},
+  	recoveryTitle: {
+    		fontSize: 26
+  	},
+  	recoveryBody: {
+    		color: "#8a8a9a",
+    		lineHeight: 22,
+    		fontSize: 15,
+    		textAlign: "center",
+    		fontFamily: "DMSans-Regular",
+    		alignSelf: "stretch"
+  	},
+  	tokenValidityBanner: {
+    		backgroundColor: "rgba(57, 255, 20, 0.08)",
+    		borderColor: "rgba(57, 255, 20, 0.25)"
+  	},
+  	checkIcon: {
+    		height: 14,
+    		width: 14
+  	},
+  	bannerText: {
+    		color: "#39ff14"
+  	},
+  	tokenValidityBannerExpired: {
+    		backgroundColor: "rgba(255, 77, 77, 0.08)",
+    		borderColor: "rgba(255, 77, 77, 0.25)",
+    		display: "none"
+  	},
+  	bannerText2: {
+    		color: "#ff4d4d"
+  	},
+  	requestNewLink: {
+    		color: "#00f5ff",
+    		fontSize: 13
+  	},
+  	newPasswordInput: {
+    		backgroundColor: "#26262e",
+    		paddingHorizontal: 16,
+    		paddingVertical: 0,
+    		minHeight: 52,
+    		borderWidth: 1,
+    		borderRadius: 14,
+    		gap: 10,
+    		flexDirection: "row",
+    		borderColor: "#3a3a48",
+    		borderStyle: "solid",
+    		alignItems: "center"
+  	},
+  	inputIcon: {
+    		height: 18,
+    		width: 18
+  	},
+  	inputField: {
+    		textAlign: "left",
+    		color: "#8a8a9a",
+    		fontSize: 15,
+    		flex: 1,
+    		fontFamily: "DMSans-Regular"
+  	},
+  	strengthBarTrack: {
+    		height: 4,
+    		borderRadius: 2,
+    		flexDirection: "row",
+    		alignSelf: "stretch",
+    		alignItems: "center"
+  	},
+  	strengthSegment: {
+    		backgroundColor: "#31313c",
+    		flex: 1,
+    		alignSelf: "stretch",
+    		overflow: "hidden"
+  	},
+  	strengthLabel: {
+    		justifyContent: "center",
+    		gap: 10,
+    		flexDirection: "row",
+    		alignSelf: "stretch",
+    		alignItems: "center"
+  	},
+  	strengthLabel2: {
+    		color: "#8a8a9a",
+    		flex: 1
+  	},
+  	requirementRow: {
+    		flexDirection: "row"
+  	},
+  	reqIconunmet: {
+    		height: 12,
+    		width: 12
+  	},
+  	reqText: {
+    		color: "#8a8a9a"
+  	},
+  	reqText2: {
+    		color: "#39ff14"
+  	},
+  	ctaButton: {
+    		height: 52,
+    		backgroundColor: "#8a8a9a"
+  	},
+  	buttonLabel: {
+    		position: "absolute",
+    		marginTop: -11,
+    		marginLeft: -71,
+    		top: "50%",
+    		left: "50%",
+    		fontSize: 16,
+    		fontFamily: "DMSans-Bold",
+    		fontWeight: "700"
+  	}
+});
 
-  useEffect(() => {
-    const timerId = setInterval(() => {
-      setTimeLeftSec((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timerId);
-  }, []);
-
-  const timerLabel = useMemo(() => {
-    const minutes = Math.floor(timeLeftSec / 60);
-    const seconds = timeLeftSec % 60;
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-  }, [timeLeftSec]);
-
-  const handleReset = () => {
-    Alert.alert('Password reset complete', `Your password for ${route.params.email} has been updated.`);
-    navigation.navigate('Auth');
-  };
-
-  return (
-    <SafeAreaView style={forgotStyles.root}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
-          <View style={forgotStyles.backRow}>
-            <BackIcon width={24} height={24} />
-            <Text style={forgotStyles.backText}>Back to Login</Text>
-          </View>
-        </Pressable>
-        <View style={forgotStyles.topDivider} />
-
-        <View style={forgotStyles.pass3Card}>
-          <View style={forgotStyles.iconWrap}>
-            <LockIcon width={28} height={28} />
-          </View>
-
-          <Text style={forgotStyles.pass3Title}>New Password</Text>
-          <Text style={forgotStyles.pass3Subtitle}>
-            Create a strong password{'\n'}for your LYNK account.
-          </Text>
-
-          <View style={forgotStyles.pass3Badge}>
-            <CheckIcon width={14} height={14} />
-            <Text style={forgotStyles.pass3BadgeText}>Secure link verified - expires in {timerLabel}</Text>
-          </View>
-
-          <View style={forgotStyles.passInputWrap}>
-            <View style={[forgotStyles.passInputShell, password.length > 0 && !hasLength && forgotStyles.inputError]}>
-              <LockIcon width={16} height={16} />
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="New password"
-                placeholderTextColor="#71758A"
-                secureTextEntry={!showPassword}
-                style={forgotStyles.passInputField}
-              />
-              <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                <Text style={forgotStyles.eyeAction}>{showPassword ? 'Hide' : 'Show'}</Text>
-              </Pressable>
-            </View>
-
-            <View style={forgotStyles.strengthRow}>
-              {[1, 2, 3, 4].map((level) => (
-                <View
-                  key={level}
-                  style={[forgotStyles.strengthBar, strength >= level && forgotStyles.strengthBarActive]}
-                />
-              ))}
-            </View>
-            <View style={forgotStyles.strengthLabels}>
-              <Text style={forgotStyles.strengthLabelText}>Weak</Text>
-              <Text style={forgotStyles.strengthLabelText}>Fair</Text>
-              <Text style={forgotStyles.strengthLabelText}>Good</Text>
-              <Text style={forgotStyles.strengthLabelText}>Strong</Text>
-            </View>
-
-            <View style={forgotStyles.reqList}>
-              <View style={forgotStyles.reqRow}>
-                {hasLength ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasLength && forgotStyles.reqTextPass]}>At least 8 characters</Text>
-              </View>
-              <View style={forgotStyles.reqRow}>
-                {hasUpper ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasUpper && forgotStyles.reqTextPass]}>One uppercase letter</Text>
-              </View>
-              <View style={forgotStyles.reqRow}>
-                {hasNumber ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasNumber && forgotStyles.reqTextPass]}>One number</Text>
-              </View>
-              <View style={forgotStyles.reqRow}>
-                {hasSpecial ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasSpecial && forgotStyles.reqTextPass]}>One special character</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={forgotStyles.passInputWrap}>
-            <View style={[forgotStyles.passInputShell, showMismatchError && forgotStyles.inputError]}>
-              <LockIcon width={16} height={16} />
-              <TextInput
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirm new password"
-                placeholderTextColor="#71758A"
-                secureTextEntry={!showConfirmPassword}
-                style={forgotStyles.passInputField}
-              />
-              <Pressable onPress={() => setShowConfirmPassword((prev) => !prev)}>
-                <Text style={forgotStyles.eyeAction}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
-              </Pressable>
-            </View>
-            {showMismatchError && <Text style={forgotStyles.errorText}>Passwords do not match.</Text>}
-          </View>
-
-          <Pressable
-            disabled={!canSubmit}
-            onPress={handleReset}
-            style={({ pressed }) => [
-              forgotStyles.pass3Cta,
-              canSubmit && forgotStyles.pass3CtaEnabled,
-              pressed && canSubmit && forgotStyles.actionBtnPressed,
-            ]}
-          >
-            <Text style={forgotStyles.pass3CtaText}>Set New Password</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
+export default PWRecoveryState3;

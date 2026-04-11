@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import { FEED_COLORS } from '../../constants/colors';
 import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
+import QuestResolutionSheetModal from './QuestResolutionScreen';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -175,6 +176,8 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
   const [activeSection, setActiveSection] = useState<'Active' | 'History'>('Active');
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('All');
   const [segmentWidth, setSegmentWidth] = useState(0);
+  const [resolutionModalVisible, setResolutionModalVisible] = useState(false);
+  const [selectedQuestId, setSelectedQuestId] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -314,7 +317,10 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
                 }}
                 onResolve={
                   quest.isActionable
-                    ? () => navigation?.navigate?.('QuestResolution', { questId: quest.id })
+                    ? () => {
+                        setSelectedQuestId(quest.id);
+                        setResolutionModalVisible(true);
+                      }
                     : undefined
                 }
               />
@@ -324,6 +330,11 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       </SafeAreaView>
 
       <BottomNav activeTab="Quests" onTabPress={onTabPress} />
+
+      <QuestResolutionSheetModal
+        visible={resolutionModalVisible}
+        onClose={() => setResolutionModalVisible(false)}
+      />
     </View>
   );
 }

@@ -73,7 +73,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         try {
             const { data, error } = await supabase
                 .from('quests')
-                .select('*, profiles(display_name, first_name)')
+                .select('*, profiles!quests_user_id_fkey(display_name, first_name)')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
