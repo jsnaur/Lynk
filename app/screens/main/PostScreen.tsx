@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
+  Dimensions,
   KeyboardAvoidingView,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -14,7 +17,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import XpSprite from '../../../assets/PostAssets/XP_Sprite.svg';
 import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
@@ -23,12 +25,14 @@ import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
 import type { GuildAppraisal } from '../../services/AppraiserService';
 
-const BONUS_XP_STEP = 25;
 const TITLE_MIN = 8;
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
+const DISMISS_PULL_THRESHOLD = 70;
+const DISMISS_ANIMATION_MS = 240;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-const { GUILD_BASE_XP, BONUS_XP_MAX, TOKEN_MIN, TOKEN_MAX } = APPRAISER_CONSTANTS;
+const { GUILD_BASE_XP, TOKEN_MIN, TOKEN_MAX } = APPRAISER_CONSTANTS;
 
 type QuestCategory = 'Favor' | 'Study' | 'Item';
 
@@ -53,10 +57,11 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [bonusXp, setBonusXp] = useState(DEFAULT_APPRAISAL.bonusXp);
   const [tokenBounty, setTokenBounty] = useState(DEFAULT_APPRAISAL.tokenBounty);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const sheetTranslateY = useRef(new Animated.Value(0)).current;
+  const isDismissingRef = useRef(false);
 
   const titleTrim = title.trim();
   const descTrim = description.trim();
@@ -85,18 +90,8 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   }, [category, titleTrim, descTrim, locTrim]);
 
   useEffect(() => {
-    setBonusXp(appraisal.bonusXp);
     setTokenBounty(appraisal.tokenBounty);
-  }, [appraisal.bonusXp, appraisal.tokenBounty]);
-
-  const changeBonusXp = useCallback((delta: number) => {
-    setBonusXp((v) => {
-      const next = v + delta;
-      if (next < 0) return 0;
-      if (next > BONUS_XP_MAX) return BONUS_XP_MAX;
-      return next;
-    });
-  }, []);
+  }, [appraisal.tokenBounty]);
 
   const changeTokens = useCallback((delta: number) => {
     setTokenBounty((v) => {
@@ -106,6 +101,57 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       return next;
     });
   }, []);
+
+  const animateDismiss = useCallback(() => {
+    if (isDismissingRef.current) return;
+    isDismissingRef.current = true;
+
+    Animated.timing(sheetTranslateY, {
+      toValue: SCREEN_HEIGHT,
+      duration: DISMISS_ANIMATION_MS,
+      useNativeDriver: true,
+    }).start(() => {
+      navigation.goBack();
+    });
+  }, [navigation, sheetTranslateY]);
+
+  const headerPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dy) > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        onPanResponderMove: (_, gestureState) => {
+          if (isDismissingRef.current) return;
+          if (gestureState.dy > 0) {
+            sheetTranslateY.setValue(gestureState.dy * 0.9);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (isDismissingRef.current) return;
+          if (gestureState.dy >= DISMISS_PULL_THRESHOLD) {
+            animateDismiss();
+            return;
+          }
+
+          Animated.spring(sheetTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 22,
+            bounciness: 0,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          if (isDismissingRef.current) return;
+          Animated.spring(sheetTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 22,
+            bounciness: 0,
+          }).start();
+        },
+      }),
+    [animateDismiss, sheetTranslateY],
+  );
 
   const publishToSupabase = async () => {
     setIsPublishing(true);
@@ -119,7 +165,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         title: titleTrim,
         description: descTrim,
         location: locTrim,
-        bonus_xp: bonusXp,
+        bonus_xp: appraisal.bonusXp,
         token_bounty: tokenBounty,
       });
 
@@ -139,8 +185,8 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
     Alert.alert(
       'Publish quest?',
-      `Guild Appraiser: ${appraisal.tier} tier (${appraisal.confidence} confidence)\nCategory: ${category}\nTotal XP: ${GUILD_BASE_XP + bonusXp}${
-        bonusXp > 0 ? `\nTokens: ${tokenBounty}` : ''
+      `Guild Appraiser: ${appraisal.tier} tier (${appraisal.confidence} confidence)\nCategory: ${category}\nTotal XP: ${GUILD_BASE_XP + appraisal.bonusXp}${
+        tokenBounty > 0 ? `\nTokens: ${tokenBounty}` : ''
       }`,
       [
         { text: 'Keep editing', style: 'cancel' },
@@ -150,7 +196,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         },
       ],
     );
-  }, [isValid, category, appraisal, bonusXp, tokenBounty, publishToSupabase]);
+  }, [isValid, category, appraisal, tokenBounty, publishToSupabase]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -159,14 +205,15 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <View style={styles.sheet}>
-          <View style={styles.handleBarWrap}>
-            <View style={styles.handleBar} />
-          </View>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}>
+          <View {...headerPanResponder.panHandlers}>
+            <View style={styles.handleBarWrap}>
+              <View style={styles.handleBar} />
+            </View>
 
-          <View style={styles.navRow}>
+            <View style={styles.navRow}>
             <Pressable
-              onPress={() => navigation.goBack()}
+              onPress={animateDismiss}
               style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
               disabled={isPublishing}
             >
@@ -180,6 +227,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             >
               <Text style={styles.publishText}>{isPublishing ? '...' : 'Publish'}</Text>
             </Pressable>
+            </View>
           </View>
 
           <ScrollView
@@ -187,6 +235,15 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bounces
+            overScrollMode="always"
+            scrollEventThrottle={16}
+            onScroll={(event) => {
+              const y = event.nativeEvent.contentOffset.y;
+              if (y <= -DISMISS_PULL_THRESHOLD) {
+                animateDismiss();
+              }
+            }}
           >
             <View style={styles.section}>
               <View style={styles.labelRow}>
@@ -325,40 +382,15 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <View style={styles.dividerLine} />
               </View>
               <Text style={styles.hint}>
-                Higher bounties get picked up faster. Base quest XP is {GUILD_BASE_XP}.
+                Higher bounties get picked up faster.
               </Text>
 
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
-                  <XpSprite width={24} height={24} />
                   <View style={styles.rewardLabels}>
-                    <Text style={styles.rewardTitle}>Bonus XP</Text>
-                    <Text style={styles.rewardSub}>
-                      Total: +{GUILD_BASE_XP + bonusXp} XP
-                    </Text>
+                    <Text style={styles.rewardTitle}>XP reward</Text>
+                    <Text style={styles.rewardSub}>Auto-set by Guild Appraiser: +{appraisal.bonusXp} XP</Text>
                   </View>
-                </View>
-                <View style={styles.stepper}>
-                  <Pressable
-                    hitSlop={8}
-                    onPress={() => changeBonusXp(-BONUS_XP_STEP)}
-                    disabled={bonusXp <= 0}
-                    style={({ pressed }) => [styles.stepperHit, (pressed || bonusXp <= 0) && styles.stepperDim]}
-                  >
-                    <DecrementBtn width={32} height={32} />
-                  </Pressable>
-                  <Text style={styles.xpValue}>+{bonusXp}</Text>
-                  <Pressable
-                    hitSlop={8}
-                    onPress={() => changeBonusXp(BONUS_XP_STEP)}
-                    disabled={bonusXp >= BONUS_XP_MAX}
-                    style={({ pressed }) => [
-                      styles.stepperHit,
-                      (pressed || bonusXp >= BONUS_XP_MAX) && styles.stepperDim,
-                    ]}
-                  >
-                    <IncrementBtn width={32} height={32} />
-                  </Pressable>
                 </View>
               </View>
 
@@ -415,7 +447,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
             <View style={{ height: 24 }} />
           </ScrollView>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -680,14 +712,6 @@ const styles = StyleSheet.create({
   },
   stepperDim: {
     opacity: 0.35,
-  },
-  xpValue: {
-    minWidth: 40,
-    textAlign: 'center',
-    fontSize: 17,
-    fontFamily: 'SpaceMono-Bold',
-    fontWeight: '700',
-    color: FEED_COLORS.xp,
   },
   tokenValue: {
     minWidth: 40,
