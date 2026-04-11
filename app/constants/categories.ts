@@ -6,6 +6,7 @@ export type FeedQuest = {
 	title: string;
 	preview: string;
 	posterName: string;
+	posterAvatarIndex?: number;
 	ago: string;
 	xp: number;
 	token: number;
@@ -25,6 +26,7 @@ export const FEED_QUESTS: FeedQuest[] = [
 		preview:
 			'Quest preview text, lorem ipsum dolor sit amet. Consectetur adisciping eliti met. Sancti est con...',
 		posterName: 'Poster Name',
+		posterAvatarIndex: 0,
 		ago: '23m ago',
 		xp: 30,
 		token: 67,
@@ -36,6 +38,7 @@ export const FEED_QUESTS: FeedQuest[] = [
 		preview:
 			'Quest preview text, lorem ipsum dolor sit amet. Consectetur adisciping eliti met. Sancti est con...',
 		posterName: 'Poster Name',
+		posterAvatarIndex: 0,
 		ago: '23m ago',
 		xp: 30,
 		token: 67,
@@ -47,6 +50,7 @@ export const FEED_QUESTS: FeedQuest[] = [
 		preview:
 			'Quest preview text, lorem ipsum dolor sit amet. Consectetur adisciping eliti met. Sancti est con...',
 		posterName: 'Poster Name',
+		posterAvatarIndex: 0,
 		ago: '23m ago',
 		xp: 30,
 		token: 67,
@@ -58,6 +62,7 @@ export const FEED_QUESTS: FeedQuest[] = [
 		preview:
 			'Quest preview text, lorem ipsum dolor sit amet. Consectetur adisciping eliti met. Sancti est con...',
 		posterName: 'Poster Name',
+		posterAvatarIndex: 0,
 		ago: '23m ago',
 		xp: 30,
 		token: 67,

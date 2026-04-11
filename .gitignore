@@ -12,3 +12,4 @@ web-build/
 .env.local
 .env.*
 !.env.example
+agents.md

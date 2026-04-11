@@ -8,6 +8,8 @@ export interface NearbyQuest {
   description: string;
   category: string;
   token_bounty: number;
+  bonus_xp: number;         // Added to fix TS error
+  poster_name: string;      // Added to fix TS error
   created_at: string;
   distance_km: number;
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   View,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
@@ -16,9 +17,10 @@ import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_COLORS } from '../../constants/colors';
 import { FEED_CATEGORY_BG } from '../../constants/colors';
+import { supabase } from '../../lib/supabase';
 
 type QuestDetailParams = {
-  quest?: FeedQuest;
+  quest?: FeedQuest & { id?: string; user_id?: string; description?: string; bonus_xp?: number; token_bounty?: number; accepted_by?: string };
 };
 
 type QuestDetailsProps = {
@@ -40,25 +42,96 @@ const DEFAULT_COMMENTS = [
 
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const quest = route?.params?.quest;
+  
   const [accepted, setAccepted] = useState(false);
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState('');
   const [comments, setComments] = useState(DEFAULT_COMMENTS);
+  
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [questData, setQuestData] = useState<any>(quest);
+  const [loading, setLoading] = useState(false);
 
-  const category = quest?.category ?? 'favor';
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchUserAndQuest = async () => {
+      // 1. Get current authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (mounted && user) {
+        setCurrentUserId(user.id);
+      }
+
+      // 2. Fetch fresh quest data from DB if we have an ID
+      if (quest?.id) {
+        const { data, error } = await supabase
+          .from('quests')
+          .select('*')
+          .eq('id', quest.id)
+          .single();
+
+        if (mounted && data && !error) {
+          setQuestData(data);
+          // Set local accepted state if the current user is the one who accepted it
+          if (data.status === 'accepted' && data.accepted_by === user?.id) {
+            setAccepted(true);
+          }
+        }
+      }
+    };
+
+    fetchUserAndQuest();
+
+    return () => {
+      mounted = false;
+    };
+  }, [quest?.id]);
+
+  const toggleAccept = async () => {
+    if (!currentUserId || !questData?.id) return;
+    
+    if (questData.user_id === currentUserId) {
+      Alert.alert("Cannot Accept", "You cannot accept your own quest.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const isCurrentlyAcceptedByMe = accepted;
+      const newStatus = isCurrentlyAcceptedByMe ? 'open' : 'accepted';
+      const newAcceptedBy = isCurrentlyAcceptedByMe ? null : currentUserId;
+
+      const { error } = await supabase
+        .from('quests')
+        .update({ status: newStatus, accepted_by: newAcceptedBy })
+        .eq('id', questData.id);
+
+      if (error) throw error;
+
+      setAccepted(!isCurrentlyAcceptedByMe);
+      setQuestData({ ...questData, status: newStatus, accepted_by: newAcceptedBy });
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to update quest.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const category = (questData?.category ?? quest?.category ?? 'favor') as FeedCategory;
   const categoryColor = CATEGORY_COLORS[category];
 
-  const statusText = accepted ? 'Accepted' : 'Open';
-  const actionText = accepted ? 'Cancel Quest' : 'Accept Quest';
-
-  const title = quest?.title ?? 'Need help around campus today';
-  const preview =
-    quest?.preview ??
-    'Looking for someone nearby to help with a quick request before 5PM.';
+  const title = questData?.title ?? quest?.title ?? 'Need help around campus today';
+  const preview = questData?.description ?? quest?.preview ?? 'Looking for someone nearby to help with a quick request before 5PM.';
   const posterName = quest?.posterName ?? 'Mark Lawrence';
   const ago = quest?.ago ?? '23m ago';
-  const xp = quest?.xp ?? 150;
-  const token = quest?.token ?? 25;
+  const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
+  const token = questData?.token_bounty ?? quest?.token ?? 25;
+
+  const isPoster = currentUserId === questData?.user_id;
+  const isTakenBySomeoneElse = questData?.status === 'accepted' && questData?.accepted_by !== currentUserId;
+  
+  const statusText = questData?.status === 'accepted' ? 'Accepted' : 'Open';
+  const actionText = accepted ? 'Cancel Quest' : 'Accept Quest';
 
   const commentCount = useMemo(() => comments.length, [comments]);
 
@@ -139,9 +212,23 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           </View>
 
-          <Pressable style={styles.acceptButton} onPress={() => setAccepted((current) => !current)}>
-            <Text style={styles.acceptText}>{actionText}</Text>
-          </Pressable>
+          {isPoster ? (
+            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}>
+              <Text style={styles.acceptText}>Your Quest</Text>
+            </View>
+          ) : isTakenBySomeoneElse ? (
+            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}>
+              <Text style={styles.acceptText}>Already Accepted</Text>
+            </View>
+          ) : (
+            <Pressable 
+              style={[styles.acceptButton, loading && { opacity: 0.7 }]} 
+              onPress={toggleAccept} 
+              disabled={loading}
+            >
+              <Text style={styles.acceptText}>{actionText}</Text>
+            </Pressable>
+          )}
 
           <View style={styles.commentsHeader}>
             <Text style={styles.commentsTitle}>Comments</Text>
@@ -427,4 +514,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-                    										

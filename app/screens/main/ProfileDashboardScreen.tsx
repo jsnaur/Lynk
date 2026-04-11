@@ -57,6 +57,50 @@ type QuestRowProps = {
     count: string;
 };
 
+// XP Thresholds: cumulative XP required to reach each level (capped at Level 10)
+const XP_THRESHOLDS = [
+    0,       // Level 1
+    1000,    // Level 2
+    3000,    // Level 3
+    6000,    // Level 4
+    10000,   // Level 5
+    15000,   // Level 6
+    22000,   // Level 7
+    31000,   // Level 8
+    42000,   // Level 9
+    55000,   // Level 10
+];
+
+function calculateLevelFromXP(totalXP: number): {
+    currentLevel: number;
+    xpInCurrentLevel: number;
+    xpNeededForNextLevel: number;
+    progressPercent: number;
+} {
+    let currentLevel = 1;
+    for (let i = 0; i < XP_THRESHOLDS.length; i++) {
+        if (totalXP >= XP_THRESHOLDS[i]) {
+            currentLevel = i + 1;
+        } else {
+            break;
+        }
+    }
+
+    const currentThreshold = XP_THRESHOLDS[currentLevel - 1] || 0;
+    const nextThreshold = XP_THRESHOLDS[currentLevel] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1] + 5000;
+    
+    const xpInCurrentLevel = totalXP - currentThreshold;
+    const xpNeededForNextLevel = nextThreshold - currentThreshold;
+    const progressPercent = Math.min(1, xpInCurrentLevel / xpNeededForNextLevel);
+
+    return {
+        currentLevel,
+        xpInCurrentLevel,
+        xpNeededForNextLevel,
+        progressPercent,
+    };
+}
+
 function BadgeSlot({ image }: { image: any }) {
     return (
         <View style={styles.badgeSlot}>
@@ -67,6 +111,7 @@ function BadgeSlot({ image }: { image: any }) {
 
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
     const [profile, setProfile] = useState<any>(null);
+    const [totalXP, setTotalXP] = useState<number>(0); // Default starting XP (Level 1)
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -79,15 +124,21 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     .single();
                 if (data) {
                     setProfile(data);
+                    // Fetch total_xp from profile or default to 0
+                    setTotalXP(data.total_xp || 0);
                 }
             }
         };
         fetchProfile();
     }, []);
 
-    const karmaValue = 1240;
-    const karmaGoal = 2000;
-    const karmaProgress = Math.min(1, karmaValue / karmaGoal);
+    // Calculate level and progress from total XP
+    const levelData = calculateLevelFromXP(totalXP);
+    const currentLevel = levelData.currentLevel;
+    const nextLevel = Math.min(currentLevel + 1, 10); // Cap at level 10
+    const karmaProgress = levelData.progressPercent;
+    const xpInLevel = levelData.xpInCurrentLevel;
+    const xpForNextLevel = levelData.xpNeededForNextLevel;
 
     const SelectedAvatar = profile?.avatar_index !== undefined && profile.avatar_index !== null 
         ? avatarAssets[profile.avatar_index] 
@@ -108,7 +159,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
                     >
-                        <SettingsIcon width={24} height={24} />
+                        <Ionicons name="settings-outline" size={24} color={FEED_COLORS.textPrimary} style={styles.settingsIcon} />
                     </Pressable>
                 </View>
 
@@ -167,7 +218,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 <Image source={ASSETS.experience} style={styles.karmaIcon} />
                                 <Text style={styles.karmaTitle}>EXPERIENCE</Text>
                             </View>
-                            <Text style={styles.karmaValueText}>1,240 / 2,000</Text>
+                            <Text style={styles.karmaValueText}>{xpInLevel} / {xpForNextLevel}</Text>
                         </View>
 
                         <View style={styles.progressTrack}>
@@ -180,8 +231,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         </View>
 
                         <View style={styles.levelRow}>
-                            <Text style={styles.levelRangeText}>LVL 7</Text>
-                            <Text style={styles.levelRangeText}>LVL 8</Text>
+                            <Text style={styles.levelRangeText}>LVL {currentLevel}</Text>
+                            <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
                         </View>
 
                         <Pressable style={styles.tokenCard}>

@@ -12,11 +12,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
 import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
-import SelectedAvatarContent from '../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
+
+// Local Avatars
+import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
+import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
+import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
+import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
+import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
+import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
+
+const avatarAssets = [
+    Avatar1,
+    Avatar2,
+    Avatar3,
+    Avatar4,
+    Avatar5,
+    Avatar6
+];
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
@@ -68,12 +84,28 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     const [refreshing, setRefreshing] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [quests, setQuests] = useState<FeedQuest[]>([]);
+    const [currentUserAvatarIndex, setCurrentUserAvatarIndex] = useState<number>(0);
+
+    const fetchProfile = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data } = await supabase
+                .from('profiles')
+                .select('avatar_index')
+                .eq('id', user.id)
+                .single();
+            if (data && data.avatar_index !== undefined && data.avatar_index !== null) {
+                setCurrentUserAvatarIndex(data.avatar_index);
+            }
+        }
+    };
 
     const fetchQuests = async () => {
         try {
+            // Explicitly join on quests_user_id_fkey to avoid ambiguity
             const { data, error } = await supabase
                 .from('quests')
-                .select('*, profiles!quests_user_id_fkey(display_name, first_name)')
+                .select('*, profiles!quests_user_id_fkey(display_name, first_name, avatar_index)')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -85,6 +117,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 title: q.title,
                 preview: q.description,
                 posterName: q.profiles?.display_name || q.profiles?.first_name || 'Anonymous',
+                posterAvatarIndex: q.profiles?.avatar_index,
                 xp: 50 + q.bonus_xp, // Assuming BASE_XP is 50
                 token: q.token_bounty,
             }));
@@ -98,14 +131,16 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         }
     };
 
-    // Load quests on mount
+    // Load quests and profile on mount
     useEffect(() => {
+        fetchProfile();
         fetchQuests();
     }, []);
 
     // Refresh listener for active screen transitions (optional based on navigator setup)
     useEffect(() => {
         const unsubscribe = navigation?.addListener?.('focus', () => {
+            fetchProfile();
             fetchQuests();
         });
         return unsubscribe;
@@ -124,8 +159,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
+        fetchProfile();
         fetchQuests();
     }, []);
+
+    const CurrentUserAvatar = avatarAssets[currentUserAvatarIndex] || avatarAssets[0];
 
     return (
         <View style={styles.root}>
@@ -140,7 +178,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         accessibilityLabel="Open profile"
                     >
                         <View style={styles.avatarChip}>
-                            <SelectedAvatarContent width={32} height={32} />
+                            <CurrentUserAvatar width={32} height={32} />
                         </View>
                     </Pressable>
 

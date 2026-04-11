@@ -4,6 +4,7 @@
     "builder.runDevServer": false,
     "builder.autoDetectDevServer": true,
     "builder.launchType": "editor",
+    "chat.useAgentsMdFile": true,
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#ab307e",
         "activityBar.background": "#ab307e",
