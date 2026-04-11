@@ -1,7 +1,24 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_CATEGORY_BG, FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
+
+// Local Avatars
+import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
+import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
+import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
+import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
+import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
+import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
+
+const avatarAssets = [
+    Avatar1,
+    Avatar2,
+    Avatar3,
+    Avatar4,
+    Avatar5,
+    Avatar6
+];
 
 type PostCardProps = {
 	quest: FeedQuest;
@@ -17,6 +34,10 @@ const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
 export default function PostCard({ quest, onPress }: PostCardProps) {
 	const categoryMeta = CATEGORY_META[quest.category];
 	const categoryBg = FEED_CATEGORY_BG[quest.category];
+
+	const PosterAvatar = quest.posterAvatarIndex !== undefined && quest.posterAvatarIndex !== null 
+        ? avatarAssets[quest.posterAvatarIndex] 
+        : avatarAssets[0];
 
 	return (
 		<Pressable style={styles.card} onPress={onPress}>
@@ -40,7 +61,7 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
 
 				<View style={styles.footerRow}>
 					<View style={styles.posterWrap}>
-						<Ionicons name="person-circle" size={22} color={FEED_COLORS.textSecondary} />
+						<PosterAvatar width={22} height={22} />
 						<Text style={styles.posterName}>{quest.posterName}</Text>
 					</View>
 
