@@ -29,8 +29,6 @@ type AuthTab = 'login' | 'register';
 const ASSETS = {
     background:
         'https://www.figma.com/api/mcp/asset/320eb0a8-8dec-4b42-afb2-4d9554882dbd',
-    mascot:
-        'https://www.figma.com/api/mcp/asset/44639b1b-a95d-43b4-a76a-a23fe54c1843',
 };
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Auth'>;
@@ -171,7 +169,7 @@ export default function AuthScreen({ navigation }: Props) {
                             showsVerticalScrollIndicator={false}
                         >
                             <View style={styles.heroBlock}>
-                                <Image source={{ uri: ASSETS.mascot }} style={styles.mascot} />
+                                <Image source={require('../../../assets/logowithoutbg.png')} style={styles.mascot} />
                                 <Text style={styles.logo}>LYNK</Text>
                                 <Text style={styles.tagline}>Let Your Network Know</Text>
                             </View>
