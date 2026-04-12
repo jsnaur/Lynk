@@ -1,5 +1,5 @@
 import React, { FC, useCallback, useMemo, useState } from "react";
-import { View, Text, Pressable, TextInput, ScrollView, Alert, StyleSheet } from "react-native";
+import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
@@ -85,28 +85,36 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
   const [majorOpen, setMajorOpen] = useState<boolean>(false);
   const [graduationYear, setGraduationYear] = useState<string>("");
   const [yearOpen, setYearOpen] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const SelectedAvatar = useMemo(() => {
     return FRAMES.find((f) => f.id === selectedId)?.Component;
   }, [selectedId]);
 
-  const handleSkip = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     setMajorOpen(false);
     setYearOpen(false);
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Main" as never }],
-    });
-  }, [navigation]);
+    setErrorMessage("");
+    // Log the user out instead of allowing them to bypass profile setup
+    await supabase.auth.signOut();
+  }, []);
 
   const handleContinue = useCallback(async () => {
+    // 1. Validation
+    if (!displayName.trim() || !selectedMajor || !graduationYear) {
+      setErrorMessage("Please complete all fields to continue.");
+      return;
+    }
+
+    setErrorMessage(""); // clear previous errors
+
     const selected = FRAMES.find((f) => f.id === selectedId);
     if (selected) {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !user) {
-          Alert.alert("Error", "Could not verify user session.");
+          setErrorMessage("Could not verify user session.");
           return;
         }
 
@@ -121,11 +129,13 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
           .eq('id', user.id);
 
         if (updateError) {
-          Alert.alert("Error", "Failed to save profile. Please try again.");
+          setErrorMessage("Failed to save profile. Please try again.");
           return;
         }
       } catch (err) {
         console.error(err);
+        setErrorMessage("An unexpected error occurred.");
+        return;
       }
     }
 
@@ -161,7 +171,10 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
         <View style={styles.fieldLayout}>
           <TextInput
             value={displayName}
-            onChangeText={setDisplayName}
+            onChangeText={(text) => {
+              setDisplayName(text);
+              if (errorMessage) setErrorMessage("");
+            }}
             placeholder="Display Name (visible to campus)"
             placeholderTextColor={FEED_COLORS.textSecondary}
             style={[styles.textInput, localStyles.textInputColorOverride]}
@@ -174,6 +187,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             onPress={() => {
               setMajorOpen((v) => !v);
               setYearOpen(false);
+              if (errorMessage) setErrorMessage("");
             }}
             style={({ pressed }) => [
               styles.dropdownSelectField,
@@ -230,6 +244,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
             onPress={() => {
               setYearOpen((v) => !v);
               setMajorOpen(false);
+              if (errorMessage) setErrorMessage("");
             }}
             style={({ pressed }) => [
               styles.dropdownSelectField,
@@ -338,10 +353,18 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
+      {/* ERROR MESSAGE DISPLAY */}
+      {errorMessage ? (
+        <View style={localStyles.errorContainer}>
+          <Ionicons name="alert-circle" size={18} color="#FF3B30" />
+          <Text style={localStyles.errorText}>{errorMessage}</Text>
+        </View>
+      ) : null}
+
       {/* BUTTONS */}
       <View style={[styles.setupCtaBar, styles.setupCtaBarFlexBox]}>
         <Pressable
-          onPress={handleSkip}
+          onPress={handleLogout}
           style={({ pressed }) => [
             styles.ctaButton,
             styles.ctaLayout,
@@ -349,7 +372,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
           ]}
         >
           <Text style={[styles.buttonLabel, styles.buttonPosition]}>
-            Back
+            Log Out
           </Text>
         </Pressable>
 
@@ -439,6 +462,24 @@ const localStyles = StyleSheet.create({
   ctaTextActive: {
     color: '#000000',
     fontWeight: 'bold',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    padding: 12,
+    borderRadius: 12,
+    marginHorizontal: 24,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
+    gap: 6,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '500',
   }
 });
 
