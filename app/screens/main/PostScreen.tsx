@@ -25,7 +25,6 @@ import { FEED_CATEGORY_BG, FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
 
-const TITLE_MIN = 8;
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
 const DISMISS_PULL_THRESHOLD = 70;
@@ -71,7 +70,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     const list: string[] = [];
     if (!category) list.push('Choose a category');
     if (!titleTrim) list.push('Add a quest title');
-    else if (titleTrim.length < TITLE_MIN) list.push(`Title needs at least ${TITLE_MIN} characters`);
     if (!descTrim) list.push('Add a description');
     if (!locTrim) list.push('Add a campus location');
     return list;
@@ -318,10 +316,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 autoCorrect
               />
               <FieldError message="Title is required" visible={submitAttempted && !titleTrim} />
-              <FieldError
-                message={`At least ${TITLE_MIN} characters`}
-                visible={submitAttempted && !!titleTrim && titleTrim.length < TITLE_MIN}
-              />
             </View>
 
             <View style={styles.section}>

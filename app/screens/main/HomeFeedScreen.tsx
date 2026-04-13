@@ -127,25 +127,38 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 console.log("Silent fallback to CIT location due to:", err.message);
             }
 
-            // Call the Hybrid Batch Reranker
-            const aiSortedQuests = await getPersonalizedFeed(lat, lon);
+            const formatQuests = (rawQuests: any[]): FeedQuest[] => {
+                return rawQuests.map((q: any) => ({
+                    id: q.id,
+                    category: q.category.toLowerCase() as FeedCategory,
+                    ago: timeAgo(q.created_at),
+                    title: q.title,
+                    preview: q.description,
+                    posterName: q.poster_name || 'Anonymous',
+                    posterAvatarIndex: q.avatar_index || 0,
+                    xp: 50 + (q.bonus_xp || 0), 
+                    token: q.token_bounty,
+                }));
+            };
 
-            const formattedQuests: FeedQuest[] = aiSortedQuests.map((q: any) => ({
-                id: q.id,
-                category: q.category.toLowerCase() as FeedCategory,
-                ago: timeAgo(q.created_at),
-                title: q.title,
-                preview: q.description,
-                posterName: q.poster_name || 'Anonymous',
-                posterAvatarIndex: q.avatar_index || 0,
-                xp: 50 + (q.bonus_xp || 0), 
-                token: q.token_bounty,
-            }));
-            
-            setQuests(formattedQuests);
+            // Call the Hybrid Batch Reranker with an optimistic callback
+            const aiSortedQuests = await getPersonalizedFeed(
+                lat, 
+                lon, 
+                undefined, 
+                (fastQuests) => {
+                    // Immediate raw DB update -> snuffs out UI lag immediately
+                    setQuests(formatQuests(fastQuests));
+                    setInitialLoading(false);
+                    setRefreshing(false); 
+                }
+            );
+
+            // Once the AI is finished sorting (a few seconds later), silently update the order
+            setQuests(formatQuests(aiSortedQuests));
+
         } catch (error) {
             console.error('Error fetching quests:', error);
-        } finally {
             setInitialLoading(false);
             setRefreshing(false);
         }
