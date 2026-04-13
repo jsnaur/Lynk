@@ -12,9 +12,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
 import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
-import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
+import { NotificationsButton } from '../../components/buttons';
 import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categories';
-import { FEED_COLORS } from '../../constants/colors';
+import NotificationSheet from './NotificationSheet';
 import { supabase } from '../../lib/supabase';
 
 // Local Avatars
@@ -24,6 +24,7 @@ import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
 import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
 import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
 import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
+import { FEED_COLORS } from '../../constants/colors';
 
 const avatarAssets = [
     Avatar1,
@@ -85,6 +86,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     const [initialLoading, setInitialLoading] = useState(true);
     const [quests, setQuests] = useState<FeedQuest[]>([]);
     const [currentUserAvatarIndex, setCurrentUserAvatarIndex] = useState<number>(0);
+    const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
 
     const fetchProfile = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -185,14 +187,12 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     <Text style={styles.logo}>LYNK</Text>
 
                     <Pressable
-                        style={({ pressed }) => [styles.karmaChip, pressed && styles.karmaChipPressed]}
-                        onPress={() => onTabPress?.('Shop')}
+                        onPress={() => setNotificationSheetVisible(true)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         accessibilityRole="button"
-                        accessibilityLabel="Open shop"
+                        accessibilityLabel="Open notifications"
                     >
-                        <TokenPixelIcon width={16} height={16} />
-                        <Text style={styles.karmaText}>1,240</Text>
+                        <NotificationsButton count={3} onPress={() => setNotificationSheetVisible(true)} />
                     </Pressable>
                 </View>
 
@@ -267,6 +267,24 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
             </SafeAreaView>
 
             <BottomNav activeTab="Feed" onTabPress={onTabPress} />
+
+            {notificationSheetVisible && (
+                <>
+                    <Pressable
+                        style={styles.backdrop}
+                        onPress={() => setNotificationSheetVisible(false)}
+                    />
+                    <View style={styles.sheetContainer}>
+                        <NotificationSheet
+                            onClose={() => setNotificationSheetVisible(false)}
+                            onNotificationPress={(notification) => {
+                                // TODO: Handle notification press and navigate if needed
+                                setNotificationSheetVisible(false);
+                            }}
+                        />
+                    </View>
+                </>
+            )}
         </View>
     );
 }
@@ -390,5 +408,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: FEED_COLORS.textSecondary,
         textAlign: 'center',
+    },
+    backdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 999,
+    },
+    sheetContainer: {
+        position: 'absolute',
+        bottom: 60,
+        left: 0,
+        right: 0,
+        maxHeight: '80%',
+        zIndex: 1000,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        overflow: 'hidden',
     },
 });

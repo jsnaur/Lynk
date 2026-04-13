@@ -28,7 +28,9 @@ import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
 import SettingsIcon from "../../../assets/ProfileAssets/Settings_Icon.svg";
 import QuestIcon from "../../../assets/ProfileAssets/Quest_Icon.svg";
 
-// Profile Assets - PNGs
+import BadgeSelectorModal from './BadgeSelectorModal';
+import EditProfileModal from './EditProfileModal';
+
 const ASSETS = {
     accessory: require("../../../assets/ProfileAssets/Accessory_Face.png"),
     badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
@@ -41,6 +43,11 @@ const ASSETS = {
 type ProfileDashboardScreenProps = {
     onTabPress?: (tab: MainTab) => void;
     navigation?: any;
+};
+
+type ProfileState = {
+    badgeSelectorVisible: boolean;
+    editProfileVisible?: boolean;
 };
 
 const avatarAssets = [
@@ -112,6 +119,22 @@ function BadgeSlot({ image }: { image: any }) {
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
     const [profile, setProfile] = useState<any>(null);
     const [totalXP, setTotalXP] = useState<number>(0); // Default starting XP (Level 1)
+    const [state, setState] = useState<ProfileState>({ 
+        badgeSelectorVisible: false,
+        editProfileVisible: false,
+    });
+
+    useEffect(() => {
+        const unsubscribe = navigation?.addListener('focus', () => {
+            const route = navigation?.getState?.()?.routes?.[navigation?.getState?.()?.index];
+            if (route?.params?.openEditProfile) {
+                setState(prev => ({ ...prev, editProfileVisible: true }));
+                // Clear the param
+                navigation.setParams({ openEditProfile: false });
+            }
+        });
+        return unsubscribe;
+    }, [navigation]);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -192,7 +215,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     <View style={styles.badgesBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Badges</Text>
-                            <Pressable style={styles.setLink}>
+                            <Pressable 
+                                style={styles.setLink}
+                                onPress={() => setState({ ...state, badgeSelectorVisible: true })}
+                            >
                                 <Text style={styles.setLinkText}>Set</Text>
                                 <Ionicons name="chevron-forward" size={14} color={FEED_COLORS.favor} />
                             </Pressable>
@@ -267,6 +293,26 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
             </SafeAreaView>
 
             <BottomNav activeTab="Profile" onTabPress={onTabPress} />
+
+            {state.badgeSelectorVisible && (
+                <BadgeSelectorModal
+                    onClose={() => setState({ ...state, badgeSelectorVisible: false })}
+                    onDone={(badges) => {
+                        // TODO: Save selected badges to backend
+                        setState({ ...state, badgeSelectorVisible: false });
+                    }}
+                />
+            )}
+
+            {state.editProfileVisible && (
+                <EditProfileModal
+                    onClose={() => setState({ ...state, editProfileVisible: false })}
+                    onSave={(data: any) => {
+                        // TODO: Save profile data to backend
+                        setState({ ...state, editProfileVisible: false });
+                    }}
+                />
+            )}
         </View>
     );
 }
