@@ -1,11 +1,11 @@
 // Button Components
-export { Button, RatingButton, NotificationsButton, RatingButtonRow } from './buttons';
+export { Button, RatingButton, NotificationsButton, RatingButtonRow, CategorySelectButton, InlineCtaButton } from './buttons';
 
 // Chip Components
-export { EarnedChip, StatusPill } from './chips';
+export { EarnedChip, StatusPill, RarityBadge } from './chips';
 
 // Input Components
-export { TextInput, AuthTab, DropdownSelectField } from './inputs';
+export { TextInput, AuthTab, DropdownSelectField, PasswordStrengthIndicator } from './inputs';
 
 // Icon Components
 export { RatingReceivedIcon } from './icons';
@@ -17,13 +17,16 @@ export { LoadingDots } from './loading';
 export { AvatarGridItem } from './avatars';
 
 // Filter Components
-export { CategoryFilterBar, FilterToggle } from './filters';
+export { CategoryFilterBar, FilterToggle, HistoryFilterPill, HistoryFilterRow, ShopFilterPill, CategoryButtonRow } from './filters';
 
 // Navigation Components
 export { NavItem, BottomNavBar } from './navigation';
 
 // Row Components
-export { NotificationRow, CommentRow, ActiveQuestRow } from './rows';
+export { NotificationRow, CommentRow, ActiveQuestRow, QuestHistoryCard } from './rows';
 
 // Card Components
-export { QuestCard } from './cards';
+export { QuestCard, ShopItemCard } from './cards';
+
+// Badge Components
+export { BadgeSelectorItem } from './badges';
