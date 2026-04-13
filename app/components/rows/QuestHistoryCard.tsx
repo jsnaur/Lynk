@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Text, Image } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { FEED_COLORS } from '../../constants/colors';
 import RatingReceivedIcon from '../icons/RatingReceivedIcon';
 
@@ -118,7 +118,11 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
   });
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity 
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       {/* Top section with category stripe and title */}
       <View style={styles.topSection}>
         <View style={styles.categoryStripe} />
@@ -153,7 +157,7 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
           <RatingReceivedIcon type="Positive" />
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

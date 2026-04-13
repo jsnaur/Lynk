@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import NavItem from './NavItem';
 
@@ -6,14 +6,24 @@ type NavType = 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
 type ActiveNav = 'Default' | NavType;
 
 type BottomNavBarProps = {
-  active?: ActiveNav;
+  active?: NavType;
   onNavChange?: (nav: NavType) => void;
 };
 
 export default function BottomNavBar({
-  active = 'Feed',
+  active: externalActive,
   onNavChange,
 }: BottomNavBarProps) {
+  // Use internal state if external active prop not provided
+  const [internalActive, setInternalActive] = useState<NavType>(externalActive ?? 'Feed');
+  const activeNav = externalActive ?? internalActive;
+
+  const handleNavChange = (nav: NavType) => {
+    if (!externalActive) {
+      setInternalActive(nav);
+    }
+    onNavChange?.(nav);
+  };
   const navItems: NavType[] = ['Feed', 'Quests', 'Post', 'Shop', 'Profile'];
 
   return (
@@ -23,8 +33,8 @@ export default function BottomNavBar({
           <NavItem
             key={item}
             type={item}
-            isActive={active === item}
-            onPress={() => onNavChange?.(item)}
+            isActive={activeNav === item}
+            onPress={() => handleNavChange(item)}
           />
         ))}
       </View>

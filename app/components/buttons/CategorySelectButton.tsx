@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FEED_COLORS } from '../../constants/colors';
@@ -8,15 +8,27 @@ type ButtonState = 'Default' | 'Selected' | 'Error';
 
 interface CategorySelectButtonProps {
   category: Category;
-  state: ButtonState;
-  onPress?: () => void;
+  state?: ButtonState;
+  onPress?: (category: Category, isSelected: boolean) => void;
 }
 
 const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
   category,
-  state,
+  state: externalState = 'Default',
   onPress,
 }) => {
+  // Manage internal selection state
+  const [isInternalSelected, setIsInternalSelected] = useState(false);
+  const isSelected = externalState === 'Selected' || (externalState === 'Default' && isInternalSelected);
+  const displayState = isSelected ? 'Selected' : externalState;
+
+  const handlePress = () => {
+    const newSelectedState = !isSelected;
+    if (externalState === 'Default') {
+      setIsInternalSelected(newSelectedState);
+    }
+    onPress?.(category, newSelectedState);
+  };
   const getCategoryColor = (): string => {
     switch (category) {
       case 'Favor':
@@ -40,9 +52,9 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
   };
 
   const getIconColor = (): string => {
-    if (state === 'Default') return '#8a8a9a';
-    if (state === 'Selected') return getCategoryColor();
-    if (state === 'Error') return '#ff4d4d';
+    if (displayState === 'Default') return '#8a8a9a';
+    if (displayState === 'Selected') return getCategoryColor();
+    if (displayState === 'Error') return '#ff4d4d';
     return '#8a8a9a';
   };
 
@@ -55,14 +67,14 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
       alignItems: 'center',
       gap: 4,
       backgroundColor:
-        state === 'Default'
+        displayState === 'Default'
           ? '#26262e'
-          : state === 'Selected'
+          : displayState === 'Selected'
           ? `${getCategoryColor()}26` // 15% opacity
           : '#ff4d4d26', // error 15% opacity
-      borderWidth: state === 'Default' ? 0 : 2,
+      borderWidth: displayState === 'Default' ? 0 : 2,
       borderColor:
-        state === 'Selected' ? getCategoryColor() : state === 'Error' ? '#ff4d4d' : 'transparent',
+        displayState === 'Selected' ? getCategoryColor() : displayState === 'Error' ? '#ff4d4d' : 'transparent',
     },
     content: {
       alignItems: 'center',
@@ -76,13 +88,13 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
       fontSize: 11,
       fontFamily: 'DM Sans',
       fontWeight: '500',
-      color: state === 'Default' ? '#8a8a9a' : getIconColor(),
+      color: displayState === 'Default' ? '#8a8a9a' : getIconColor(),
       textAlign: 'center',
     },
   });
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.content}>
         <Ionicons name={getCategoryIcon()} size={24} color={getIconColor()} />
         <Text style={styles.label}>{category}</Text>

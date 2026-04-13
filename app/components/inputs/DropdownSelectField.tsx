@@ -1,43 +1,65 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FEED_COLORS } from '../../constants/colors';
 
 type DropdownSelectFieldProps = {
   placeholder?: string;
   selectedValue?: string;
   state?: 'Inactive' | 'Active' | 'Selected';
-  onPress?: () => void;
+  onPress?: (isOpen: boolean) => void;
 };
 
 export default function DropdownSelectField({
   placeholder = 'Placeholder',
   selectedValue = 'Chosen Item',
-  state = 'Inactive',
+  state: externalState = 'Inactive',
   onPress,
 }: DropdownSelectFieldProps) {
-  const isActive = state === 'Active';
-  const isSelected = state === 'Selected';
-  const displayText = isSelected ? selectedValue : placeholder;
-  const textColor = isSelected || isActive ? '#f0f0f5' : '#8a8a9a';
+  // Manage internal dropdown open state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // Map state to visual representation
+  const displayState = isDropdownOpen ? 'Active' : externalState;
+
+  const handlePress = () => {
+    const newOpenState = !isDropdownOpen;
+    setIsDropdownOpen(newOpenState);
+    onPress?.(newOpenState);
+  };
+
+  const getColor = () => {
+    if (displayState === 'Selected') return FEED_COLORS.favor;
+    if (displayState === 'Active') return '#f0f0f5';
+    return '#8a8a9a';
+  };
+
+  const getBorderColor = () => {
+    if (displayState === 'Active') return '#f0f0f5';
+    if (displayState === 'Selected') return FEED_COLORS.favor;
+    return '#3a3a48';
+  };
+
+  const displayText = displayState === 'Selected' ? selectedValue : placeholder;
 
   return (
     <TouchableOpacity
       style={[
         styles.container,
         {
-          borderColor: '#3a3a48',
+          borderColor: getBorderColor(),
         },
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.text, { color: textColor }]}>
+      <Text style={[styles.text, { color: getColor() }]}>
         {displayText}
       </Text>
       <MaterialCommunityIcons
-        name={isActive ? 'chevron-up' : 'chevron-down'}
-        size={16}
-        color={textColor}
+        name={isDropdownOpen ? 'chevron-up' : 'chevron-down'}
+        size={20}
+        color={getColor()}
       />
     </TouchableOpacity>
   );

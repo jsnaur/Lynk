@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Text, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FEED_COLORS } from '../../constants/colors';
@@ -7,20 +7,31 @@ type ItemState = 'Default' | 'Selected' | 'Disabled';
 
 interface BadgeSelectorItemProps {
   questLabel: string;
-  state: ItemState;
+  state?: ItemState;
   badgeImageUri?: string;
-  onPress?: () => void;
+  onPress?: (isSelected: boolean) => void;
 }
 
 const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
   questLabel,
-  state,
+  state: externalState = 'Default',
   badgeImageUri,
   onPress,
 }) => {
-  const isDefault = state === 'Default';
-  const isSelected = state === 'Selected';
-  const isDisabled = state === 'Disabled';
+  // Manage internal selection state
+  const [isInternalSelected, setIsInternalSelected] = useState(false);
+  const isSelected = externalState === 'Selected' || isInternalSelected;
+  const isDisabled = externalState === 'Disabled';
+  const isDefault = externalState === 'Default';
+
+  const handlePress = () => {
+    if (isDisabled) return;
+    const newSelectedState = !isSelected;
+    if (externalState === 'Default') {
+      setIsInternalSelected(newSelectedState);
+    }
+    onPress?.(newSelectedState);
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -80,7 +91,7 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={isDisabled}
       activeOpacity={isDisabled ? 1 : 0.7}
     >

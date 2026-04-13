@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { FEED_COLORS } from '../../constants/colors';
 
@@ -10,13 +10,23 @@ type CategoryFilterBarProps = {
 };
 
 export default function CategoryFilterBar({
-  chosen = 'Default',
+  chosen: externalChosen = 'Default',
   onFilterChange,
 }: CategoryFilterBarProps) {
+  // Manage internal filter state
+  const [internalChosen, setInternalChosen] = useState<FilterOption>(externalChosen);
+  const activeFilter = externalChosen ?? internalChosen;
+
+  const handleFilterChange = (filter: FilterOption) => {
+    if (!externalChosen) {
+      setInternalChosen(filter);
+    }
+    onFilterChange?.(filter);
+  };
   const filters: FilterOption[] = ['Default', 'Favor', 'Study', 'Item'];
 
   const renderFilterButton = (label: FilterOption) => {
-    const isSelected = chosen === label;
+    const isSelected = activeFilter === label;
     
     let backgroundColor = '#26262e';
     let borderColor = '#3a3a48';
@@ -49,7 +59,7 @@ export default function CategoryFilterBar({
             borderWidth,
           },
         ]}
-        onPress={() => onFilterChange?.(label)}
+        onPress={() => handleFilterChange(label)}
         activeOpacity={0.7}
       >
         <Text style={[styles.filterText, { color: textColor }]}>

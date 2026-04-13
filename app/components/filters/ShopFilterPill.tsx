@@ -1,13 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { FEED_COLORS } from '../../constants/colors';
 
 interface ShopFilterPillProps {
   label: string;
-  state: boolean; // true = active, false = inactive (Default)
+  state?: boolean; // true = active, false = inactive (optional - component can manage own state)
+  onPress?: (isActive: boolean) => void; // Callback when state changes
 }
 
-const ShopFilterPill: React.FC<ShopFilterPillProps> = ({ label, state }) => {
+const ShopFilterPill: React.FC<ShopFilterPillProps> = ({ label, state, onPress }) => {
+  // Use internal state if external state not provided
+  const [isActive, setIsActive] = useState(state ?? false);
+  const displayState = state !== undefined ? state : isActive;
+
+  const handlePress = () => {
+    const newState = !displayState;
+    if (state === undefined) {
+      setIsActive(newState);
+    }
+    onPress?.(newState);
+  };
   const styles = StyleSheet.create({
     pill: {
       paddingHorizontal: 16,
@@ -36,8 +48,12 @@ const ShopFilterPill: React.FC<ShopFilterPillProps> = ({ label, state }) => {
   });
 
   return (
-    <TouchableOpacity style={styles.pill} activeOpacity={0.8}>
-      <Text style={state ? styles.labelActive : styles.labelInactive}>{label}</Text>
+    <TouchableOpacity 
+      style={styles.pill} 
+      activeOpacity={0.8}
+      onPress={handlePress}
+    >
+      <Text style={displayState ? styles.labelActive : styles.labelInactive}>{label}</Text>
     </TouchableOpacity>
   );
 };
