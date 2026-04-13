@@ -70,6 +70,9 @@ export default function NotificationSheet({
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Notifications</Text>
+                    <Pressable onPress={onClose}>
+                        <Ionicons name="close" size={24} color={FEED_COLORS.textPrimary} />
+                    </Pressable>
                 </View>
 
                 {/* Empty State */}
@@ -107,9 +110,14 @@ export default function NotificationSheet({
                         </View>
                     )}
                 </View>
-                <Pressable onPress={onMarkAllRead}>
-                    <Text style={styles.markAllReadButton}>Mark all read</Text>
-                </Pressable>
+                <View style={styles.headerRight}>
+                    <Pressable onPress={onMarkAllRead}>
+                        <Text style={styles.markAllReadButton}>Mark all read</Text>
+                    </Pressable>
+                    <Pressable onPress={onClose}>
+                        <Ionicons name="close" size={24} color={FEED_COLORS.textPrimary} />
+                    </Pressable>
+                </View>
             </View>
 
             {/* Notifications List */}
@@ -195,6 +203,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+    },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
     },
     headerTitle: {
         fontSize: 18,
