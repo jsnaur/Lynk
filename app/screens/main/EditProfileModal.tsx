@@ -1,0 +1,456 @@
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    Pressable,
+    StyleSheet,
+    TextInput,
+    ScrollView,
+    Image,
+    Platform,
+    Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { FEED_COLORS } from '../../constants/colors';
+
+const MAJORS = [
+    'Computer Engineering',
+    'Computer Science',
+    'Electrical Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering',
+    'Business',
+    'Biology',
+    'Chemistry',
+    'Physics',
+];
+
+const GRADUATION_YEARS = ['2024', '2025', '2026', '2027', '2028', '2029', '2030'];
+
+type EditProfileModalProps = {
+    onClose?: () => void;
+    onSave?: (data: ProfileData) => void;
+    initialData?: ProfileData;
+};
+
+type ProfileData = {
+    displayName: string;
+    bio: string;
+    major: string;
+    graduationYear: string;
+};
+
+export default function EditProfileModal({
+    onClose,
+    onSave,
+    initialData = {
+        displayName: 'Markuu',
+        bio: 'Tell your campus a little about yourself...',
+        major: 'Computer Engineering',
+        graduationYear: '2027',
+    },
+}: EditProfileModalProps) {
+    const [displayName, setDisplayName] = useState(initialData.displayName);
+    const [bio, setBio] = useState(initialData.bio);
+    const [major, setMajor] = useState(initialData.major);
+    const [graduationYear, setGraduationYear] = useState(initialData.graduationYear);
+    const [showMajorDropdown, setShowMajorDropdown] = useState(false);
+    const [showYearDropdown, setShowYearDropdown] = useState(false);
+
+    const handleSave = () => {
+        const data: ProfileData = {
+            displayName,
+            bio,
+            major,
+            graduationYear,
+        };
+        onSave?.(data);
+    };
+
+    const handleShopPress = () => {
+        // Navigate to Shop screen
+        Alert.alert('Shop', 'Opening Shop...');
+    };
+
+    return (
+        <View style={styles.container}>
+            {/* Modal Handle */}
+            <View style={styles.modalHandle}>
+                <View style={styles.handleBar} />
+            </View>
+
+            {/* Header */}
+            <View style={styles.header}>
+                <Pressable onPress={onClose} hitSlop={10}>
+                    <Text style={styles.cancelButton}>Cancel</Text>
+                </Pressable>
+
+                <Text style={styles.headerTitle}>Edit Profile</Text>
+
+                <Pressable onPress={handleSave} style={styles.saveButton}>
+                    <Text style={styles.saveButtonText}>Save</Text>
+                </Pressable>
+            </View>
+
+            {/* Form Content */}
+            <ScrollView
+                style={styles.formContainer}
+                showsVerticalScrollIndicator={false}
+                scrollEventThrottle={16}
+            >
+                {/* Display Name Field */}
+                <View style={styles.fieldBlock}>
+                    <View style={styles.fieldLabelRow}>
+                        <Text style={styles.fieldLabel}>DISPLAY NAME</Text>
+                        <Text style={styles.fieldCounter}>
+                            {displayName.length} / 30
+                        </Text>
+                    </View>
+                    <TextInput
+                        style={styles.textInput}
+                        placeholder="Enter your display name"
+                        placeholderTextColor={FEED_COLORS.textSecondary}
+                        value={displayName}
+                        onChangeText={(text) =>
+                            setDisplayName(text.slice(0, 30))
+                        }
+                        maxLength={30}
+                    />
+                </View>
+
+                {/* Bio Field */}
+                <View style={styles.fieldBlock}>
+                    <View style={styles.fieldLabelRow}>
+                        <Text style={styles.fieldLabel}>BIO</Text>
+                        <Text style={styles.fieldCounter}>
+                            {bio.length} / 100
+                        </Text>
+                    </View>
+                    <TextInput
+                        style={[styles.textInput, styles.bioInput]}
+                        placeholder="Tell your campus a little about yourself..."
+                        placeholderTextColor={FEED_COLORS.textSecondary}
+                        value={bio}
+                        onChangeText={(text) => setBio(text.slice(0, 100))}
+                        maxLength={100}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                    />
+                    <Text style={styles.helperText}>
+                        Shown on your public profile
+                    </Text>
+                </View>
+
+                {/* Major Field */}
+                <View style={styles.fieldBlock}>
+                    <View style={styles.fieldLabelRow}>
+                        <Text style={styles.fieldLabel}>MAJOR</Text>
+                    </View>
+                    <Pressable
+                        style={styles.dropdownButton}
+                        onPress={() => setShowMajorDropdown(!showMajorDropdown)}
+                    >
+                        <Text style={styles.dropdownText}>{major}</Text>
+                        <Ionicons
+                            name={
+                                showMajorDropdown
+                                    ? 'chevron-up'
+                                    : 'chevron-down'
+                            }
+                            size={16}
+                            color={FEED_COLORS.textSecondary}
+                        />
+                    </Pressable>
+                    {showMajorDropdown && (
+                        <View style={styles.dropdownMenu}>
+                            {MAJORS.map((m) => (
+                                <Pressable
+                                    key={m}
+                                    style={styles.dropdownItem}
+                                    onPress={() => {
+                                        setMajor(m);
+                                        setShowMajorDropdown(false);
+                                    }}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.dropdownItemText,
+                                            m === major && styles.selectedItem,
+                                        ]}
+                                    >
+                                        {m}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    )}
+                </View>
+
+                {/* Graduation Year Field */}
+                <View style={styles.fieldBlock}>
+                    <View style={styles.fieldLabelRow}>
+                        <Text style={styles.fieldLabel}>GRADUATION YEAR</Text>
+                    </View>
+                    <Pressable
+                        style={styles.dropdownButton}
+                        onPress={() =>
+                            setShowYearDropdown(!showYearDropdown)
+                        }
+                    >
+                        <Text style={styles.dropdownText}>
+                            {graduationYear}
+                        </Text>
+                        <Ionicons
+                            name={
+                                showYearDropdown
+                                    ? 'chevron-up'
+                                    : 'chevron-down'
+                            }
+                            size={16}
+                            color={FEED_COLORS.textSecondary}
+                        />
+                    </Pressable>
+                    {showYearDropdown && (
+                        <View style={styles.dropdownMenu}>
+                            {GRADUATION_YEARS.map((year) => (
+                                <Pressable
+                                    key={year}
+                                    style={styles.dropdownItem}
+                                    onPress={() => {
+                                        setGraduationYear(year);
+                                        setShowYearDropdown(false);
+                                    }}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.dropdownItemText,
+                                            year === graduationYear &&
+                                                styles.selectedItem,
+                                        ]}
+                                    >
+                                        {year}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    )}
+                </View>
+
+                {/* Avatar Nudge Card */}
+                <View style={styles.nudgeCard}>
+                    <View style={styles.nudgeAvatarContainer}>
+                        <Ionicons
+                            name="person-circle"
+                            size={28}
+                            color={FEED_COLORS.favor}
+                        />
+                    </View>
+                    <View style={styles.nudgeTextBlock}>
+                        <Text style={styles.nudgeTitle}>
+                            Want to change your avatar?
+                        </Text>
+                        <Text style={styles.nudgeDescription}>
+                            Unlock new looks and accessories in the Shop.
+                        </Text>
+                    </View>
+                    <Pressable
+                        style={styles.shopLink}
+                        onPress={handleShopPress}
+                    >
+                        <Text style={styles.shopLinkText}>Shop</Text>
+                        <Ionicons
+                            name="arrow-forward"
+                            size={12}
+                            color={FEED_COLORS.favor}
+                        />
+                    </Pressable>
+                </View>
+            </ScrollView>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: FEED_COLORS.surface,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+    },
+    modalHandle: {
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingTop: 10,
+    },
+    handleBar: {
+        width: 36,
+        height: 4,
+        backgroundColor: FEED_COLORS.border,
+        borderRadius: 2,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: FEED_COLORS.border,
+    },
+    cancelButton: {
+        fontSize: 16,
+        color: FEED_COLORS.textSecondary,
+        fontWeight: '400',
+    },
+    headerTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: FEED_COLORS.textPrimary,
+    },
+    saveButton: {
+        backgroundColor: FEED_COLORS.favor,
+        paddingHorizontal: 18,
+        paddingVertical: 8,
+        borderRadius: 20,
+    },
+    saveButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: FEED_COLORS.bg,
+    },
+    formContainer: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+        paddingBottom: 48,
+    },
+    fieldBlock: {
+        marginBottom: 18,
+    },
+    fieldLabelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+        paddingHorizontal: 10,
+    },
+    fieldLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: FEED_COLORS.textSecondary,
+        letterSpacing: 1.5,
+    },
+    fieldCounter: {
+        fontSize: 11,
+        fontWeight: '400',
+        color: FEED_COLORS.textSecondary,
+    },
+    textInput: {
+        backgroundColor: FEED_COLORS.surface2,
+        borderWidth: 1,
+        borderColor: FEED_COLORS.border,
+        borderRadius: 14,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        fontSize: 15,
+        color: FEED_COLORS.textPrimary,
+        minHeight: 52,
+    },
+    bioInput: {
+        minHeight: 80,
+        marginBottom: 6,
+    },
+    helperText: {
+        fontSize: 11,
+        fontWeight: '400',
+        color: FEED_COLORS.textSecondary,
+        marginTop: 6,
+        marginLeft: 10,
+    },
+    dropdownButton: {
+        backgroundColor: FEED_COLORS.surface2,
+        borderWidth: 1,
+        borderColor: FEED_COLORS.border,
+        borderRadius: 14,
+        minHeight: 52,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    dropdownText: {
+        fontSize: 15,
+        fontWeight: '400',
+        color: FEED_COLORS.textSecondary,
+        flex: 1,
+    },
+    dropdownMenu: {
+        backgroundColor: FEED_COLORS.surface2,
+        borderWidth: 1,
+        borderColor: FEED_COLORS.border,
+        borderRadius: 14,
+        marginTop: 8,
+        maxHeight: 200,
+    },
+    dropdownItem: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: FEED_COLORS.border,
+    },
+    dropdownItemText: {
+        fontSize: 14,
+        fontWeight: '400',
+        color: FEED_COLORS.textSecondary,
+    },
+    selectedItem: {
+        color: FEED_COLORS.favor,
+        fontWeight: '600',
+    },
+    nudgeCard: {
+        backgroundColor: 'rgba(0, 245, 255, 0.04)',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 245, 255, 0.15)',
+        borderRadius: 14,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    nudgeAvatarContainer: {
+        backgroundColor: FEED_COLORS.surface2,
+        borderWidth: 1,
+        borderColor: FEED_COLORS.border,
+        borderRadius: 10,
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    nudgeTextBlock: {
+        flex: 1,
+    },
+    nudgeTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: FEED_COLORS.textPrimary,
+        marginBottom: 2,
+    },
+    nudgeDescription: {
+        fontSize: 12,
+        fontWeight: '400',
+        color: FEED_COLORS.textSecondary,
+    },
+    shopLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
+    shopLinkText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: FEED_COLORS.favor,
+    },
+});
