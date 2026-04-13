@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -58,6 +59,7 @@ type ShopScreenProps = {
 };
 
 export default function ShopScreen({ onTabPress }: ShopScreenProps) {
+  const navigation = useNavigation<any>();
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [balance, setBalance] = useState(52);
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(INITIAL_OWNED));
@@ -93,8 +95,8 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   }, []);
 
   const onCustomize = useCallback(() => {
-    Alert.alert('Customize', 'Avatar editor will open here.');
-  }, []);
+    navigation.navigate('Customize');
+  }, [navigation]);
 
   return (
     <View style={styles.root}>
@@ -102,7 +104,6 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <ShopPixelIcon width={22} height={22} />
             <Text style={styles.title}>Shop</Text>
           </View>
           <View style={styles.balanceChip}>
@@ -254,10 +255,11 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
+    height: 64,
     borderBottomWidth: 1,
     borderBottomColor: FEED_COLORS.border,
   },
@@ -267,7 +269,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   title: {
-    fontSize: 22,
+    fontSize: 30,
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
     color: FEED_COLORS.textPrimary,
