@@ -10,18 +10,13 @@ export interface NearbyQuest {
   token_bounty: number;
   bonus_xp: number;         
   poster_name: string;      
-  avatar_index: number;     // Added for HomeFeed Avatar mapping
+  avatar_index: number;     
   created_at: string;
   distance_km: number;
 }
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
-/**
- * 1. Fetches the closest 30 quests from Supabase.
- * 2. Feeds them to Gemini AI.
- * 3. Returns the quests reranked by AI based on urgency/relevance.
- */
 export async function getPersonalizedFeed(
   userLat: number,
   userLon: number,
@@ -76,7 +71,7 @@ export async function getPersonalizedFeed(
     ["uuid-1", "uuid-2", "uuid-3"]
   `;
 
-  // STEP 3: Call Gemini API directly
+  // STEP 3: Call Gemini API directly safely
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -86,17 +81,33 @@ export async function getPersonalizedFeed(
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.2, // Low temperature for consistent formatting
+            temperature: 0.2, 
           }
         })
       }
     );
 
     const jsonResponse = await response.json();
-    const rawText = jsonResponse.candidates[0].content.parts[0].text.trim();
+
+    // Check if Gemini API returned an explicit error (e.g., quota, bad key)
+    if (jsonResponse.error) {
+      console.warn("Gemini API Error:", jsonResponse.error.message);
+      return nearbyQuests; // Fallback
+    }
+
+    // Safely extract the text using optional chaining
+    const rawText = jsonResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+       console.warn("Gemini returned empty or unexpected payload.");
+       return nearbyQuests; // Fallback
+    }
     
-    // Parse the returned IDs
-    const sortedIds: string[] = JSON.parse(rawText);
+    // Strip markdown code blocks just in case
+    const cleanedText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    // Parse the returned IDs safely
+    const sortedIds: string[] = JSON.parse(cleanedText);
 
     // STEP 4: Map the sorted IDs back to the original database rows
     const sortedQuests: NearbyQuest[] = [];
@@ -105,7 +116,7 @@ export async function getPersonalizedFeed(
       if (match) sortedQuests.push(match);
     });
 
-    // Append any quests that the AI might have accidentally missed to the bottom
+    // Append any quests that the AI might have accidentally missed
     nearbyQuests.forEach((q: NearbyQuest) => {
       if (!sortedQuests.some(sq => sq.id === q.id)) {
         sortedQuests.push(q);
@@ -115,8 +126,7 @@ export async function getPersonalizedFeed(
     return sortedQuests;
 
   } catch (err) {
-    console.error("AI Reranking failed, falling back to distance sort:", err);
-    // Fallback: If AI fails, still give the user the local quests
+    console.warn("AI Reranking failed, gracefully falling back to distance sort.", err);
     return nearbyQuests;
   }
 }

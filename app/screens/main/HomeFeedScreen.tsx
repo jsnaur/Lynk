@@ -40,7 +40,7 @@ const avatarAssets = [
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
-    navigation?: any; // Added to support React Navigation from feature-login
+    navigation?: any; 
 };
 
 const FILTER_ACTIVE_COLORS: Record<FeedCategory, string> = {
@@ -66,7 +66,6 @@ function withAlpha(hexColor: string, alpha: number) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// Utility to format timestamp nicely
 function timeAgo(dateString: string) {
     const date = new Date(dateString);
     const now = new Date();
@@ -107,22 +106,28 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     const fetchQuests = async () => {
         try {
-            // Get location (Fallback to CIT University Coordinates)
+            // Default CIT University Coordinates
             let lat = 10.2975;
             let lon = 123.8803;
 
             try {
-                let { status } = await Location.requestForegroundPermissionsAsync();
+                const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
-                    let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                    lat = loc.coords.latitude;
-                    lon = loc.coords.longitude;
+                    // Check if physical GPS is turned on to avoid the "unsatisfied settings" crash
+                    const servicesEnabled = await Location.hasServicesEnabledAsync();
+                    if (servicesEnabled) {
+                        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                        lat = loc.coords.latitude;
+                        lon = loc.coords.longitude;
+                    } else {
+                        console.log("GPS is toggled off on device. Using default CIT location.");
+                    }
                 }
-            } catch (err) {
-                console.log("Could not fetch location, using default", err);
+            } catch (err: any) {
+                console.log("Silent fallback to CIT location due to:", err.message);
             }
 
-            // Call the Hybrid Batch Reranker!
+            // Call the Hybrid Batch Reranker
             const aiSortedQuests = await getPersonalizedFeed(lat, lon);
 
             const formattedQuests: FeedQuest[] = aiSortedQuests.map((q: any) => ({
@@ -133,7 +138,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 preview: q.description,
                 posterName: q.poster_name || 'Anonymous',
                 posterAvatarIndex: q.avatar_index || 0,
-                xp: 50 + (q.bonus_xp || 0), // Assuming BASE_XP is 50
+                xp: 50 + (q.bonus_xp || 0), 
                 token: q.token_bounty,
             }));
             
@@ -146,13 +151,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         }
     };
 
-    // Load quests and profile on mount
     useEffect(() => {
         fetchProfile();
         fetchQuests();
     }, []);
 
-    // Refresh listener for active screen transitions (optional based on navigator setup)
     useEffect(() => {
         const unsubscribe = navigation?.addListener?.('focus', () => {
             fetchProfile();
@@ -190,7 +193,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         onPress={onProfilePress}
                         hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
                         accessibilityRole="button"
-                        accessibilityLabel="Open profile"
                     >
                         <View style={styles.avatarChip}>
                             <CurrentUserAvatar width={32} height={32} />
@@ -203,7 +205,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         onPress={() => setNotificationSheetVisible(true)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         accessibilityRole="button"
-                        accessibilityLabel="Open notifications"
                     >
                         <NotificationsButton count={3} onPress={() => setNotificationSheetVisible(true)} />
                     </Pressable>
@@ -251,8 +252,8 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         <RefreshControl 
                             refreshing={refreshing} 
                             onRefresh={onRefresh} 
-                            tintColor={FEED_COLORS.favor} // iOS spinner color
-                            colors={[FEED_COLORS.favor]}  // Android spinner color
+                            tintColor={FEED_COLORS.favor} 
+                            colors={[FEED_COLORS.favor]}  
                         />
                     }
                 >
@@ -291,7 +292,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         <NotificationSheet
                             onClose={() => setNotificationSheetVisible(false)}
                             onNotificationPress={(notification) => {
-                                // TODO: Handle notification press and navigate if needed
                                 setNotificationSheetVisible(false);
                             }}
                         />
@@ -336,11 +336,6 @@ const styles = StyleSheet.create({
         zIndex: 3,
         elevation: 3,
     },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-    },
     logo: {
         color: FEED_COLORS.textPrimary,
         fontSize: 30,
@@ -351,31 +346,6 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 12,
         textAlign: 'center',
-    },
-    karmaChip: {
-        minWidth: 96,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: FEED_COLORS.border,
-        backgroundColor: FEED_COLORS.surface2,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-    },
-    karmaChipPressed: {
-        opacity: 0.85,
-    },
-    karmaIcon: {
-        width: 16,
-        height: 16,
-    },
-    karmaText: {
-        fontSize: 13,
-        color: FEED_COLORS.token,
-        fontWeight: '500',
     },
     filterBar: {
         borderBottomWidth: 1,
