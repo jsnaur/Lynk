@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 
 import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
@@ -159,6 +160,21 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) throw new Error('You must be logged in to post.');
 
+      // Acquire User GPS coordinates for the Hybrid algorithm
+      let lat = 10.2975; // Default (e.g. CIT University) if permission denied
+      let lon = 123.8803;
+
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          lat = loc.coords.latitude;
+          lon = loc.coords.longitude;
+        }
+      } catch (locErr) {
+        console.log("Location fetch error, using default fallback.", locErr);
+      }
+
       const { error } = await supabase.from('quests').insert({
         user_id: user.id,
         category: category?.toLowerCase(), // normalize to 'favor', 'study', 'item'
@@ -167,6 +183,8 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         location: locTrim,
         bonus_xp: appraisal.bonusXp,
         token_bounty: tokenBounty,
+        latitude: lat,
+        longitude: lon,
       });
 
       if (error) throw error;

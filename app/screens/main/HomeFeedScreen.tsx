@@ -9,6 +9,8 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
+
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
 import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
@@ -16,6 +18,7 @@ import { NotificationsButton } from '../../components/buttons';
 import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categories';
 import NotificationSheet from './NotificationSheet';
 import { supabase } from '../../lib/supabase';
+import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
 
 // Local Avatars
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
@@ -104,23 +107,33 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     const fetchQuests = async () => {
         try {
-            // Explicitly join on quests_user_id_fkey to avoid ambiguity
-            const { data, error } = await supabase
-                .from('quests')
-                .select('*, profiles!quests_user_id_fkey(display_name, first_name, avatar_index)')
-                .order('created_at', { ascending: false });
+            // Get location (Fallback to CIT University Coordinates)
+            let lat = 10.2975;
+            let lon = 123.8803;
 
-            if (error) throw error;
+            try {
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    lat = loc.coords.latitude;
+                    lon = loc.coords.longitude;
+                }
+            } catch (err) {
+                console.log("Could not fetch location, using default", err);
+            }
 
-            const formattedQuests: FeedQuest[] = data.map((q: any) => ({
+            // Call the Hybrid Batch Reranker!
+            const aiSortedQuests = await getPersonalizedFeed(lat, lon);
+
+            const formattedQuests: FeedQuest[] = aiSortedQuests.map((q: any) => ({
                 id: q.id,
                 category: q.category.toLowerCase() as FeedCategory,
                 ago: timeAgo(q.created_at),
                 title: q.title,
                 preview: q.description,
-                posterName: q.profiles?.display_name || q.profiles?.first_name || 'Anonymous',
-                posterAvatarIndex: q.profiles?.avatar_index,
-                xp: 50 + q.bonus_xp, // Assuming BASE_XP is 50
+                posterName: q.poster_name || 'Anonymous',
+                posterAvatarIndex: q.avatar_index || 0,
+                xp: 50 + (q.bonus_xp || 0), // Assuming BASE_XP is 50
                 token: q.token_bounty,
             }));
             

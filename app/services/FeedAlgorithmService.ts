@@ -8,8 +8,9 @@ export interface NearbyQuest {
   description: string;
   category: string;
   token_bounty: number;
-  bonus_xp: number;         // Added to fix TS error
-  poster_name: string;      // Added to fix TS error
+  bonus_xp: number;         
+  poster_name: string;      
+  avatar_index: number;     // Added for HomeFeed Avatar mapping
   created_at: string;
   distance_km: number;
 }
@@ -40,7 +41,6 @@ export async function getPersonalizedFeed(
     return [];
   }
 
-  // Explicitly assign the type so TypeScript stops complaining about 'any'
   const nearbyQuests: NearbyQuest[] = data || [];
 
   // If there are 0 or 1 quests, no need to waste AI tokens on sorting
@@ -49,7 +49,6 @@ export async function getPersonalizedFeed(
   }
 
   // STEP 2: Prepare the AI Prompt
-  // Explicitly type 'q' as NearbyQuest
   const minifiedQuests = nearbyQuests.map((q: NearbyQuest) => ({
     id: q.id,
     title: q.title,
