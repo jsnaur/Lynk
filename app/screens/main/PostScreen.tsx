@@ -24,7 +24,6 @@ import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
 import { FEED_CATEGORY_BG, FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
-import type { GuildAppraisal } from '../../services/AppraiserService';
 
 const TITLE_MIN = 8;
 const TITLE_MAX = 60;
@@ -160,24 +159,30 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) throw new Error('You must be logged in to post.');
 
-      // Acquire User GPS coordinates for the Hybrid algorithm
-      let lat = 10.2975; // Default (e.g. CIT University) if permission denied
+      // Default CIT University fallback
+      let lat = 10.2975; 
       let lon = 123.8803;
 
       try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
+        const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-          let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          lat = loc.coords.latitude;
-          lon = loc.coords.longitude;
+           // Prevent unsatisfied settings exception
+           const servicesEnabled = await Location.hasServicesEnabledAsync();
+           if (servicesEnabled) {
+              const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+              lat = loc.coords.latitude;
+              lon = loc.coords.longitude;
+           } else {
+             console.log("GPS turned off. Using default location.");
+           }
         }
-      } catch (locErr) {
-        console.log("Location fetch error, using default fallback.", locErr);
+      } catch (locErr: any) {
+        console.log("Location fetch caught, using default fallback.", locErr.message);
       }
 
       const { error } = await supabase.from('quests').insert({
         user_id: user.id,
-        category: category?.toLowerCase(), // normalize to 'favor', 'study', 'item'
+        category: category?.toLowerCase(), 
         title: titleTrim,
         description: descTrim,
         location: locTrim,
