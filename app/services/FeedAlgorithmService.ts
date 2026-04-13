@@ -20,7 +20,8 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 export async function getPersonalizedFeed(
   userLat: number,
   userLon: number,
-  userProfileText: string = "A busy college student looking to help out locally."
+  userProfileText: string = "A busy college student looking to help out locally.",
+  onFastResult?: (quests: NearbyQuest[]) => void
 ): Promise<NearbyQuest[]> {
   
   // STEP 1: Fetch nearby quests from Database
@@ -33,10 +34,16 @@ export async function getPersonalizedFeed(
 
   if (error) {
     console.error("Error fetching nearby quests:", error);
+    if (onFastResult) onFastResult([]);
     return [];
   }
 
   const nearbyQuests: NearbyQuest[] = data || [];
+
+  // Instantly return the raw DB results to the UI so it doesn't lag
+  if (onFastResult) {
+    onFastResult(nearbyQuests);
+  }
 
   // If there are 0 or 1 quests, no need to waste AI tokens on sorting
   if (nearbyQuests.length <= 1) {
