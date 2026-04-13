@@ -1,16 +1,27 @@
-import React from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FEED_COLORS } from '../../constants/colors';
 
 type AvatarGridItemProps = {
   state?: 'Default' | 'Selected' | 'Locked';
-  onPress?: () => void;
+  onPress?: (isSelected: boolean) => void;
 };
 
-export default function AvatarGridItem({ state = 'Default' }: AvatarGridItemProps) {
-  const isSelected = state === 'Selected';
-  const isLocked = state === 'Locked';
+export default function AvatarGridItem({ state: externalState = 'Default', onPress }: AvatarGridItemProps) {
+  // Manage internal selection state
+  const [isInternalSelected, setIsInternalSelected] = useState(false);
+  const isSelected = externalState === 'Selected' || isInternalSelected;
+  const isLocked = externalState === 'Locked';
+
+  const handlePress = () => {
+    if (externalState === 'Locked') return; // Can't select locked items
+    const newSelected = !isSelected;
+    if (externalState === 'Default') {
+      setIsInternalSelected(newSelected);
+    }
+    onPress?.(newSelected);
+  };
 
   let borderColor = '#3a3a48';
   let backgroundColor = '#26262e';
@@ -23,7 +34,7 @@ export default function AvatarGridItem({ state = 'Default' }: AvatarGridItemProp
   }
 
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.container,
         {
@@ -32,6 +43,9 @@ export default function AvatarGridItem({ state = 'Default' }: AvatarGridItemProp
           borderWidth,
         },
       ]}
+      onPress={handlePress}
+      disabled={isLocked}
+      activeOpacity={isLocked ? 1 : 0.7}
     >
       {/* Avatar image placeholder */}
       <View style={styles.avatarPlaceholder} />
@@ -55,7 +69,7 @@ export default function AvatarGridItem({ state = 'Default' }: AvatarGridItemProp
           />
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 

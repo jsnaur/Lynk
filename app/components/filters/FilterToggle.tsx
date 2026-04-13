@@ -1,20 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { FEED_COLORS } from '../../constants/colors';
 
 type FilterToggleProps = {
   label: string;
   selected?: boolean;
-  onPress?: () => void;
+  onPress?: (isSelected: boolean) => void;
 };
 
-export default function FilterToggle({ label, selected = false, onPress }: FilterToggleProps) {
+export default function FilterToggle({ label, selected, onPress }: FilterToggleProps) {
+  // Use internal state if external selected prop not provided
+  const [internalSelected, setInternalSelected] = useState(selected ?? false);
+  const isSelected = selected !== undefined ? selected : internalSelected;
+
+  const handlePress = () => {
+    const newState = !isSelected;
+    if (selected === undefined) {
+      setInternalSelected(newState);
+    }
+    onPress?.(newState);
+  };
+
+
   let backgroundColor = '#26262e';
   let borderColor = '#3a3a48';
   let textColor = '#8a8a9a';
   let borderWidth = 1;
 
-  if (selected) {
+  if (isSelected) {
     const labelToColor: { [key: string]: string } = {
       'Favor': FEED_COLORS.favor,
       'Study': FEED_COLORS.study,
@@ -38,7 +51,7 @@ export default function FilterToggle({ label, selected = false, onPress }: Filte
           borderWidth,
         },
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
       <Text style={[styles.label, { color: textColor }]}>

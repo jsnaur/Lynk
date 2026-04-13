@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FEED_COLORS } from '../../constants/colors';
@@ -14,6 +14,7 @@ export default function RatingButton({
   state = 'Default',
   onPress,
 }: RatingButtonProps) {
+  const [isPressing, setIsPressing] = useState(false);
   const isUp = direction === 'Up';
   const isSelected = state === 'Selected';
   const isPressed = state === 'Pressed';
