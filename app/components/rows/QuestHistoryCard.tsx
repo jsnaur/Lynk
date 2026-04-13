@@ -150,7 +150,7 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
 
         {/* Rating Icon */}
         <View style={styles.ratingIcon}>
-          <RatingReceivedIcon icon="thumbs-up" size={20} color={FEED_COLORS.favor} />
+          <RatingReceivedIcon type="Positive" />
         </View>
       </View>
     </View>
