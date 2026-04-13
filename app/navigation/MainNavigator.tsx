@@ -7,6 +7,7 @@ import QuestDetailScreen from '../screens/main/QuestDetailScreen';
 import PostScreen from '../screens/main/PostScreen';
 import ShopScreen from '../screens/main/Shop';
 import SettingsScreen from '../screens/main/SettingsScreen';
+import CustomizeScreen from '../screens/main/CustomizeScreen';
 import { MainTab } from '../components/BottomNav';
 
 const Stack = createNativeStackNavigator();
@@ -90,6 +91,7 @@ const MainNavigator = () => {
         }}
       />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Customize" component={CustomizeScreen} />
     </Stack.Navigator>
   );
 };

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    Animated,
     View,
     Text,
     Pressable,
@@ -50,12 +51,30 @@ export default function EditProfileModal({
         graduationYear: '2027',
     },
 }: EditProfileModalProps) {
+    const slideAnim = useRef(new Animated.Value(36)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
     const [displayName, setDisplayName] = useState(initialData.displayName);
     const [bio, setBio] = useState(initialData.bio);
     const [major, setMajor] = useState(initialData.major);
     const [graduationYear, setGraduationYear] = useState(initialData.graduationYear);
     const [showMajorDropdown, setShowMajorDropdown] = useState(false);
     const [showYearDropdown, setShowYearDropdown] = useState(false);
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(opacityAnim, {
+                toValue: 1,
+                duration: 260,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [slideAnim, opacityAnim]);
 
     const handleSave = () => {
         const data: ProfileData = {
@@ -73,7 +92,15 @@ export default function EditProfileModal({
     };
 
     return (
-        <View style={styles.container}>
+        <Animated.View
+            style={[
+                styles.container,
+                {
+                    opacity: opacityAnim,
+                    transform: [{ translateY: slideAnim }],
+                },
+            ]}
+        >
             {/* Modal Handle */}
             <View style={styles.modalHandle}>
                 <View style={styles.handleBar} />
@@ -267,16 +294,19 @@ export default function EditProfileModal({
                     </Pressable>
                 </View>
             </ScrollView>
-        </View>
+        </Animated.View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
         backgroundColor: FEED_COLORS.surface,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        zIndex: 1000,
     },
     modalHandle: {
         alignItems: 'center',

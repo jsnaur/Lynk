@@ -204,7 +204,9 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 </View>
                                 <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
                                 <Text style={styles.bioText}>This is my bio. Sample text.</Text>
-                                <Pressable>
+                                <Pressable
+                                    onPress={() => setState({ ...state, editProfileVisible: true })}
+                                >
                                     <Text style={styles.editProfileText}>Edit Profile</Text>
                                 </Pressable>
                             </View>
@@ -336,7 +338,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     headerTitle: {
-        fontSize: 22,
+        fontSize: 30,
         fontWeight: '700',
         color: FEED_COLORS.textPrimary,
         letterSpacing: 0.2,
