@@ -17,6 +17,7 @@ import ShareIcon from '../../../assets/QuestDetailsAssets/Share_Icon.svg';
 import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
+import CompactQuestCard from '../../components/cards/CompactQuestCard';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_COLORS } from '../../constants/colors';
 import { FEED_CATEGORY_BG } from '../../constants/colors';
@@ -51,6 +52,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [accepted, setAccepted] = useState(false);
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState('');
+  const [cardExpanded, setCardExpanded] = useState(false); // <-- Track compact card expansion
   
   const [comments, setComments] = useState<UIComment[]>([]);
   
@@ -194,6 +196,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const actionText = accepted ? 'Cancel Quest' : 'Accept Quest';
   const commentCount = useMemo(() => comments.length, [comments]);
 
+  // Determine if we should show compact card (quest in progress/pending resolution)
+  const isQuestAccepted = questData?.status === 'accepted' || questData?.status === 'in_progress';
+  const shouldShowCompactCard = isQuestAccepted;
+
   const onSubmitComment = async () => {
     const trimmed = message.trim();
     if (!trimmed || !currentUserId || !questData?.id) return;
@@ -244,57 +250,70 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         {/* SCROLLABLE CONTENT */}
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           
-          {/* MAIN QUEST CARD */}
-          <View style={styles.card}>
-            {/* ... Your Quest Card Content ... */}
-            <View style={styles.rowBetween}>
-              <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}26` }]}>
-                <View style={[styles.dot, { backgroundColor: categoryColor }]} />
-                <Text style={[styles.categoryText, { color: categoryColor }]}>{category.toUpperCase()}</Text>
-              </View>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusText}>{statusText}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.preview}>{preview}</Text>
-
-            <View style={styles.metaRow}>
-              <View>
-                <Text style={styles.poster}>{posterName}</Text>
-                <Text style={styles.time}>{ago}</Text>
-              </View>
-              <View style={styles.locationChip}>
-                <LocationIcon width={14} height={14} />
-                <Text style={styles.locationText}>GLE Building, Room 605</Text>
-              </View>
-            </View>
-
-            <View style={styles.rewardBox}>
-              <View style={styles.rewardBlock}>
-                <XpPixelIcon width={48} height={48} />
-                <Text style={styles.rewardValue}>{xp}</Text>
-                <Text style={styles.rewardLabel}>XP</Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.rewardBlock}>
-                <TokenPixelIcon width={48} height={48} />
-                <Text style={[styles.rewardValue, styles.tokenValue]}>{token}</Text>
-                <Text style={styles.rewardLabel}>Tokens</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* ACCEPT BUTTON */}
-          {isPoster ? (
-            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Your Quest</Text></View>
-          ) : isTakenBySomeoneElse ? (
-            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Already Accepted</Text></View>
+          {/* MAIN QUEST CARD - Compact or Full Version */}
+          {shouldShowCompactCard ? (
+            <CompactQuestCard
+              quest={questData || quest}
+              isExpanded={cardExpanded}
+              onToggle={() => setCardExpanded(!cardExpanded)}
+              statusLabel={statusText}
+            />
           ) : (
-            <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={toggleAccept} disabled={loading}>
-              <Text style={styles.acceptText}>{actionText}</Text>
-            </Pressable>
+            <View style={styles.card}>
+              {/* ... Your Quest Card Content ... */}
+              <View style={styles.rowBetween}>
+                <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}26` }]}>
+                  <View style={[styles.dot, { backgroundColor: categoryColor }]} />
+                  <Text style={[styles.categoryText, { color: categoryColor }]}>{category.toUpperCase()}</Text>
+                </View>
+                <View style={styles.statusPill}>
+                  <Text style={styles.statusText}>{statusText}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.preview}>{preview}</Text>
+
+              <View style={styles.metaRow}>
+                <View>
+                  <Text style={styles.poster}>{posterName}</Text>
+                  <Text style={styles.time}>{ago}</Text>
+                </View>
+                <View style={styles.locationChip}>
+                  <LocationIcon width={14} height={14} />
+                  <Text style={styles.locationText}>GLE Building, Room 605</Text>
+                </View>
+              </View>
+
+              <View style={styles.rewardBox}>
+                <View style={styles.rewardBlock}>
+                  <XpPixelIcon width={48} height={48} />
+                  <Text style={styles.rewardValue}>{xp}</Text>
+                  <Text style={styles.rewardLabel}>XP</Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.rewardBlock}>
+                  <TokenPixelIcon width={48} height={48} />
+                  <Text style={[styles.rewardValue, styles.tokenValue]}>{token}</Text>
+                  <Text style={styles.rewardLabel}>Tokens</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ACCEPT BUTTON - Only for Open Quests */}
+          {!shouldShowCompactCard && (
+            <>
+              {isPoster ? (
+                <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Your Quest</Text></View>
+              ) : isTakenBySomeoneElse ? (
+                <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Already Accepted</Text></View>
+              ) : (
+                <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={toggleAccept} disabled={loading}>
+                  <Text style={styles.acceptText}>{actionText}</Text>
+                </Pressable>
+              )}
+            </>
           )}
 
           {/* COMMENTS HEADER */}
