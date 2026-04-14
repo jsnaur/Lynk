@@ -10,7 +10,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import { FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
@@ -127,41 +127,41 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         editProfileVisible: false,
     });
 
+    const fetchProfile = useCallback(async () => {
+        setProfileLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                if (data) {
+                    setProfile(data);
+                    setTotalXP(data.total_xp || 0);
+                }
+            }
+        } finally {
+            setProfileLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         const unsubscribe = navigation?.addListener('focus', () => {
             const route = navigation?.getState?.()?.routes?.[navigation?.getState?.()?.index];
             if (route?.params?.openEditProfile) {
                 setState(prev => ({ ...prev, editProfileVisible: true }));
-                // Clear the param
                 navigation.setParams({ openEditProfile: false });
             }
-        });
-        return unsubscribe;
-    }, [navigation]);
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            setProfileLoading(true);
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    const { data } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', user.id)
-                        .single();
-                    if (data) {
-                        setProfile(data);
-                        // Fetch total_xp from profile or default to 0
-                        setTotalXP(data.total_xp || 0);
-                    }
-                }
-            } finally {
-                setProfileLoading(false);
-            }
-        };
-        fetchProfile();
-    }, []);
+            void fetchProfile();
+        });
+
+        void fetchProfile();
+
+        return unsubscribe;
+    }, [fetchProfile, navigation]);
 
     // Calculate level and progress from total XP
     const levelData = calculateLevelFromXP(totalXP);
