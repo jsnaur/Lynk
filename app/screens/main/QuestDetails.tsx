@@ -7,6 +7,8 @@ import {
   TextInput,
   View,
   Alert,
+  KeyboardAvoidingView, 
+  Platform,             
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
@@ -28,17 +30,18 @@ type QuestDetailsProps = {
   route?: { params?: QuestDetailParams };
 };
 
+type UIComment = {
+  id: string;
+  author: string;
+  text: string;
+  time: string;
+};
+
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
   favor: FEED_COLORS.favor,
   study: FEED_COLORS.study,
   item: FEED_COLORS.item,
 };
-
-const DEFAULT_COMMENTS = [
-  { id: 'c1', author: 'Reyna', text: 'I can help with this after class.', time: '13:52' },
-  { id: 'c2', author: 'Yoru', text: 'Can meet near library entrance.', time: '13:56' },
-  { id: 'c3', author: 'Clove', text: 'Count me in if still open.', time: '14:25' },
-];
 
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const quest = route?.params?.quest;
@@ -46,7 +49,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [accepted, setAccepted] = useState(false);
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState('');
-  const [comments, setComments] = useState(DEFAULT_COMMENTS);
+  
+  const [comments, setComments] = useState<UIComment[]>([]);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [questData, setQuestData] = useState<any>(quest);
@@ -54,58 +58,89 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   useEffect(() => {
     let mounted = true;
+    let commentSubscription: any = null;
 
-    const fetchUserAndQuest = async () => {
-      // 1. Get current authenticated user
+    const fetchUserAndQuestAndComments = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (mounted && user) {
-        setCurrentUserId(user.id);
-      }
+      if (mounted && user) setCurrentUserId(user.id);
 
-      // 2. Fetch fresh quest data from DB if we have an ID
       if (quest?.id) {
-        const { data, error } = await supabase
+        const { data: qData, error: qError } = await supabase
           .from('quests')
           .select('*')
           .eq('id', quest.id)
           .single();
 
-        if (mounted && data && !error) {
-          setQuestData(data);
-          // Set local accepted state if the current user is the one who accepted it
-          if (data.status === 'accepted' && data.accepted_by === user?.id) {
+        if (mounted && qData && !qError) {
+          setQuestData(qData);
+          if (qData.status === 'accepted' && qData.accepted_by === user?.id) {
             setAccepted(true);
           }
         }
+
+        const { data: cData, error: cError } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('quest_id', quest.id)
+          .order('created_at', { ascending: true }); 
+
+        if (mounted && cData && !cError) {
+          const formattedComments = cData.map((c: any) => ({
+            id: c.id,
+            author: c.user_id === user?.id ? 'You' : `User ${c.user_id.substring(0, 4)}`,
+            text: c.content,
+            time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }));
+          setComments(formattedComments);
+        }
+
+        commentSubscription = supabase
+          .channel(`public:comments:quest_id=eq.${quest.id}`)
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'comments', filter: `quest_id=eq.${quest.id}` },
+            (payload) => {
+              if (mounted) {
+                const newC = payload.new;
+                // Ignore our own comments because of optimistic UI
+                if (newC.user_id === user?.id) return; 
+
+                const newFormattedComment = {
+                  id: newC.id,
+                  author: `User ${newC.user_id.substring(0, 4)}`,
+                  text: newC.content,
+                  time: new Date(newC.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                };
+                
+                setComments((prev) => [...prev, newFormattedComment]);
+              }
+            }
+          )
+          .subscribe();
       }
     };
 
-    fetchUserAndQuest();
+    fetchUserAndQuestAndComments();
 
     return () => {
       mounted = false;
+      if (commentSubscription) supabase.removeChannel(commentSubscription);
     };
   }, [quest?.id]);
 
   const toggleAccept = async () => {
     if (!currentUserId || !questData?.id) return;
-    
     if (questData.user_id === currentUserId) {
       Alert.alert("Cannot Accept", "You cannot accept your own quest.");
       return;
     }
-
     try {
       setLoading(true);
       const isCurrentlyAcceptedByMe = accepted;
       const newStatus = isCurrentlyAcceptedByMe ? 'open' : 'accepted';
       const newAcceptedBy = isCurrentlyAcceptedByMe ? null : currentUserId;
 
-      const { error } = await supabase
-        .from('quests')
-        .update({ status: newStatus, accepted_by: newAcceptedBy })
-        .eq('id', questData.id);
-
+      const { error } = await supabase.from('quests').update({ status: newStatus, accepted_by: newAcceptedBy }).eq('id', questData.id);
       if (error) throw error;
 
       setAccepted(!isCurrentlyAcceptedByMe);
@@ -119,64 +154,72 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   const category = (questData?.category ?? quest?.category ?? 'favor') as FeedCategory;
   const categoryColor = CATEGORY_COLORS[category];
-
   const title = questData?.title ?? quest?.title ?? 'Need help around campus today';
   const preview = questData?.description ?? quest?.preview ?? 'Looking for someone nearby to help with a quick request before 5PM.';
   const posterName = quest?.posterName ?? 'Mark Lawrence';
   const ago = quest?.ago ?? '23m ago';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
   const token = questData?.token_bounty ?? quest?.token ?? 25;
-
   const isPoster = currentUserId === questData?.user_id;
   const isTakenBySomeoneElse = questData?.status === 'accepted' && questData?.accepted_by !== currentUserId;
-  
   const statusText = questData?.status === 'accepted' ? 'Accepted' : 'Open';
   const actionText = accepted ? 'Cancel Quest' : 'Accept Quest';
-
   const commentCount = useMemo(() => comments.length, [comments]);
 
-  const onSubmitComment = () => {
+  const onSubmitComment = async () => {
     const trimmed = message.trim();
-    if (!trimmed) {
-      return;
-    }
+    if (!trimmed || !currentUserId || !questData?.id) return;
 
-    setComments((previous) => [
-      ...previous,
-      { id: `local-${Date.now()}`, author: 'You', text: trimmed, time: 'now' },
-    ]);
+    // Optimistic UI updates
     setMessage('');
+    const tempCommentId = `temp-${Date.now()}`;
+    const newLocalComment: UIComment = {
+      id: tempCommentId,
+      author: 'You',
+      text: trimmed,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setComments((prev) => [...prev, newLocalComment]);
+
+    const { error } = await supabase.from('comments').insert([{ quest_id: questData.id, user_id: currentUserId, content: trimmed }]);
+    if (error) {
+      Alert.alert('Error', 'Failed to post comment. Please try again.');
+      setComments((prev) => prev.filter(c => c.id !== tempCommentId));
+      console.error('Comment error:', error);
+    }
   };
 
   return (
-    <View style={styles.modalBackdrop}>
+    <KeyboardAvoidingView 
+      style={styles.modalBackdrop}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // <-- ADD THIS
+    >
       <View style={styles.sheet}>
+        
+        {/* HEADER */}
         <View style={styles.header}>
           <Pressable style={styles.iconButton} onPress={() => navigation?.goBack?.()}>
             <BackIcon width={18} height={18} />
             <Text style={styles.backText}>Feed</Text>
           </Pressable>
-
           <Text style={styles.headerTitle}>Quest Details</Text>
-
           <Pressable style={styles.iconButton} onPress={() => setLiked((current) => !current)}>
             <ShareIcon width={22} height={22} />
-            <Ionicons
-              name={liked ? 'heart' : 'heart-outline'}
-              size={18}
-              color={liked ? FEED_COLORS.heart : FEED_COLORS.textSecondary}
-            />
+            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? FEED_COLORS.heart : FEED_COLORS.textSecondary} />
           </Pressable>
         </View>
 
+        {/* SCROLLABLE CONTENT */}
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+          
+          {/* MAIN QUEST CARD */}
           <View style={styles.card}>
             <View style={styles.rowBetween}>
               <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}26` }]}>
                 <View style={[styles.dot, { backgroundColor: categoryColor }]} />
-                <Text style={[styles.categoryText, { color: categoryColor }]}>
-                  {category.toUpperCase()}
-                </Text>
+                <Text style={[styles.categoryText, { color: categoryColor }]}>{category.toUpperCase()}</Text>
               </View>
               <View style={styles.statusPill}>
                 <Text style={styles.statusText}>{statusText}</Text>
@@ -212,24 +255,18 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           </View>
 
+          {/* ACCEPT/STATUS BUTTON */}
           {isPoster ? (
-            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}>
-              <Text style={styles.acceptText}>Your Quest</Text>
-            </View>
+            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Your Quest</Text></View>
           ) : isTakenBySomeoneElse ? (
-            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}>
-              <Text style={styles.acceptText}>Already Accepted</Text>
-            </View>
+            <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Already Accepted</Text></View>
           ) : (
-            <Pressable 
-              style={[styles.acceptButton, loading && { opacity: 0.7 }]} 
-              onPress={toggleAccept} 
-              disabled={loading}
-            >
+            <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={toggleAccept} disabled={loading}>
               <Text style={styles.acceptText}>{actionText}</Text>
             </Pressable>
           )}
 
+          {/* COMMENTS HEADER */}
           <View style={styles.commentsHeader}>
             <Text style={styles.commentsTitle}>Comments</Text>
             <View style={styles.countChip}>
@@ -237,6 +274,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           </View>
 
+          {/* COMMENTS LIST */}
           {comments.map((comment) => (
             <View key={comment.id} style={styles.commentRow}>
               <Ionicons name="person-circle-outline" size={28} color={FEED_COLORS.textSecondary} />
@@ -251,6 +289,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           ))}
         </ScrollView>
 
+        {/* INPUT BAR (Now protected by KeyboardAvoidingView) */}
         <View style={styles.inputBar}>
           <TextInput
             value={message}
@@ -263,8 +302,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             <Ionicons name="send" size={16} color={FEED_COLORS.bg} />
           </Pressable>
         </View>
+
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
