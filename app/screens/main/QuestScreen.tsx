@@ -1,6 +1,8 @@
+// app/screens/main/QuestScreen.tsx
+
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Animated,
   Pressable,
@@ -8,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +19,7 @@ import { FEED_COLORS } from '../../constants/colors';
 import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { supabase } from '../../lib/supabase';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -41,68 +45,18 @@ type QuestScreenProps = {
   onTabPress?: (tab: MainTab) => void;
 };
 
-const ACTIVE_QUESTS: QuestItem[] = [
-  {
-    id: 'quest-help-feed-cats',
-    title: 'Help Feed Cats',
-    role: 'You posted',
-    status: 'Awaiting approval',
-    accent: FEED_COLORS.favor,
-    statusColor: FEED_COLORS.textSecondary,
-    cardTint: 'rgba(255,255,255,0.02)',
-    token: 8,
-  },
-  {
-    id: 'quest-tutor-calculus',
-    title: 'Need Tutor for Calculus',
-    role: 'You accepted',
-    status: 'In progress',
-    accent: FEED_COLORS.study,
-    statusColor: FEED_COLORS.xp,
-    cardTint: 'rgba(255,255,255,0.02)',
-    token: 14,
-  },
-  {
-    id: 'quest-borrow-sci-cal',
-    title: 'Borrow Sci-Cal',
-    role: 'You posted',
-    status: 'Pending resolution',
-    accent: FEED_COLORS.item,
-    statusColor: FEED_COLORS.item,
-    cardTint: 'rgba(57,255,20,0.08)',
-    isActionable: true,
-    token: 25,
-  },
-];
-
-const HISTORY_QUESTS: QuestItem[] = [
-  {
-    id: 'quest-earplugs',
-    title: 'Borrow Sign Pen',
-    role: 'Requester',
-    status: 'Resolved',
-    timeLabel: '2 days ago',
-    historyTag: 'Posted',
-    accent: FEED_COLORS.item,
-    statusColor: FEED_COLORS.textSecondary,
-    cardTint: 'rgba(255,255,255,0.02)',
-    xp: 150,
-    token: 12,
-  },
-  {
-    id: 'quest-notes',
-    title: 'Chemistry 101',
-    role: 'Accepter',
-    status: 'Resolved',
-    timeLabel: '1 week ago',
-    historyTag: 'Accepted',
-    accent: FEED_COLORS.study,
-    statusColor: FEED_COLORS.textSecondary,
-    cardTint: 'rgba(255,255,255,0.02)',
-    xp: 150,
-    token: 12,
-  },
-];
+// Helper to format timestamps
+function timeAgo(dateString: string) {
+  const now = new Date();
+  const past = new Date(dateString);
+  const diffMs = now.getTime() - past.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) return `${diffMins || 1}m ago`;
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  return `${diffDays}d ago`;
+}
 
 const HISTORY_FILTERS: HistoryFilter[] = ['All', 'Posted', 'Accepted'];
 
@@ -185,9 +139,125 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
+  // Dynamic state
+  const [activeQuests, setActiveQuests] = useState<QuestItem[]>([]);
+  const [historyQuests, setHistoryQuests] = useState<QuestItem[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchQuests = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('quests')
+        .select('*')
+        .or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching quests:', error);
+        return;
+      }
+
+      const activeList: QuestItem[] = [];
+      const historyList: QuestItem[] = [];
+
+      data?.forEach((q) => {
+        const isPoster = q.user_id === user.id;
+        const isAccepter = q.accepted_by === user.id;
+        const isResolved = q.status === 'resolved';
+
+        let role = '';
+        let statusLabel = '';
+        let statusColor: string = FEED_COLORS.textSecondary;
+        let isActionable = false;
+        let historyTag: 'Posted' | 'Accepted' | undefined;
+        let cardTint = 'rgba(255,255,255,0.02)';
+
+        // Map Category Colors
+        let accent: string = FEED_COLORS.textSecondary;
+        if (q.category === 'favor') accent = FEED_COLORS.favor || '#00F5FF';
+        if (q.category === 'study') accent = FEED_COLORS.study || '#FF2D78';
+        if (q.category === 'item') accent = FEED_COLORS.item || '#39FF14';
+
+        if (isResolved) {
+          role = isPoster ? 'Requester' : 'Accepter';
+          statusLabel = 'Resolved';
+          historyTag = isPoster ? 'Posted' : 'Accepted';
+
+          historyList.push({
+            id: q.id,
+            title: q.title,
+            role,
+            status: statusLabel as QuestStatus,
+            timeLabel: timeAgo(q.created_at),
+            historyTag,
+            accent,
+            statusColor,
+            cardTint,
+            xp: q.bonus_xp || 0,
+            token: q.token_bounty || 0,
+          });
+        } else {
+          if (isPoster && !q.accepted_by) {
+            role = 'You posted';
+            statusLabel = 'Awaiting approval';
+          } else if (isAccepter) {
+            role = 'You accepted';
+            statusLabel = 'In progress';
+            statusColor = FEED_COLORS.xp || '#C084FC'; // Purple
+          } else if (isPoster && q.accepted_by) {
+            role = 'You posted';
+            statusLabel = 'Pending resolution';
+            statusColor = FEED_COLORS.item || '#39FF14'; // Green
+            cardTint = 'rgba(57,255,20,0.08)';
+            isActionable = true;
+          }
+
+          // Edge case safety (e.g. malformed data)
+          if (!role) return;
+
+          activeList.push({
+            id: q.id,
+            title: q.title,
+            role,
+            status: statusLabel as QuestStatus,
+            accent,
+            statusColor,
+            cardTint,
+            isActionable,
+            xp: q.bonus_xp || 0,
+            token: q.token_bounty || 0,
+          });
+        }
+      });
+
+      setActiveQuests(activeList);
+      setHistoryQuests(historyList);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQuests();
+    // Refetch when tab comes into focus
+    const unsubscribe = navigation?.addListener('focus', () => {
+      fetchQuests();
+    });
+    return unsubscribe;
+  }, [fetchQuests, navigation]);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchQuests();
+    setIsRefreshing(false);
+  };
+
   const selectedQuest = useMemo(
-    () => ACTIVE_QUESTS.find((quest) => quest.id === selectedQuestId),
-    [selectedQuestId],
+    () => activeQuests.find((quest) => quest.id === selectedQuestId),
+    [activeQuests, selectedQuestId],
   );
 
   useEffect(() => {
@@ -200,17 +270,35 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
   }, [activeSection, slideAnim]);
 
   const quests = useMemo(
-    () => (activeSection === 'Active' ? ACTIVE_QUESTS : HISTORY_QUESTS),
-    [activeSection],
+    () => (activeSection === 'Active' ? activeQuests : historyQuests),
+    [activeSection, activeQuests, historyQuests],
   );
 
   const filteredHistoryQuests = useMemo(() => {
     if (activeSection !== 'History' || historyFilter === 'All') {
       return quests;
     }
-
     return quests.filter((quest) => quest.historyTag === historyFilter);
   }, [activeSection, historyFilter, quests]);
+
+  const handleResolveComplete = async (reward: number) => {
+    if (!selectedQuestId) return;
+    
+    // 1. Mark quest as resolved in DB
+    const { error } = await supabase
+      .from('quests')
+      .update({ status: 'resolved' })
+      .eq('id', selectedQuestId);
+
+    if (!error) {
+      // 2. Grant tokens (XP could be handled similarly if there was an RPC)
+      await earnTokens(reward);
+      // 3. Refresh list locally
+      await fetchQuests();
+    }
+    
+    setResolutionModalVisible(false);
+  };
 
   return (
     <View style={styles.root}>
@@ -221,7 +309,17 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           <Text style={styles.title}>My Quests</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.content} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={FEED_COLORS.item}
+            />
+          }
+        >
           <View
             style={styles.segmentedControl}
             onLayout={(event) => {
@@ -314,13 +412,13 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
                     navigation?.navigate?.('QuestDetail', {
                       quest: {
                         id: quest.id,
-                        category: 'favor',
+                        category: quest.accent === FEED_COLORS.favor ? 'favor' : quest.accent === FEED_COLORS.study ? 'study' : 'item',
                         title: quest.title,
                         preview: `${quest.role} · ${quest.status}`,
                         posterName: 'You',
                         ago: 'now',
-                        xp: quest.isActionable ? 120 : 80,
-                        token: quest.isActionable ? 25 : 15,
+                        xp: quest.xp || 80,
+                        token: quest.token || 15,
                       },
                     });
                   }
@@ -345,9 +443,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
         visible={resolutionModalVisible}
         onClose={() => setResolutionModalVisible(false)}
         tokenReward={selectedQuest?.token ?? 3}
-        onComplete={(reward) => {
-          void earnTokens(reward);
-        }}
+        onComplete={handleResolveComplete}
       />
     </View>
   );
