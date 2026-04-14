@@ -120,6 +120,7 @@ function BadgeSlot({ image }: { image: any }) {
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
     const { balance } = useTokenBalance();
     const [profile, setProfile] = useState<any>(null);
+    const [profileLoading, setProfileLoading] = useState<boolean>(true);
     const [totalXP, setTotalXP] = useState<number>(0); // Default starting XP (Level 1)
     const [state, setState] = useState<ProfileState>({ 
         badgeSelectorVisible: false,
@@ -140,18 +141,23 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
     useEffect(() => {
         const fetchProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
-                if (data) {
-                    setProfile(data);
-                    // Fetch total_xp from profile or default to 0
-                    setTotalXP(data.total_xp || 0);
+            setProfileLoading(true);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', user.id)
+                        .single();
+                    if (data) {
+                        setProfile(data);
+                        // Fetch total_xp from profile or default to 0
+                        setTotalXP(data.total_xp || 0);
+                    }
                 }
+            } finally {
+                setProfileLoading(false);
             }
         };
         fetchProfile();
@@ -194,8 +200,16 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         <View style={styles.identityRow}>
                             <View style={styles.avatarColumn}>
                                 <View style={styles.avatarFrame}>
-                                    <SelectedAvatar width={72} height={72} style={styles.avatarSvg} />
-                                    <Image source={ASSETS.accessory} style={styles.avatarLayer} />
+                                    {profileLoading ? (
+                                        <View style={styles.loadingAvatarIconWrap}>
+                                            <Ionicons name="person" size={42} color={FEED_COLORS.textPrimary} />
+                                        </View>
+                                    ) : (
+                                        <>
+                                            <SelectedAvatar width={72} height={72} style={styles.avatarSvg} />
+                                            <Image source={ASSETS.accessory} style={styles.avatarLayer} />
+                                        </>
+                                    )}
                                 </View>
                             </View>
 
@@ -394,6 +408,11 @@ const styles = StyleSheet.create({
         top: 14,
         width: 72,
         height: 72,
+    },
+    loadingAvatarIconWrap: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     identityTextColumn: {
         flex: 1,

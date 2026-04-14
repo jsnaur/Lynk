@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Pressable,
@@ -208,7 +209,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         accessibilityRole="button"
                     >
                         <View style={styles.avatarChip}>
-                            <CurrentUserAvatar width={32} height={32} />
+                            {initialLoading ? (
+                                <Ionicons name="person" size={22} color={FEED_COLORS.textPrimary} />
+                            ) : (
+                                <CurrentUserAvatar width={32} height={32} />
+                            )}
                         </View>
                     </Pressable>
 
