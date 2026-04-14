@@ -42,11 +42,18 @@ export default function CustomizeScreen({
     [initialOwnedAccessoryIds],
   );
 
+  const ownedAccessoryItems = useMemo(
+    () => ACCESSORY_ITEMS.filter((item) => ownedIds.has(item.id)),
+    [ownedIds],
+  );
+
+  const fallbackOwnedId = ownedAccessoryItems[0]?.id ?? '';
+
   const [selectedAccessoryId, setSelectedAccessoryId] = useState<string>(
-    initialAppliedAccessoryId ?? 'board-free',
+    initialAppliedAccessoryId ?? fallbackOwnedId,
   );
   const [appliedAccessoryId, setAppliedAccessoryId] = useState<string>(
-    initialAppliedAccessoryId ?? 'board-free',
+    initialAppliedAccessoryId ?? fallbackOwnedId,
   );
 
   const selectedAccessory = useMemo(
@@ -104,7 +111,11 @@ export default function CustomizeScreen({
         </View>
 
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {ACCESSORY_ITEMS.map((item) => {
+          {ownedAccessoryItems.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No owned accessories yet. Buy one in Shop to customize.</Text>
+            </View>
+          ) : ownedAccessoryItems.map((item) => {
             const owned = ownedIds.has(item.id);
             const selected = selectedAccessoryId === item.id;
             const applied = appliedAccessoryId === item.id;
@@ -246,6 +257,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     gap: 10,
+  },
+  emptyState: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+  },
+  emptyStateText: {
+    fontSize: 13,
+    color: FEED_COLORS.textSecondary,
+    fontFamily: 'DMSans-Regular',
   },
   itemCard: {
     borderRadius: 14,

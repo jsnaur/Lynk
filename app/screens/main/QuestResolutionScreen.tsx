@@ -12,14 +12,20 @@ type Rating = 'positive' | 'negative' | null;
 const QUEST_TITLE = 'Lemme borrow scientific calculator';
 const POSTER_NAME = 'Quest Poster';
 const XP_REWARD = 200;
-const TOKEN_REWARD = 3;
 
 type QuestResolutionSheetModalProps = {
   visible?: boolean;
   onClose?: () => void;
+  tokenReward?: number;
+  onComplete?: (reward: number) => void;
 };
 
-const QuestResolutionSheetModal = ({ visible = true, onClose }: QuestResolutionSheetModalProps) => {
+const QuestResolutionSheetModal = ({
+  visible = true,
+  onClose,
+  tokenReward = 3,
+  onComplete,
+}: QuestResolutionSheetModalProps) => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [rating, setRating] = useState<Rating>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -42,6 +48,7 @@ const QuestResolutionSheetModal = ({ visible = true, onClose }: QuestResolutionS
       return;
     }
     setIsSubmitted(true);
+    onComplete?.(tokenReward);
     onClose?.();
   };
 
@@ -167,7 +174,7 @@ const QuestResolutionSheetModal = ({ visible = true, onClose }: QuestResolutionS
                   <View style={styles.rewardTextWrap}>
                     <View style={styles.rewardTopRow}>
                       <Text style={styles.rewardXpText}>+{XP_REWARD} XP</Text>
-                      <Text style={styles.rewardTokenText}>+{TOKEN_REWARD} Tokens</Text>
+                      <Text style={styles.rewardTokenText}>+{tokenReward} Tokens</Text>
                     </View>
                     <Text style={styles.rewardSubtext}>Karma updated. Quest archived.</Text>
                   </View>

@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import { FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
+import { useTokenBalance } from '../../contexts/TokenContext';
 
 // Local Avatars
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
@@ -117,6 +118,7 @@ function BadgeSlot({ image }: { image: any }) {
 }
 
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
+    const { balance } = useTokenBalance();
     const [profile, setProfile] = useState<any>(null);
     const [totalXP, setTotalXP] = useState<number>(0); // Default starting XP (Level 1)
     const [state, setState] = useState<ProfileState>({ 
@@ -273,7 +275,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </View>
 
                             <View style={styles.tokenRightCluster}>
-                                <Text style={styles.tokenValue}>52</Text>
+                                <Text style={styles.tokenValue}>{balance}</Text>
                                 <Text style={styles.tokenUnit}>TKN</Text>
                                 <Ionicons name="chevron-forward" size={16} color={FEED_COLORS.token} />
                             </View>

@@ -24,6 +24,7 @@ import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
 import { FEED_CATEGORY_BG, FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
+import { useTokenBalance } from '../../contexts/TokenContext';
 
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
@@ -52,6 +53,7 @@ function FieldError({ message, visible }: { message: string; visible: boolean })
 }
 
 export default function PostScreen({ navigation }: { navigation: any }) {
+  const { balance, spendTokens, earnTokens } = useTokenBalance();
   const [category, setCategory] = useState<QuestCategory | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -88,17 +90,29 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   }, [category, titleTrim, descTrim, locTrim]);
 
   useEffect(() => {
-    setTokenBounty(appraisal.tokenBounty);
-  }, [appraisal.tokenBounty]);
+    const recommended = Math.min(appraisal.tokenBounty, TOKEN_MAX, balance);
+    setTokenBounty(recommended);
+  }, [appraisal.tokenBounty, balance]);
+
+  useEffect(() => {
+    setTokenBounty((current) => {
+      const cappedMax = Math.min(TOKEN_MAX, balance);
+      if (current > cappedMax) {
+        return Math.max(TOKEN_MIN, cappedMax);
+      }
+      return current;
+    });
+  }, [balance]);
 
   const changeTokens = useCallback((delta: number) => {
     setTokenBounty((v) => {
+      const cappedMax = Math.min(TOKEN_MAX, balance);
       const next = v + delta;
       if (next < TOKEN_MIN) return TOKEN_MIN;
-      if (next > TOKEN_MAX) return TOKEN_MAX;
+      if (next > cappedMax) return cappedMax;
       return next;
     });
-  }, []);
+  }, [balance]);
 
   const animateDismiss = useCallback(() => {
     if (isDismissingRef.current) return;
@@ -153,9 +167,19 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
   const publishToSupabase = async () => {
     setIsPublishing(true);
+    let spentForPosting = false;
+
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) throw new Error('You must be logged in to post.');
+
+      if (tokenBounty > 0) {
+        const didSpend = await spendTokens(tokenBounty);
+        if (!didSpend) {
+          throw new Error('Not enough tokens for this bounty.');
+        }
+        spentForPosting = true;
+      }
 
       // Default CIT University fallback
       let lat = 10.2975; 
@@ -194,6 +218,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       
       navigation.goBack();
     } catch (error: any) {
+      if (spentForPosting) {
+        await earnTokens(tokenBounty);
+      }
       Alert.alert('Error', error.message || 'Failed to publish quest.');
     } finally {
       setIsPublishing(false);
@@ -203,6 +230,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const onPublish = useCallback(() => {
     setSubmitAttempted(true);
     if (!isValid) return;
+    if (tokenBounty > balance) {
+      Alert.alert('Insufficient tokens', 'Lower the token bounty or earn more tokens from quests.');
+      return;
+    }
 
     Alert.alert(
       'Publish quest?',
@@ -217,7 +248,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         },
       ],
     );
-  }, [isValid, category, appraisal, tokenBounty, publishToSupabase]);
+  }, [isValid, category, appraisal, tokenBounty, balance, publishToSupabase]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -416,7 +447,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <XpSpriteToken width={24} height={24} />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>Token bounty</Text>
-                    <Text style={styles.rewardSub}>Optional — uses your balance</Text>
+                    <Text style={styles.rewardSub}>Optional - uses your balance ({balance} available)</Text>
                   </View>
                 </View>
                 <View style={styles.stepper}>
@@ -435,10 +466,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <Pressable
                     hitSlop={8}
                     onPress={() => changeTokens(1)}
-                    disabled={tokenBounty >= TOKEN_MAX}
+                    disabled={tokenBounty >= Math.min(TOKEN_MAX, balance)}
                     style={({ pressed }) => [
                       styles.stepperHit,
-                      (pressed || tokenBounty >= TOKEN_MAX) && styles.stepperDim,
+                      (pressed || tokenBounty >= Math.min(TOKEN_MAX, balance)) && styles.stepperDim,
                     ]}
                   >
                     <IncrementBtn width={32} height={32} />

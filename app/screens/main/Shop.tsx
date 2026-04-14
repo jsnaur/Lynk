@@ -13,6 +13,7 @@ import ItemSprite2 from '../../../assets/ShopAssets/Item_Sprite (2).svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
+import { useTokenBalance } from '../../contexts/TokenContext';
 
 const SPRITES = [ItemSprite0, ItemSprite1, ItemSprite2] as const;
 
@@ -60,8 +61,8 @@ type ShopScreenProps = {
 
 export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const navigation = useNavigation<any>();
+  const { balance, spendTokens } = useTokenBalance();
   const [filter, setFilter] = useState<ShopCategory>('all');
-  const [balance, setBalance] = useState(52);
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(INITIAL_OWNED));
   const [equippedId, setEquippedId] = useState<string>('shades-pixel');
   const [detailItem, setDetailItem] = useState<CatalogItem | null>(null);
@@ -82,13 +83,18 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   );
   const EquippedSprite = equippedItem ? SPRITES[equippedItem.sprite] : null;
 
-  const completePurchase = useCallback((item: CatalogItem) => {
+  const completePurchase = useCallback(async (item: CatalogItem) => {
     if (ownedIds.has(item.id)) return;
-    if (item.price > 0 && balance < item.price) return;
-    setBalance((b) => b - item.price);
+    if (item.price > 0) {
+      const didSpend = await spendTokens(item.price);
+      if (!didSpend) {
+        Alert.alert('Not enough tokens', 'Complete quests to earn more tokens.');
+        return;
+      }
+    }
     setOwnedIds((prev) => new Set(prev).add(item.id));
     setEquippedId(item.id);
-  }, [balance, ownedIds]);
+  }, [ownedIds, spendTokens]);
 
   const equip = useCallback((item: CatalogItem) => {
     setEquippedId(item.id);
@@ -233,7 +239,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
           onClose={() => setDetailItem(null)}
           onPurchase={() => {
             if (!detailItem) return;
-            completePurchase(detailItem);
+            void completePurchase(detailItem);
           }}
           onEquip={() => {
             if (!detailItem) return;
