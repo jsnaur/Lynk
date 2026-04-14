@@ -15,6 +15,7 @@ import BottomNav, { MainTab } from '../../components/BottomNav';
 import { FEED_COLORS } from '../../constants/colors';
 import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
+import { useTokenBalance } from '../../contexts/TokenContext';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -49,6 +50,7 @@ const ACTIVE_QUESTS: QuestItem[] = [
     accent: FEED_COLORS.favor,
     statusColor: FEED_COLORS.textSecondary,
     cardTint: 'rgba(255,255,255,0.02)',
+    token: 8,
   },
   {
     id: 'quest-tutor-calculus',
@@ -58,6 +60,7 @@ const ACTIVE_QUESTS: QuestItem[] = [
     accent: FEED_COLORS.study,
     statusColor: FEED_COLORS.xp,
     cardTint: 'rgba(255,255,255,0.02)',
+    token: 14,
   },
   {
     id: 'quest-borrow-sci-cal',
@@ -68,6 +71,7 @@ const ACTIVE_QUESTS: QuestItem[] = [
     statusColor: FEED_COLORS.item,
     cardTint: 'rgba(57,255,20,0.08)',
     isActionable: true,
+    token: 25,
   },
 ];
 
@@ -173,12 +177,18 @@ function QuestCard({
 }
 
 export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps) {
+  const { earnTokens } = useTokenBalance();
   const [activeSection, setActiveSection] = useState<'Active' | 'History'>('Active');
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('All');
   const [segmentWidth, setSegmentWidth] = useState(0);
   const [resolutionModalVisible, setResolutionModalVisible] = useState(false);
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const selectedQuest = useMemo(
+    () => ACTIVE_QUESTS.find((quest) => quest.id === selectedQuestId),
+    [selectedQuestId],
+  );
 
   useEffect(() => {
     const nextIndex = activeSection === 'History' ? 1 : 0;
@@ -334,6 +344,10 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       <QuestResolutionSheetModal
         visible={resolutionModalVisible}
         onClose={() => setResolutionModalVisible(false)}
+        tokenReward={selectedQuest?.token ?? 3}
+        onComplete={(reward) => {
+          void earnTokens(reward);
+        }}
       />
     </View>
   );

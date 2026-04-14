@@ -3,6 +3,7 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './app/navigation/AppNavigator';
 import AnimatedSplashScreen from './app/screens/AnimatedSplashScreen';
+import { TokenBalanceProvider } from './app/contexts/TokenContext';
 
 const customDarkTheme = {
   ...DarkTheme,
@@ -22,9 +23,11 @@ export default function App() {
         <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
       )}
       
-      <NavigationContainer theme={customDarkTheme}>
-        <AppNavigator />
-      </NavigationContainer>
+      <TokenBalanceProvider>
+        <NavigationContainer theme={customDarkTheme}>
+          <AppNavigator />
+        </NavigationContainer>
+      </TokenBalanceProvider>
     </SafeAreaProvider>
   );
 }
