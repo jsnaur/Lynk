@@ -1,5 +1,3 @@
-// app/screens/main/QuestScreen.tsx
-
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -36,6 +34,7 @@ type QuestItem = {
   isActionable?: boolean;
   xp?: number;
   token?: number;
+  acceptorName?: string;
 };
 
 type HistoryFilter = 'All' | 'Posted' | 'Accepted';
@@ -149,9 +148,13 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Join with profiles to get the acceptor's details
       const { data, error } = await supabase
         .from('quests')
-        .select('*')
+        .select(`
+          *,
+          acceptor:profiles!quests_accepted_by_fkey(display_name, first_name)
+        `)
         .or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
@@ -166,7 +169,11 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       data?.forEach((q) => {
         const isPoster = q.user_id === user.id;
         const isAccepter = q.accepted_by === user.id;
-        const isResolved = q.status === 'resolved';
+        const isResolved = q.status === 'completed' || q.status === 'resolved';
+
+        // Extract acceptor's name safely
+        const acceptorObj = Array.isArray(q.acceptor) ? q.acceptor[0] : q.acceptor;
+        const fetchedAcceptorName = acceptorObj?.display_name || acceptorObj?.first_name || 'your quest partner';
 
         let role = '';
         let statusLabel = '';
@@ -198,6 +205,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
             cardTint,
             xp: q.bonus_xp || 0,
             token: q.token_bounty || 0,
+            acceptorName: fetchedAcceptorName,
           });
         } else {
           if (isPoster && !q.accepted_by) {
@@ -229,6 +237,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
             isActionable,
             xp: q.bonus_xp || 0,
             token: q.token_bounty || 0,
+            acceptorName: fetchedAcceptorName,
           });
         }
       });
@@ -281,22 +290,12 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
     return quests.filter((quest) => quest.historyTag === historyFilter);
   }, [activeSection, historyFilter, quests]);
 
-  const handleResolveComplete = async (reward: number) => {
+  const handleResolveComplete = async () => {
     if (!selectedQuestId) return;
     
-    // 1. Mark quest as resolved in DB
-    const { error } = await supabase
-      .from('quests')
-      .update({ status: 'resolved' })
-      .eq('id', selectedQuestId);
-
-    if (!error) {
-      // 2. Grant tokens (XP could be handled similarly if there was an RPC)
-      await earnTokens(reward);
-      // 3. Refresh list locally
-      await fetchQuests();
-    }
-    
+    // The resolve_quest RPC already handled the database update and rewards safely.
+    // We only need to refresh the local list here.
+    await fetchQuests();
     setResolutionModalVisible(false);
   };
 
@@ -442,7 +441,11 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       <QuestResolutionSheetModal
         visible={resolutionModalVisible}
         onClose={() => setResolutionModalVisible(false)}
-        tokenReward={selectedQuest?.token ?? 3}
+        questId={selectedQuest?.id || ''}
+        questTitle={selectedQuest?.title || ''}
+        acceptorName={selectedQuest?.acceptorName || 'your quest partner'}
+        tokenReward={selectedQuest?.token ?? 0}
+        xpReward={selectedQuest?.xp ?? 0}
         onComplete={handleResolveComplete}
       />
     </View>

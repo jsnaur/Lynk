@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
+import { supabase } from '../../lib/supabase';
 
 import ThumbUpIcon from '../../../assets/QuestScreenAssets/ThumbUp.svg';
 import ThumbDownIcon from '../../../assets/QuestScreenAssets/Thumb_down_Icon.svg';
@@ -9,51 +11,79 @@ import TokenPixelIcon from '../../../assets/QuestScreenAssets/Token_Pixel_Icon.s
 
 type Rating = 'positive' | 'negative' | null;
 
-const QUEST_TITLE = 'Lemme borrow scientific calculator';
-const POSTER_NAME = 'Quest Poster';
-const XP_REWARD = 200;
-
-type QuestResolutionSheetModalProps = {
+export type QuestResolutionSheetModalProps = {
   visible?: boolean;
   onClose?: () => void;
-  tokenReward?: number;
-  onComplete?: (reward: number) => void;
+  questId: string;
+  questTitle: string;
+  acceptorName: string;
+  tokenReward: number;
+  xpReward: number;
+  onComplete?: () => void;
 };
 
 const QuestResolutionSheetModal = ({
   visible = true,
   onClose,
-  tokenReward = 3,
+  questId,
+  questTitle,
+  acceptorName,
+  tokenReward,
+  xpReward,
   onComplete,
 }: QuestResolutionSheetModalProps) => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [rating, setRating] = useState<Rating>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = isCompleted && rating !== null;
   const shouldShowRating = isCompleted;
   const shouldShowRewards = rating !== null;
-  const submitLabel = useMemo(() => {
-    if (isSubmitted) {
-      return 'Completed!';
-    }
-    if (!canSubmit) {
-      return 'Complete + Rate to Submit';
-    }
-    return 'Submit & Finish';
-  }, [canSubmit, isSubmitted]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) {
+  const submitLabel = useMemo(() => {
+    if (isSubmitting) return 'Resolving...';
+    if (isSubmitted) return 'Completed!';
+    if (!canSubmit) return 'Complete + Rate to Submit';
+    return 'Submit & Finish';
+  }, [canSubmit, isSubmitted, isSubmitting]);
+
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) {
       return;
     }
-    setIsSubmitted(true);
-    onComplete?.(tokenReward);
-    onClose?.();
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.rpc('resolve_quest', {
+        p_quest_id: questId,
+        p_rating: rating,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setIsSubmitted(true);
+      onComplete?.();
+      
+      // Auto-close after a short delay so the user sees the success state
+      setTimeout(() => {
+        onClose?.();
+      }, 1000);
+    } catch (error: any) {
+      console.error('Failed to resolve quest:', error);
+      Alert.alert('Error', error.message || 'Failed to resolve the quest. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
-    onClose?.();
+    if (!isSubmitting) {
+      onClose?.();
+    }
   };
 
   return (
@@ -74,7 +104,7 @@ const QuestResolutionSheetModal = ({
 
           <View style={styles.headerBlock}>
             <Text style={styles.title}>Complete This Quest?</Text>
-            <Text style={styles.questTitle}>"{QUEST_TITLE}"</Text>
+            <Text style={styles.questTitle}>"{questTitle}"</Text>
           </View>
 
           <View style={styles.section}>
@@ -84,7 +114,7 @@ const QuestResolutionSheetModal = ({
                   setIsCompleted(true);
                 }
               }}
-              disabled={isCompleted}
+              disabled={isCompleted || isSubmitting}
               style={({ pressed }) => [
                 styles.completeButton,
                 isCompleted && styles.completeButtonDone,
@@ -108,12 +138,13 @@ const QuestResolutionSheetModal = ({
 
               <View style={styles.section}>
                 <Text style={styles.ratingPrompt}>
-                  How was <Text style={styles.posterName}>{POSTER_NAME}</Text> as a quest partner?
+                  How was <Text style={styles.posterName}>{acceptorName}</Text> as a quest partner?
                 </Text>
 
                 <View style={styles.ratingRow}>
                   <Pressable
                     onPress={() => setRating('positive')}
+                    disabled={isSubmitting}
                     style={({ pressed }) => [
                       styles.ratingButton,
                       styles.positiveButton,
@@ -134,6 +165,7 @@ const QuestResolutionSheetModal = ({
 
                   <Pressable
                     onPress={() => setRating('negative')}
+                    disabled={isSubmitting}
                     style={({ pressed }) => [
                       styles.ratingButton,
                       styles.negativeButton,
@@ -173,7 +205,7 @@ const QuestResolutionSheetModal = ({
 
                   <View style={styles.rewardTextWrap}>
                     <View style={styles.rewardTopRow}>
-                      <Text style={styles.rewardXpText}>+{XP_REWARD} XP</Text>
+                      <Text style={styles.rewardXpText}>+{xpReward} XP</Text>
                       <Text style={styles.rewardTokenText}>+{tokenReward} Tokens</Text>
                     </View>
                     <Text style={styles.rewardSubtext}>Karma updated. Quest archived.</Text>
@@ -184,14 +216,18 @@ const QuestResolutionSheetModal = ({
               <View style={styles.footer}>
                 <Pressable
                   onPress={handleSubmit}
-                  disabled={!canSubmit || isSubmitted}
+                  disabled={!canSubmit || isSubmitted || isSubmitting}
                   style={({ pressed }) => [
                     styles.submitButton,
-                    (!canSubmit || isSubmitted) && styles.submitButtonDisabled,
+                    (!canSubmit || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
                     canSubmit && !isSubmitted && pressed && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.submitLabel}>{submitLabel}</Text>
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#1a1a1f" />
+                  ) : (
+                    <Text style={styles.submitLabel}>{submitLabel}</Text>
+                  )}
                 </Pressable>
               </View>
             </>
@@ -417,4 +453,3 @@ const styles = StyleSheet.create({
 });
 
 export default QuestResolutionSheetModal;
-              							
