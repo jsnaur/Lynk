@@ -8,7 +8,8 @@ import {
   View,
   Alert,
   KeyboardAvoidingView, 
-  Platform,             
+  Platform,
+  Image, // <-- Make sure to import Image if you want to use avatar_url later!
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
@@ -35,6 +36,7 @@ type UIComment = {
   author: string;
   text: string;
   time: string;
+  avatarUrl?: string | null; // <-- Added to hold the profile picture
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
@@ -53,6 +55,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [comments, setComments] = useState<UIComment[]>([]);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null); // <-- Added to store YOUR profile data
+  
   const [questData, setQuestData] = useState<any>(quest);
   const [loading, setLoading] = useState(false);
 
@@ -61,8 +65,13 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     let commentSubscription: any = null;
 
     const fetchUserAndQuestAndComments = async () => {
+      // 1. Get current authenticated user AND their Profile
       const { data: { user } } = await supabase.auth.getUser();
-      if (mounted && user) setCurrentUserId(user.id);
+      if (mounted && user) {
+        setCurrentUserId(user.id);
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (mounted && profile) setCurrentUserProfile(profile);
+      }
 
       if (quest?.id) {
         const { data: qData, error: qError } = await supabase
@@ -78,22 +87,32 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           }
         }
 
+        // 2. Fetch Comments AND Join the Profiles table
         const { data: cData, error: cError } = await supabase
           .from('comments')
-          .select('*')
+          .select(`
+            *,
+            profiles (
+              display_name,
+              avatar_url
+            )
+          `)
           .eq('quest_id', quest.id)
           .order('created_at', { ascending: true }); 
 
         if (mounted && cData && !cError) {
           const formattedComments = cData.map((c: any) => ({
             id: c.id,
-            author: c.user_id === user?.id ? 'You' : `User ${c.user_id.substring(0, 4)}`,
+            // Use the joined profile data!
+            author: c.user_id === user?.id ? 'You' : (c.profiles?.display_name || 'Unknown User'),
             text: c.content,
             time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            avatarUrl: c.profiles?.avatar_url,
           }));
           setComments(formattedComments);
         }
 
+        // 3. Setup Realtime Subscription
         commentSubscription = supabase
           .channel(`public:comments:quest_id=eq.${quest.id}`)
           .on(
@@ -102,17 +121,26 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             (payload) => {
               if (mounted) {
                 const newC = payload.new;
-                // Ignore our own comments because of optimistic UI
                 if (newC.user_id === user?.id) return; 
 
-                const newFormattedComment = {
-                  id: newC.id,
-                  author: `User ${newC.user_id.substring(0, 4)}`,
-                  text: newC.content,
-                  time: new Date(newC.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                };
-                
-                setComments((prev) => [...prev, newFormattedComment]);
+                // We only get the user_id from realtime, so we must quickly fetch their profile
+                supabase
+                  .from('profiles')
+                  .select('display_name, avatar_url')
+                  .eq('id', newC.user_id)
+                  .single()
+                  .then(({ data: profileData }) => {
+                    if (mounted) {
+                      const newFormattedComment = {
+                        id: newC.id,
+                        author: profileData?.display_name || `User ${newC.user_id.substring(0, 4)}`,
+                        text: newC.content,
+                        time: new Date(newC.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        avatarUrl: profileData?.avatar_url,
+                      };
+                      setComments((prev) => [...prev, newFormattedComment]);
+                    }
+                  });
               }
             }
           )
@@ -170,14 +198,16 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     const trimmed = message.trim();
     if (!trimmed || !currentUserId || !questData?.id) return;
 
-    // Optimistic UI updates
     setMessage('');
     const tempCommentId = `temp-${Date.now()}`;
+    
+    // Use your own profile data for the instant UI update!
     const newLocalComment: UIComment = {
       id: tempCommentId,
-      author: 'You',
+      author: currentUserProfile?.display_name || 'You', 
       text: trimmed,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      avatarUrl: currentUserProfile?.avatar_url,
     };
 
     setComments((prev) => [...prev, newLocalComment]);
@@ -194,7 +224,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     <KeyboardAvoidingView 
       style={styles.modalBackdrop}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // <-- ADD THIS
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       <View style={styles.sheet}>
         
@@ -216,6 +246,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           
           {/* MAIN QUEST CARD */}
           <View style={styles.card}>
+            {/* ... Your Quest Card Content ... */}
             <View style={styles.rowBetween}>
               <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}26` }]}>
                 <View style={[styles.dot, { backgroundColor: categoryColor }]} />
@@ -255,7 +286,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           </View>
 
-          {/* ACCEPT/STATUS BUTTON */}
+          {/* ACCEPT BUTTON */}
           {isPoster ? (
             <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Your Quest</Text></View>
           ) : isTakenBySomeoneElse ? (
@@ -277,7 +308,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           {/* COMMENTS LIST */}
           {comments.map((comment) => (
             <View key={comment.id} style={styles.commentRow}>
-              <Ionicons name="person-circle-outline" size={28} color={FEED_COLORS.textSecondary} />
+              
+              {/* Profile Picture Logic */}
+              {comment.avatarUrl ? (
+                <Image 
+                  source={{ uri: comment.avatarUrl }} 
+                  style={{ width: 28, height: 28, borderRadius: 14 }} 
+                />
+              ) : (
+                <Ionicons name="person-circle-outline" size={28} color={FEED_COLORS.textSecondary} />
+              )}
+              
               <View style={styles.commentContent}>
                 <View style={styles.rowBetween}>
                   <Text style={styles.commentAuthor}>{comment.author}</Text>
@@ -289,7 +330,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           ))}
         </ScrollView>
 
-        {/* INPUT BAR (Now protected by KeyboardAvoidingView) */}
+        {/* INPUT BAR */}
         <View style={styles.inputBar}>
           <TextInput
             value={message}
