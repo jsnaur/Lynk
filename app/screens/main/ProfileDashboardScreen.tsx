@@ -60,11 +60,6 @@ const avatarAssets = [
     Avatar6
 ];
 
-type QuestRowProps = {
-    title: string;
-    count: string;
-};
-
 // XP Thresholds: cumulative XP required to reach each level (capped at Level 10)
 const XP_THRESHOLDS = [
     0,       // Level 1
@@ -121,7 +116,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const { balance } = useTokenBalance();
     const [profile, setProfile] = useState<any>(null);
     const [profileLoading, setProfileLoading] = useState<boolean>(true);
-    const [totalXP, setTotalXP] = useState<number>(0); // Default starting XP (Level 1)
+    const [totalXP, setTotalXP] = useState<number>(0); 
     const [state, setState] = useState<ProfileState>({ 
         badgeSelectorVisible: false,
         editProfileVisible: false,
@@ -163,10 +158,42 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         return unsubscribe;
     }, [fetchProfile, navigation]);
 
-    // Calculate level and progress from total XP
+    // Supabase Realtime Listener for immediate XP updates
+    useEffect(() => {
+        let channel: any;
+
+        const setupRealtime = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            channel = supabase.channel('profile_dashboard_changes')
+                .on(
+                    'postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+                    (payload) => {
+                        if (payload.new) {
+                            setProfile((prev: any) => ({ ...prev, ...payload.new }));
+                            if (payload.new.total_xp !== undefined) {
+                                setTotalXP(payload.new.total_xp);
+                            }
+                        }
+                    }
+                )
+                .subscribe();
+        };
+
+        setupRealtime();
+
+        return () => {
+            if (channel) {
+                supabase.removeChannel(channel);
+            }
+        };
+    }, []);
+
     const levelData = calculateLevelFromXP(totalXP);
     const currentLevel = levelData.currentLevel;
-    const nextLevel = Math.min(currentLevel + 1, 10); // Cap at level 10
+    const nextLevel = Math.min(currentLevel + 1, 10);
     const karmaProgress = levelData.progressPercent;
     const xpInLevel = levelData.xpInCurrentLevel;
     const xpForNextLevel = levelData.xpNeededForNextLevel;
@@ -195,7 +222,6 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 </View>
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    {/* Identity Hero Block */}
                     <View style={styles.identityBlock}>
                         <View style={styles.identityRow}>
                             <View style={styles.avatarColumn}>
@@ -229,7 +255,6 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         </View>
                     </View>
 
-                    {/* Badges Section */}
                     <View style={styles.badgesBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Badges</Text>
@@ -248,7 +273,6 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         </View>
                     </View>
 
-                    {/* Reputation Block */}
                     <View style={styles.reputationBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Reputation</Text>
@@ -295,7 +319,6 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </View>
                         </Pressable>
 
-                        {/* My Quests Row */}
                         <Pressable style={styles.questsShortcut}>
                             <View style={styles.questsLeftCluster}>
                                 <QuestIcon width={26} height={26} />
@@ -316,7 +339,6 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 <BadgeSelectorModal
                     onClose={() => setState({ ...state, badgeSelectorVisible: false })}
                     onDone={(badges) => {
-                        // TODO: Save selected badges to backend
                         setState({ ...state, badgeSelectorVisible: false });
                     }}
                 />
@@ -326,7 +348,6 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 <EditProfileModal
                     onClose={() => setState({ ...state, editProfileVisible: false })}
                     onSave={(data: any) => {
-                        // TODO: Save profile data to backend
                         setState({ ...state, editProfileVisible: false });
                     }}
                 />
@@ -625,24 +646,5 @@ const styles = StyleSheet.create({
     questsSubtitle: {
         fontSize: 11,
         color: FEED_COLORS.textSecondary,
-    },
-    logOutContainer: {
-        paddingHorizontal: 24,
-        paddingVertical: 20,
-        gap: 12,
-    },
-    logOutButton: {
-        height: 40,
-        borderRadius: 10,
-        backgroundColor: 'rgba(255,77,77,0.3)',
-        borderWidth: 1,
-        borderColor: FEED_COLORS.error,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    logOutButtonText: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: FEED_COLORS.error,
     },
 });
