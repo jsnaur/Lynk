@@ -7,8 +7,6 @@ import {
     StyleSheet,
     TextInput,
     ScrollView,
-    Image,
-    Platform,
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,10 +42,11 @@ type ProfileData = {
 export default function EditProfileModal({
     onClose,
     onSave,
+    // Provide empty string for bio so placeholder works properly
     initialData = {
-        displayName: 'Markuu',
-        bio: 'Tell your campus a little about yourself...',
-        major: 'Computer Engineering',
+        displayName: '',
+        bio: '',
+        major: 'Undeclared',
         graduationYear: '2027',
     },
 }: EditProfileModalProps) {
@@ -87,7 +86,6 @@ export default function EditProfileModal({
     };
 
     const handleShopPress = () => {
-        // Navigate to Shop screen
         Alert.alert('Shop', 'Opening Shop...');
     };
 
@@ -101,12 +99,10 @@ export default function EditProfileModal({
                 },
             ]}
         >
-            {/* Modal Handle */}
             <View style={styles.modalHandle}>
                 <View style={styles.handleBar} />
             </View>
 
-            {/* Header */}
             <View style={styles.header}>
                 <Pressable onPress={onClose} hitSlop={10}>
                     <Text style={styles.cancelButton}>Cancel</Text>
@@ -119,13 +115,11 @@ export default function EditProfileModal({
                 </Pressable>
             </View>
 
-            {/* Form Content */}
             <ScrollView
                 style={styles.formContainer}
                 showsVerticalScrollIndicator={false}
                 scrollEventThrottle={16}
             >
-                {/* Display Name Field */}
                 <View style={styles.fieldBlock}>
                     <View style={styles.fieldLabelRow}>
                         <Text style={styles.fieldLabel}>DISPLAY NAME</Text>
@@ -145,7 +139,6 @@ export default function EditProfileModal({
                     />
                 </View>
 
-                {/* Bio Field */}
                 <View style={styles.fieldBlock}>
                     <View style={styles.fieldLabelRow}>
                         <Text style={styles.fieldLabel}>BIO</Text>
@@ -169,7 +162,6 @@ export default function EditProfileModal({
                     </Text>
                 </View>
 
-                {/* Major Field */}
                 <View style={styles.fieldBlock}>
                     <View style={styles.fieldLabelRow}>
                         <Text style={styles.fieldLabel}>MAJOR</Text>
@@ -214,7 +206,6 @@ export default function EditProfileModal({
                     )}
                 </View>
 
-                {/* Graduation Year Field */}
                 <View style={styles.fieldBlock}>
                     <View style={styles.fieldLabelRow}>
                         <Text style={styles.fieldLabel}>GRADUATION YEAR</Text>
@@ -262,36 +253,6 @@ export default function EditProfileModal({
                             ))}
                         </View>
                     )}
-                </View>
-
-                {/* Avatar Nudge Card */}
-                <View style={styles.nudgeCard}>
-                    <View style={styles.nudgeAvatarContainer}>
-                        <Ionicons
-                            name="person-circle"
-                            size={28}
-                            color={FEED_COLORS.favor}
-                        />
-                    </View>
-                    <View style={styles.nudgeTextBlock}>
-                        <Text style={styles.nudgeTitle}>
-                            Want to change your avatar?
-                        </Text>
-                        <Text style={styles.nudgeDescription}>
-                            Unlock new looks and accessories in the Shop.
-                        </Text>
-                    </View>
-                    <Pressable
-                        style={styles.shopLink}
-                        onPress={handleShopPress}
-                    >
-                        <Text style={styles.shopLinkText}>Shop</Text>
-                        <Ionicons
-                            name="arrow-forward"
-                            size={12}
-                            color={FEED_COLORS.favor}
-                        />
-                    </Pressable>
                 </View>
             </ScrollView>
         </Animated.View>
