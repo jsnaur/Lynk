@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,19 +10,39 @@ import {
   Alert,
   KeyboardAvoidingView, 
   Platform,
-  Image, // <-- Make sure to import Image if you want to use avatar_url later!
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+// Icons
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
 import ShareIcon from '../../../assets/QuestDetailsAssets/Share_Icon.svg';
 import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
+
+// Avatar SVGs
+import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
+import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
+import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
+import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
+import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
+import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
+
 import CompactQuestCard from '../../components/cards/CompactQuestCard';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { FEED_COLORS } from '../../constants/colors';
 import { FEED_CATEGORY_BG } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
+
+// Map the avatars to an array so we can select them by index
+const avatarAssets = [
+  Avatar1,
+  Avatar2,
+  Avatar3,
+  Avatar4,
+  Avatar5,
+  Avatar6
+];
 
 type QuestDetailParams = {
   quest?: FeedQuest & { id?: string; user_id?: string; description?: string; bonus_xp?: number; token_bounty?: number; accepted_by?: string };
@@ -34,10 +55,19 @@ type QuestDetailsProps = {
 
 type UIComment = {
   id: string;
+  userId: string;
   author: string;
   text: string;
   time: string;
-  avatarUrl?: string | null; // <-- Added to hold the profile picture
+  avatarIndex?: number | null; // Changed to track the index instead of a URL
+};
+
+type ProfilePreview = {
+  id: string;
+  displayName: string;
+  avatarIndex?: number | null;
+  major?: string | null;
+  graduationYear?: string | null;
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
@@ -52,22 +82,26 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [accepted, setAccepted] = useState(false);
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState('');
-  const [cardExpanded, setCardExpanded] = useState(false); // <-- Track compact card expansion
+  const [cardExpanded, setCardExpanded] = useState(false);
   
   const [comments, setComments] = useState<UIComment[]>([]);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null); // <-- Added to store YOUR profile data
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   
   const [questData, setQuestData] = useState<any>(quest);
   const [loading, setLoading] = useState(false);
+  const [selectedComment, setSelectedComment] = useState<UIComment | null>(null);
+  const [actionsVisible, setActionsVisible] = useState(false);
+  const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
 
   useEffect(() => {
     let mounted = true;
     let commentSubscription: any = null;
 
     const fetchUserAndQuestAndComments = async () => {
-      // 1. Get current authenticated user AND their Profile
+      // 1. Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (mounted && user) {
         setCurrentUserId(user.id);
@@ -89,14 +123,14 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           }
         }
 
-        // 2. Fetch Comments AND Join the Profiles table
+        // 2. Fetch Comments AND Join the Profiles table (fetching avatar_index)
         const { data: cData, error: cError } = await supabase
           .from('comments')
           .select(`
             *,
             profiles (
               display_name,
-              avatar_url
+              avatar_index
             )
           `)
           .eq('quest_id', quest.id)
@@ -105,11 +139,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         if (mounted && cData && !cError) {
           const formattedComments = cData.map((c: any) => ({
             id: c.id,
-            // Use the joined profile data!
+            userId: c.user_id,
             author: c.user_id === user?.id ? 'You' : (c.profiles?.display_name || 'Unknown User'),
             text: c.content,
             time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            avatarUrl: c.profiles?.avatar_url,
+            avatarIndex: c.profiles?.avatar_index, // Store the index here
           }));
           setComments(formattedComments);
         }
@@ -125,20 +159,21 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 const newC = payload.new;
                 if (newC.user_id === user?.id) return; 
 
-                // We only get the user_id from realtime, so we must quickly fetch their profile
+                // Fetch new comment's author profile (fetching avatar_index)
                 supabase
                   .from('profiles')
-                  .select('display_name, avatar_url')
+                  .select('display_name, avatar_index')
                   .eq('id', newC.user_id)
                   .single()
                   .then(({ data: profileData }) => {
                     if (mounted) {
                       const newFormattedComment = {
                         id: newC.id,
+                        userId: newC.user_id,
                         author: profileData?.display_name || `User ${newC.user_id.substring(0, 4)}`,
                         text: newC.content,
                         time: new Date(newC.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        avatarUrl: profileData?.avatar_url,
+                        avatarIndex: profileData?.avatar_index, // Store the index here
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
                     }
@@ -196,7 +231,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const actionText = accepted ? 'Cancel Quest' : 'Accept Quest';
   const commentCount = useMemo(() => comments.length, [comments]);
 
-  // Determine if we should show compact card (quest in progress/pending resolution)
   const isQuestAccepted = questData?.status === 'accepted' || questData?.status === 'in_progress';
   const shouldShowCompactCard = isQuestAccepted;
 
@@ -207,13 +241,14 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setMessage('');
     const tempCommentId = `temp-${Date.now()}`;
     
-    // Use your own profile data for the instant UI update!
+    // Add local comment instantly with current user's index
     const newLocalComment: UIComment = {
       id: tempCommentId,
+      userId: currentUserId,
       author: currentUserProfile?.display_name || 'You', 
       text: trimmed,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      avatarUrl: currentUserProfile?.avatar_url,
+      avatarIndex: currentUserProfile?.avatar_index, 
     };
 
     setComments((prev) => [...prev, newLocalComment]);
@@ -225,6 +260,66 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       console.error('Comment error:', error);
     }
   };
+
+  const openCommentActions = (comment: UIComment) => {
+    setSelectedComment(comment);
+    setActionsVisible(true);
+  };
+
+  const closeCommentActions = () => {
+    setActionsVisible(false);
+  };
+
+  const closeProfilePreview = () => {
+    setProfilePreviewVisible(false);
+  };
+
+  const onViewProfile = async () => {
+    if (!selectedComment?.userId) return;
+
+    // Open with immediate fallback data so the modal still works
+    // even if optional profile fields are unavailable.
+    setSelectedProfile({
+      id: selectedComment.userId,
+      displayName: selectedComment.author === 'You'
+        ? (currentUserProfile?.display_name || 'You')
+        : selectedComment.author,
+      avatarIndex: selectedComment.avatarIndex,
+      major: currentUserProfile?.major || null,
+      graduationYear: currentUserProfile?.graduation_year || null,
+    });
+    setActionsVisible(false);
+    setProfilePreviewVisible(true);
+
+    const { data: profileData, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_index, major, graduation_year')
+      .eq('id', selectedComment.userId)
+      .maybeSingle();
+
+    if (error || !profileData) {
+      return;
+    }
+
+    setSelectedProfile({
+      id: profileData.id,
+      displayName: profileData.display_name || 'Anonymous',
+      avatarIndex: profileData.avatar_index,
+      major: profileData.major,
+      graduationYear: profileData.graduation_year,
+    });
+  };
+
+  const SelectedProfileAvatar = selectedProfile
+    && selectedProfile.avatarIndex !== undefined
+    && selectedProfile.avatarIndex !== null
+    && avatarAssets[selectedProfile.avatarIndex]
+    ? avatarAssets[selectedProfile.avatarIndex]
+    : avatarAssets[0];
+
+  const profileSubtitle = selectedProfile
+    ? `${selectedProfile.major || 'Undeclared'}${selectedProfile.graduationYear ? ` · Class of '${selectedProfile.graduationYear.slice(-2)}` : ''}`
+    : '';
 
   return (
     <KeyboardAvoidingView 
@@ -250,7 +345,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         {/* SCROLLABLE CONTENT */}
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           
-          {/* MAIN QUEST CARD - Compact or Full Version */}
+          {/* MAIN QUEST CARD */}
           {shouldShowCompactCard ? (
             <CompactQuestCard
               quest={questData || quest}
@@ -260,7 +355,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             />
           ) : (
             <View style={styles.card}>
-              {/* ... Your Quest Card Content ... */}
               <View style={styles.rowBetween}>
                 <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}26` }]}>
                   <View style={[styles.dot, { backgroundColor: categoryColor }]} />
@@ -301,7 +395,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           )}
 
-          {/* ACCEPT BUTTON - Only for Open Quests */}
+          {/* ACCEPT BUTTON */}
           {!shouldShowCompactCard && (
             <>
               {isPoster ? (
@@ -325,28 +419,32 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </View>
 
           {/* COMMENTS LIST */}
-          {comments.map((comment) => (
-            <View key={comment.id} style={styles.commentRow}>
-              
-              {/* Profile Picture Logic */}
-              {comment.avatarUrl ? (
-                <Image 
-                  source={{ uri: comment.avatarUrl }} 
-                  style={{ width: 28, height: 28, borderRadius: 14 }} 
-                />
-              ) : (
-                <Ionicons name="person-circle-outline" size={28} color={FEED_COLORS.textSecondary} />
-              )}
-              
-              <View style={styles.commentContent}>
-                <View style={styles.rowBetween}>
-                  <Text style={styles.commentAuthor}>{comment.author}</Text>
-                  <Text style={styles.commentTime}>{comment.time}</Text>
+          {comments.map((comment) => {
+            // Determine which SVG to render
+            const CommentAvatar = (comment.avatarIndex !== undefined && comment.avatarIndex !== null && avatarAssets[comment.avatarIndex]) 
+              ? avatarAssets[comment.avatarIndex] 
+              : avatarAssets[0];
+
+            return (
+              <View key={comment.id} style={styles.commentRow}>
+                
+                {/* Render the local SVG avatar scaled down for the comments */}
+                <Pressable style={styles.commentAvatarWrap} onPress={() => openCommentActions(comment)} hitSlop={8}>
+                  <CommentAvatar width={28} height={28} />
+                </Pressable>
+                
+                <View style={styles.commentContent}>
+                  <View style={styles.rowBetween}>
+                    <Pressable onPress={() => openCommentActions(comment)} hitSlop={8}>
+                      <Text style={styles.commentAuthor}>{comment.author}</Text>
+                    </Pressable>
+                    <Text style={styles.commentTime}>{comment.time}</Text>
+                  </View>
+                  <Text style={styles.commentText}>{comment.text}</Text>
                 </View>
-                <Text style={styles.commentText}>{comment.text}</Text>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </ScrollView>
 
         {/* INPUT BAR */}
@@ -362,6 +460,58 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             <Ionicons name="send" size={16} color={FEED_COLORS.bg} />
           </Pressable>
         </View>
+
+        <Modal
+          visible={actionsVisible}
+          animationType="fade"
+          transparent
+          onRequestClose={closeCommentActions}
+        >
+          <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
+            <Pressable style={styles.actionBubble} onPress={() => {}}>
+              <Pressable style={styles.actionRow} onPress={onViewProfile}>
+                <Ionicons name="person-circle-outline" size={18} color={FEED_COLORS.favor} />
+                <Text style={styles.actionText}>View Profile</Text>
+              </Pressable>
+              <View style={styles.actionDivider} />
+              <View style={styles.actionRowDisabled}>
+                <Ionicons name="flag-outline" size={18} color={FEED_COLORS.textSecondary} />
+                <Text style={styles.actionTextDisabled}>Report (Soon)</Text>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        <Modal
+          visible={profilePreviewVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={closeProfilePreview}
+        >
+          <Pressable style={styles.previewBackdrop} onPress={closeProfilePreview}>
+            <Pressable style={styles.previewCard} onPress={() => {}}>
+              <View style={styles.previewHeader}>
+                <Text style={styles.previewTitle}>Profile</Text>
+                <Pressable onPress={closeProfilePreview} hitSlop={10}>
+                  <Ionicons name="close" size={20} color={FEED_COLORS.textSecondary} />
+                </Pressable>
+              </View>
+
+              <View style={styles.previewIdentityRow}>
+                <View style={styles.previewAvatarFrame}>
+                  <SelectedProfileAvatar width={68} height={68} />
+                </View>
+                <View style={styles.previewIdentityText}>
+                  <Text style={styles.previewName}>{selectedProfile?.displayName || 'Anonymous'}</Text>
+                  <Text style={styles.previewSubtitle}>{profileSubtitle}</Text>
+                  <Text style={styles.previewBio}>
+                    {'Profile details coming soon.'}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
       </View>
     </KeyboardAvoidingView>
@@ -567,6 +717,15 @@ const styles = StyleSheet.create({
     gap: 10,
     flexDirection: 'row',
   },
+  commentAvatarWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: FEED_COLORS.surface2 || '#ececec', // Fallback background behind the SVG
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   commentContent: {
     flex: 1,
     gap: 2,
@@ -612,5 +771,115 @@ const styles = StyleSheet.create({
     backgroundColor: FEED_COLORS.favor,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  actionBubble: {
+    width: '100%',
+    maxWidth: 300,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
+    overflow: 'hidden',
+  },
+  actionRow: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
+  actionRowDisabled: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
+  actionText: {
+    color: FEED_COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  actionTextDisabled: {
+    color: FEED_COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  actionDivider: {
+    height: 1,
+    backgroundColor: FEED_COLORS.border,
+  },
+  previewBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  previewCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.bg,
+    overflow: 'hidden',
+  },
+  previewHeader: {
+    height: 54,
+    borderBottomWidth: 1,
+    borderBottomColor: FEED_COLORS.border,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  previewTitle: {
+    color: FEED_COLORS.textPrimary,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  previewIdentityRow: {
+    flexDirection: 'row',
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  previewAvatarFrame: {
+    width: 84,
+    height: 84,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface2 || FEED_COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  previewIdentityText: {
+    flex: 1,
+    gap: 6,
+    justifyContent: 'center',
+  },
+  previewName: {
+    color: FEED_COLORS.textPrimary,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  previewSubtitle: {
+    color: FEED_COLORS.textSecondary,
+    fontSize: 13,
+  },
+  previewBio: {
+    color: FEED_COLORS.textPrimary,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
