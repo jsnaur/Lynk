@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View, Alert, ActivityIndicator } fr
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '../../lib/supabase';
+import { useTokenBalance } from '../../contexts/TokenContext';
 
 import ThumbUpIcon from '../../../assets/QuestScreenAssets/ThumbUp.svg';
 import ThumbDownIcon from '../../../assets/QuestScreenAssets/Thumb_down_Icon.svg';
@@ -37,6 +38,8 @@ const QuestResolutionSheetModal = ({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { refreshBalance } = useTokenBalance();
+
   const canSubmit = isCompleted && rating !== null;
   const shouldShowRating = isCompleted;
   const shouldShowRewards = rating !== null;
@@ -65,6 +68,7 @@ const QuestResolutionSheetModal = ({
         throw error;
       }
 
+      await refreshBalance(); // Refresh local balance in case the user resolved their own quest
       setIsSubmitted(true);
       onComplete?.();
       

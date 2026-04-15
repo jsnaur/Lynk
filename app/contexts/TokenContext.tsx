@@ -53,8 +53,30 @@ export function TokenBalanceProvider({ children }: { children: React.ReactNode }
       void refreshBalance();
     });
 
+    // Supabase Realtime Listener for immediate token updates across the app
+    let channel: any;
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase.channel('token_context_changes')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+          (payload) => {
+            if (payload.new && payload.new.token_balance !== undefined) {
+              setBalance(Math.max(0, payload.new.token_balance));
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtime();
+
     return () => {
       authListener.subscription.unsubscribe();
+      if (channel) supabase.removeChannel(channel);
     };
   }, [refreshBalance]);
 
