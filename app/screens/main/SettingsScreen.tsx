@@ -12,7 +12,7 @@ import {
   Switch,
   Animated,
 } from 'react-native';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FEED_COLORS } from '../../constants/colors';
@@ -399,7 +399,7 @@ export default function SettingsScreen({ navigation }: any) {
         {/* SECTION 4: APP */}
         <SettingsSection label="APP">
           <SettingsNavRow
-            icon="moon"
+            icon="weather-night"
             iconBgColor="rgba(192, 132, 252, 0.12)"
             iconColor={FEED_COLORS.token}
             title="Appearance"
@@ -433,7 +433,7 @@ export default function SettingsScreen({ navigation }: any) {
             onPress={handleSendFeedback}
           />
           <SettingsNavRow
-            icon="alert-triangle-outline"
+            icon="alert"
             iconBgColor="rgba(255, 215, 0, 0.1)"
             iconColor={FEED_COLORS.xp}
             title="Report a Bug"
