@@ -155,7 +155,7 @@ export default function EditProfileModal({
                     </View>
                     <TextInput
                         style={[styles.textInput, styles.bioInput]}
-                        placeholder="Tell your campus a little about youdrself..."
+                        placeholder="Tell your campus a little about yourself..."
                         placeholderTextColor={FEED_COLORS.textSecondary}
                         value={bio}
                         onChangeText={(text) => setBio(text.slice(0, 100))}
