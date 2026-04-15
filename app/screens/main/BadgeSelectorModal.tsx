@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,9 +8,19 @@ import {
     Image,
     FlatList,
     SafeAreaView,
+    PanResponder,
+    Animated,
+    Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FEED_COLORS } from '../../constants/colors';
+
+// Badge Assets
+const BADGE_ASSETS = {
+    shield: require('../../../assets/ProfileAssets/BadgeShield.png'),
+    medal: require('../../../assets/ProfileAssets/BadgeMedal.png'),
+    hat: require('../../../assets/ProfileAssets/BadgeHat.png'),
+};
 
 type BadgeState = 'default' | 'selected' | 'disabled';
 
@@ -112,6 +122,10 @@ function BadgeItem({ badge, onPress }: BadgeItemProps) {
           ? FEED_COLORS.border
           : FEED_COLORS.textSecondary;
 
+    // Rotate between badge images
+    const badgeImages = [BADGE_ASSETS.shield, BADGE_ASSETS.medal, BADGE_ASSETS.hat];
+    const badgeImage = badgeImages[Math.floor(Math.random() * badgeImages.length)];
+
     return (
         <Pressable
             style={styles.badgeWrapper}
@@ -125,14 +139,14 @@ function BadgeItem({ badge, onPress }: BadgeItemProps) {
                         backgroundColor: containerBg,
                         borderColor: borderColor,
                         borderWidth: borderWidth,
+                        opacity: isDisabled ? 0.5 : 1,
                     },
                 ]}
             >
-                <Ionicons
-                    name="ribbon"
-                    size={32}
-                    color={isDisabled ? 'rgba(138, 138, 154, 0.3)' : '#FFD700'}
-                    style={{ opacity: isDisabled ? 0.3 : 1 }}
+                <Image
+                    source={badgeImage}
+                    style={styles.badgeImage}
+                    resizeMode="contain"
                 />
                 {isSelected && (
                     <View style={styles.checkBadge}>
@@ -164,7 +178,37 @@ export default function BadgeSelectorModal({
     maxBadges = 3,
 }: BadgeSelectorModalProps) {
     const [badges, setBadges] = useState(BADGE_DATA);
+    const panY = useRef(new Animated.Value(0)).current;
+    const [isDragging, setIsDragging] = useState(false);
+
     const selectedCount = badges.filter((b) => b.state === 'selected').length;
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => isDragging,
+            onPanResponderGrant: () => {
+                setIsDragging(true);
+            },
+            onPanResponderMove: (evt, gestureState) => {
+                if (gestureState.dy > 0) {
+                    panY.setValue(gestureState.dy);
+                }
+            },
+            onPanResponderRelease: (evt, gestureState) => {
+                if (gestureState.dy > 100) {
+                    // Dismiss modal
+                    onClose?.();
+                } else {
+                    Animated.spring(panY, {
+                        toValue: 0,
+                        useNativeDriver: false,
+                    }).start();
+                }
+                setIsDragging(false);
+            },
+        })
+    ).current;
 
     const handleBadgePress = (badgeId: string) => {
         setBadges((prevBadges) =>
@@ -186,6 +230,7 @@ export default function BadgeSelectorModal({
             .filter((b) => b.state === 'selected')
             .map((b) => b.id);
         onDone?.(selectedBadges);
+        onClose?.();
     };
 
     const questBadges = badges.filter((b) => b.category === 'quest');
@@ -194,150 +239,176 @@ export default function BadgeSelectorModal({
 
     const selectedBadges = badges
         .filter((b) => b.state === 'selected')
-        .slice(0, 3);
+        .slice(0, maxBadges);
+
+    const animatedStyle = {
+        transform: [{ translateY: panY }],
+    };
 
     return (
-        <View style={styles.container}>
-            {/* Modal Handle */}
-            <View style={styles.modalHandle}>
-                <View style={styles.handleBar} />
-            </View>
+        <>
+            {/* Overlay - Pressable to cancel */}
+            <Pressable
+                style={styles.overlay}
+                onPress={onClose}
+            />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <Text style={styles.headerTitle}>Choose Badges</Text>
-                    <Text style={styles.headerSubtitle}>
-                        {selectedCount} of {maxBadges} selected
-                    </Text>
-                </View>
-                <Pressable
-                    style={styles.doneButton}
-                    onPress={handleDone}
-                >
-                    <Text style={styles.doneButtonText}>Done</Text>
-                </Pressable>
-            </View>
-
-            {/* Selected Badges Preview */}
-            <View style={styles.previewSection}>
-                {Array.from({ length: maxBadges }).map((_, index) => {
-                    const badge = selectedBadges[index];
-                    const isFilled = !!badge;
-                    const isEmpty = !badge;
-
-                    return (
-                        <View
-                            key={index}
-                            style={[
-                                styles.badgeSlot,
-                                isFilled && styles.badgeSlotFilled,
-                                isEmpty && styles.badgeSlotEmpty,
-                            ]}
-                        >
-                            {isFilled && badge?.label === 'Achiever' && (
-                                <Ionicons
-                                    name="star"
-                                    size={32}
-                                    color="#FFD700"
-                                />
-                            )}
-                            {isFilled && badge?.label !== 'Achiever' && (
-                                <Ionicons
-                                    name="ribbon"
-                                    size={32}
-                                    color="#FFD700"
-                                />
-                            )}
-                            {isEmpty && (
-                                <Text style={styles.badgeSlotEmptyText}>
-                                    {index + 1}
-                                </Text>
-                            )}
-                            {!isEmpty && (
-                                <View style={styles.slotDot}>
-                                    <View style={styles.slotDotInner} />
-                                </View>
-                            )}
-                        </View>
-                    );
-                })}
-            </View>
-
-            {/* Badge Grid Sections */}
-            <ScrollView
-                style={styles.badgeGridContainer}
-                showsVerticalScrollIndicator={false}
-                scrollEventThrottle={16}
+            {/* Modal Content */}
+            <Animated.View
+                style={[styles.container, animatedStyle]}
+                {...panResponder.panHandlers}
             >
-                {/* Quest Milestones */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>QUEST MILESTONES</Text>
-                    <View style={styles.badgeGrid}>
-                        {questBadges.map((badge) => (
-                            <BadgeItem
-                                key={badge.id}
-                                badge={badge}
-                                onPress={handleBadgePress}
-                            />
-                        ))}
-                    </View>
+                {/* Modal Handle */}
+                <View style={styles.modalHandle}>
+                    <View style={styles.handleBar} />
                 </View>
 
-                {/* Reputation */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>REPUTATION</Text>
-                    <View style={styles.badgeGrid}>
-                        {reputationBadges.map((badge) => (
-                            <BadgeItem
-                                key={badge.id}
-                                badge={badge}
-                                onPress={handleBadgePress}
-                            />
-                        ))}
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}>
+                        <Text style={styles.headerTitle}>Choose Badges</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {selectedCount} of {maxBadges} selected
+                        </Text>
                     </View>
+                    <Pressable
+                        style={styles.doneButton}
+                        onPress={handleDone}
+                    >
+                        <Text style={styles.doneButtonText}>Done</Text>
+                    </Pressable>
                 </View>
 
-                {/* Special */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>SPECIAL</Text>
-                    <View style={styles.badgeGrid}>
-                        {specialBadges.map((badge) => (
-                            <BadgeItem
-                                key={badge.id}
-                                badge={badge}
-                                onPress={handleBadgePress}
-                            />
-                        ))}
-                    </View>
-                </View>
-            </ScrollView>
+                {/* Selected Badges Preview */}
+                <View style={styles.previewSection}>
+                    {Array.from({ length: maxBadges }).map((_, index) => {
+                        const badge = selectedBadges[index];
+                        const isFilled = !!badge;
+                        const isEmpty = !badge;
 
-            {/* Toast Message */}
-            {selectedCount === maxBadges && (
-                <View style={styles.toast}>
-                    <Ionicons
-                        name="information-circle"
-                        size={14}
-                        color={FEED_COLORS.textSecondary}
-                    />
-                    <Text style={styles.toastText}>Deselect a badge to swap it</Text>
+                        const badgeImages = [BADGE_ASSETS.shield, BADGE_ASSETS.medal, BADGE_ASSETS.hat];
+                        const badgeImage = isFilled ? badgeImages[index % badgeImages.length] : null;
+
+                        return (
+                            <View
+                                key={index}
+                                style={[
+                                    styles.badgeSlot,
+                                    isFilled && styles.badgeSlotFilled,
+                                    isEmpty && styles.badgeSlotEmpty,
+                                ]}
+                            >
+                                {isFilled && badgeImage && (
+                                    <Image
+                                        source={badgeImage}
+                                        style={styles.selectedBadgeImage}
+                                        resizeMode="contain"
+                                    />
+                                )}
+                                {isEmpty && (
+                                    <Text style={styles.badgeSlotEmptyText}>
+                                        {index + 1}
+                                    </Text>
+                                )}
+                                {!isEmpty && (
+                                    <View style={styles.slotDot}>
+                                        <View style={styles.slotDotInner} />
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
                 </View>
-            )}
-        </View>
+
+                {/* Badge Grid Sections */}
+                <ScrollView
+                    style={styles.badgeGridContainer}
+                    showsVerticalScrollIndicator={false}
+                    scrollEventThrottle={16}
+                >
+                    {/* Quest Milestones */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>QUEST MILESTONES</Text>
+                        <View style={styles.badgeGrid}>
+                            {questBadges.map((badge) => (
+                                <BadgeItem
+                                    key={badge.id}
+                                    badge={badge}
+                                    onPress={handleBadgePress}
+                                />
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Reputation */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>REPUTATION</Text>
+                        <View style={styles.badgeGrid}>
+                            {reputationBadges.map((badge) => (
+                                <BadgeItem
+                                    key={badge.id}
+                                    badge={badge}
+                                    onPress={handleBadgePress}
+                                />
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Special */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>SPECIAL</Text>
+                        <View style={styles.badgeGrid}>
+                            {specialBadges.map((badge) => (
+                                <BadgeItem
+                                    key={badge.id}
+                                    badge={badge}
+                                    onPress={handleBadgePress}
+                                />
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Bottom padding */}
+                    <View style={{ height: 20 }} />
+                </ScrollView>
+
+                {/* Toast Message */}
+                {selectedCount === maxBadges && (
+                    <View style={styles.toast}>
+                        <Ionicons
+                            name="information-circle"
+                            size={14}
+                            color={FEED_COLORS.textSecondary}
+                        />
+                        <Text style={styles.toastText}>Deselect a badge to swap it</Text>
+                    </View>
+                )}
+            </Animated.View>
+        </>
     );
 }
 
 const styles = StyleSheet.create({
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1,
+    },
     container: {
-        flex: 1,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '85%',
         backgroundColor: FEED_COLORS.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
+        zIndex: 2,
     },
     modalHandle: {
         alignItems: 'center',
-        paddingVertical: 10,
+        paddingVertical: 12,
+        paddingBottom: 8,
     },
     handleBar: {
         width: 36,
@@ -382,17 +453,18 @@ const styles = StyleSheet.create({
     previewSection: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: 12,
+        alignItems: 'center',
+        gap: 16,
         paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingVertical: 18,
         backgroundColor: FEED_COLORS.bg,
         borderBottomWidth: 1,
         borderBottomColor: FEED_COLORS.border,
     },
     badgeSlot: {
-        width: 64,
-        height: 64,
-        borderRadius: 14,
+        width: 90,
+        height: 90,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1.5,
@@ -401,7 +473,7 @@ const styles = StyleSheet.create({
     badgeSlotFilled: {
         backgroundColor: FEED_COLORS.surface2,
         borderColor: FEED_COLORS.favor,
-        borderWidth: 1.5,
+        borderWidth: 2,
     },
     badgeSlotEmpty: {
         backgroundColor: FEED_COLORS.bg,
@@ -413,12 +485,16 @@ const styles = StyleSheet.create({
         fontWeight: '400',
         color: FEED_COLORS.border,
     },
+    selectedBadgeImage: {
+        width: 56,
+        height: 56,
+    },
     slotDot: {
         position: 'absolute',
-        bottom: 4.5,
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        bottom: 6,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         backgroundColor: FEED_COLORS.favor,
     },
     slotDotInner: {
@@ -430,7 +506,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
     },
     section: {
-        marginBottom: 20,
+        marginBottom: 24,
     },
     sectionTitle: {
         fontSize: 12,
@@ -438,19 +514,19 @@ const styles = StyleSheet.create({
         color: FEED_COLORS.textSecondary,
         letterSpacing: 1.5,
         textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
         textTransform: 'uppercase',
     },
     badgeGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        gap: 10,
+        gap: 12,
     },
     badgeWrapper: {
-        width: '23%',
+        width: '22.5%',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     badgeContainer: {
         width: 64,
@@ -461,24 +537,29 @@ const styles = StyleSheet.create({
         marginBottom: 6,
         position: 'relative',
     },
+    badgeImage: {
+        width: 40,
+        height: 40,
+    },
     checkBadge: {
         position: 'absolute',
-        top: 2,
-        right: 2,
-        width: 16,
-        height: 16,
+        top: 0,
+        right: 0,
+        width: 18,
+        height: 18,
         borderRadius: 12,
         backgroundColor: FEED_COLORS.favor,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: FEED_COLORS.bg,
     },
     badgeLabel: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '400',
         color: FEED_COLORS.textSecondary,
         textAlign: 'center',
+        maxWidth: '100%',
     },
     badgeLabelSelected: {
         fontWeight: '500',

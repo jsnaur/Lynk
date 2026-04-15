@@ -303,18 +303,6 @@ export default function SettingsScreen({ navigation }: any) {
         {/* SECTION 1: ACCOUNT */}
         <SettingsSection label="ACCOUNT">
           <SettingsNavRow
-            icon="person"
-            iconBgColor="rgba(0, 245, 255, 0.15)"
-            iconColor={FEED_COLORS.favor}
-            title="Edit Profile"
-            onPress={() => {
-              navigation.goBack();
-              setImmediate(() => {
-                navigation.setParams({ openEditProfile: true });
-              });
-            }}
-          />
-          <SettingsNavRow
             icon="lock"
             iconBgColor="rgba(0, 245, 255, 0.15)"
             iconColor={FEED_COLORS.favor}
@@ -424,7 +412,7 @@ export default function SettingsScreen({ navigation }: any) {
             }}
           />
           <SettingsNavRow
-            icon="building"
+            icon="office-building"
             iconBgColor="rgba(57, 255, 20, 0.12)"
             iconColor={FEED_COLORS.item}
             title="Campus"
@@ -438,14 +426,14 @@ export default function SettingsScreen({ navigation }: any) {
         {/* SECTION 5: SUPPORT */}
         <SettingsSection label="SUPPORT">
           <SettingsNavRow
-            icon="message-square"
+            icon="message-text-outline"
             iconBgColor="rgba(0, 245, 255, 0.1)"
             iconColor={FEED_COLORS.favor}
             title="Send Feedback"
             onPress={handleSendFeedback}
           />
           <SettingsNavRow
-            icon="alert-triangle"
+            icon="alert-triangle-outline"
             iconBgColor="rgba(255, 215, 0, 0.1)"
             iconColor={FEED_COLORS.xp}
             title="Report a Bug"
@@ -531,9 +519,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 12,
+    paddingTop: 16,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#3A3A48',
   },

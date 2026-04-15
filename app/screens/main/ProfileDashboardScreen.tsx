@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     },
     badgeSlot: {
         flex: 1,
-        height: 112,
+        height: 96,
         borderRadius: 14,
         backgroundColor: FEED_COLORS.surface,
         alignItems: 'center',

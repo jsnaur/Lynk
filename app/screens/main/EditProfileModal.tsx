@@ -155,7 +155,7 @@ export default function EditProfileModal({
                     </View>
                     <TextInput
                         style={[styles.textInput, styles.bioInput]}
-                        placeholder="Tell your campus a little about yourself..."
+                        placeholder="Tell your campus a little about youdrself..."
                         placeholderTextColor={FEED_COLORS.textSecondary}
                         value={bio}
                         onChangeText={(text) => setBio(text.slice(0, 100))}
@@ -262,36 +262,6 @@ export default function EditProfileModal({
                             ))}
                         </View>
                     )}
-                </View>
-
-                {/* Avatar Nudge Card */}
-                <View style={styles.nudgeCard}>
-                    <View style={styles.nudgeAvatarContainer}>
-                        <Ionicons
-                            name="person-circle"
-                            size={28}
-                            color={FEED_COLORS.favor}
-                        />
-                    </View>
-                    <View style={styles.nudgeTextBlock}>
-                        <Text style={styles.nudgeTitle}>
-                            Want to change your avatar?
-                        </Text>
-                        <Text style={styles.nudgeDescription}>
-                            Unlock new looks and accessories in the Shop.
-                        </Text>
-                    </View>
-                    <Pressable
-                        style={styles.shopLink}
-                        onPress={handleShopPress}
-                    >
-                        <Text style={styles.shopLinkText}>Shop</Text>
-                        <Ionicons
-                            name="arrow-forward"
-                            size={12}
-                            color={FEED_COLORS.favor}
-                        />
-                    </Pressable>
                 </View>
             </ScrollView>
         </Animated.View>
