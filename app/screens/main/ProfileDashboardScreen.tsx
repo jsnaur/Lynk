@@ -32,11 +32,27 @@ import QuestIcon from "../../../assets/ProfileAssets/Quest_Icon.svg";
 import BadgeSelectorModal from './BadgeSelectorModal';
 import EditProfileModal from './EditProfileModal';
 
+// Badge Assets and Mapping
+const BADGE_IMAGES = {
+    shield: require("../../../assets/ProfileAssets/BadgeShield.png"),
+    medal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
+    hat: require("../../../assets/ProfileAssets/BadgeHat.png"),
+};
+
+const BADGE_MAPPING: { [key: string]: { image: any; label: string } } = {
+    'quest-1': { image: BADGE_IMAGES.shield, label: 'Guardian' },
+    'quest-2': { image: BADGE_IMAGES.medal, label: 'Achiever' },
+    'quest-3': { image: BADGE_IMAGES.hat, label: 'Scholar' },
+    'rep-1': { image: BADGE_IMAGES.shield, label: 'Helper' },
+    'rep-2': { image: BADGE_IMAGES.medal, label: 'Mentor' },
+    'rep-3': { image: BADGE_IMAGES.hat, label: 'Leader' },
+    'special-1': { image: BADGE_IMAGES.shield, label: 'Pioneer' },
+    'special-2': { image: BADGE_IMAGES.medal, label: 'Champion' },
+    'special-3': { image: BADGE_IMAGES.hat, label: 'Legend' },
+};
+
 const ASSETS = {
     accessory: require("../../../assets/ProfileAssets/Accessory_Face.png"),
-    badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
-    badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
-    badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
     experience: require("../../../assets/ProfileAssets/Experience_Pixel.png"),
     token: require("../../../assets/ProfileAssets/Token_Pixel.png"),
 };
@@ -49,6 +65,7 @@ type ProfileDashboardScreenProps = {
 type ProfileState = {
     badgeSelectorVisible: boolean;
     editProfileVisible?: boolean;
+    selectedBadges: string[];
 };
 
 const avatarAssets = [
@@ -104,10 +121,13 @@ function calculateLevelFromXP(totalXP: number): {
     };
 }
 
-function BadgeSlot({ image }: { image: any }) {
+function BadgeSlot({ image, label }: { image: any; label?: string }) {
     return (
-        <View style={styles.badgeSlot}>
-            <Image source={image} style={styles.badgeImage} />
+        <View style={styles.badgeSlotContainer}>
+            <View style={styles.badgeSlot}>
+                {image && <Image source={image} style={styles.badgeImage} />}
+            </View>
+            {label && <Text style={styles.badgeLabelText} numberOfLines={1}>{label}</Text>}
         </View>
     );
 }
@@ -120,6 +140,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const [state, setState] = useState<ProfileState>({ 
         badgeSelectorVisible: false,
         editProfileVisible: false,
+        selectedBadges: [],
     });
 
     const fetchProfile = useCallback(async () => {
@@ -245,7 +266,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                     <VerifiedIcon width={18} height={18} />
                                 </View>
                                 <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
-                                <Text style={styles.bioText}>This is my bio. Sample text.</Text>
+                                <Text style={styles.bioText}>{profile?.bio || 'Tell your campus a little about yourself...'}</Text>
                                 <Pressable
                                     onPress={() => setState({ ...state, editProfileVisible: true })}
                                 >
@@ -267,9 +288,17 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </Pressable>
                         </View>
                         <View style={styles.badgeRow}>
-                            <BadgeSlot image={ASSETS.badgeShield} />
-                            <BadgeSlot image={ASSETS.badgeMedal} />
-                            <BadgeSlot image={ASSETS.badgeHat} />
+                            {Array.from({ length: 3 }).map((_, index) => {
+                                const badgeId = state.selectedBadges[index];
+                                const badge = badgeId ? BADGE_MAPPING[badgeId] : null;
+                                return (
+                                    <BadgeSlot 
+                                        key={index}
+                                        image={badge?.image} 
+                                        label={badge?.label} 
+                                    />
+                                );
+                            })}
                         </View>
                     </View>
 
@@ -303,7 +332,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
                         </View>
 
-                        <Pressable style={styles.tokenCard}>
+                        <Pressable 
+                            style={styles.tokenCard}
+                            onPress={() => navigation?.navigate('Shop')}
+                        >
                             <View style={styles.tokenLeftCluster}>
                                 <Image source={ASSETS.token} style={styles.tokenIcon} />
                                 <View>
@@ -319,7 +351,16 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </View>
                         </Pressable>
 
-                        <Pressable style={styles.questsShortcut}>
+                        <Pressable 
+                            style={styles.questsShortcut}
+                            onPress={() => {
+                                if (onTabPress) {
+                                    onTabPress('Quests');
+                                } else {
+                                    navigation?.navigate('Main', { screen: 'Quest' });
+                                }
+                            }}
+                        >
                             <View style={styles.questsLeftCluster}>
                                 <QuestIcon width={26} height={26} />
                                 <View>
@@ -339,16 +380,40 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 <BadgeSelectorModal
                     onClose={() => setState({ ...state, badgeSelectorVisible: false })}
                     onDone={(badges) => {
-                        setState({ ...state, badgeSelectorVisible: false });
+                        setState({ ...state, badgeSelectorVisible: false, selectedBadges: badges });
                     }}
                 />
             )}
 
             {state.editProfileVisible && (
                 <EditProfileModal
+                    initialData={{
+                        displayName: profile?.display_name || '',
+                        bio: profile?.bio || '',
+                        major: profile?.major || 'Undeclared',
+                        graduationYear: profile?.graduation_year || '2027',
+                    }}
                     onClose={() => setState({ ...state, editProfileVisible: false })}
-                    onSave={(data: any) => {
-                        setState({ ...state, editProfileVisible: false });
+                    onSave={async (data: any) => {
+                        try {
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user) {
+                                await supabase
+                                    .from('profiles')
+                                    .update({
+                                        display_name: data.displayName,
+                                        bio: data.bio,
+                                        major: data.major,
+                                        graduation_year: data.graduationYear
+                                    })
+                                    .eq('id', user.id);
+                            }
+                            await fetchProfile(); // Refresh Data locally
+                        } catch (e) {
+                            console.error("Error updating profile", e);
+                        } finally {
+                            setState({ ...state, editProfileVisible: false });
+                        }
                     }}
                 />
             )}
@@ -499,8 +564,13 @@ const styles = StyleSheet.create({
         gap: 8,
         justifyContent: 'space-between',
     },
-    badgeSlot: {
+    badgeSlotContainer: {
         flex: 1,
+        alignItems: 'center',
+        gap: 6,
+    },
+    badgeSlot: {
+        width: '100%',
         height: 96,
         borderRadius: 14,
         backgroundColor: FEED_COLORS.surface,
@@ -511,6 +581,12 @@ const styles = StyleSheet.create({
     badgeImage: {
         width: 72,
         height: 72,
+    },
+    badgeLabelText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: FEED_COLORS.textSecondary,
+        textAlign: 'center',
     },
     reputationBlock: {
         paddingHorizontal: 24,

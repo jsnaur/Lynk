@@ -6,11 +6,8 @@ import {
     StyleSheet,
     ScrollView,
     Image,
-    FlatList,
-    SafeAreaView,
-    PanResponder,
     Animated,
-    Modal,
+    PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FEED_COLORS } from '../../constants/colors';
@@ -37,6 +34,7 @@ type BadgeSelectorModalProps = {
     maxBadges?: number;
 };
 
+// Fixed to only have exactly 3 selected default
 const BADGE_DATA: Badge[] = [
     // Quest Milestones
     { id: 'quest-1', label: 'First Quest', category: 'quest', state: 'selected' },
@@ -45,7 +43,7 @@ const BADGE_DATA: Badge[] = [
     { id: 'quest-4', label: 'Sample Quest', category: 'quest', state: 'default' },
     { id: 'quest-5', label: 'Sample Quest', category: 'quest', state: 'default' },
     { id: 'quest-6', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-7', label: 'Achiever', category: 'quest', state: 'selected' },
+    { id: 'quest-7', label: 'Achiever', category: 'quest', state: 'default' },
     { id: 'quest-8', label: 'Sample Quest', category: 'quest', state: 'default' },
     { id: 'quest-9', label: 'Sample Quest', category: 'quest', state: 'default' },
     { id: 'quest-10', label: 'Sample Quest', category: 'quest', state: 'default' },
@@ -63,7 +61,7 @@ const BADGE_DATA: Badge[] = [
     { id: 'rep-4', label: 'Sample Quest', category: 'reputation', state: 'default' },
     { id: 'rep-5', label: 'Sample Quest', category: 'reputation', state: 'default' },
     { id: 'rep-6', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-7', label: 'Achiever', category: 'reputation', state: 'selected' },
+    { id: 'rep-7', label: 'Achiever', category: 'reputation', state: 'default' },
     { id: 'rep-8', label: 'Sample Quest', category: 'reputation', state: 'default' },
     { id: 'rep-9', label: 'Sample Quest', category: 'reputation', state: 'default' },
     { id: 'rep-10', label: 'Sample Quest', category: 'reputation', state: 'default' },
@@ -81,7 +79,7 @@ const BADGE_DATA: Badge[] = [
     { id: 'special-4', label: 'Sample Quest', category: 'special', state: 'default' },
     { id: 'special-5', label: 'Sample Quest', category: 'special', state: 'default' },
     { id: 'special-6', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-7', label: 'Achiever', category: 'special', state: 'selected' },
+    { id: 'special-7', label: 'Achiever', category: 'special', state: 'default' },
     { id: 'special-8', label: 'Sample Quest', category: 'special', state: 'default' },
     { id: 'special-9', label: 'Sample Quest', category: 'special', state: 'default' },
     { id: 'special-10', label: 'Sample Quest', category: 'special', state: 'default' },
@@ -98,6 +96,13 @@ interface BadgeItemProps {
     onPress?: (badgeId: string) => void;
 }
 
+// Fixed stable image generation to prevent flicker
+const getBadgeImage = (id: string) => {
+    const num = parseInt(id.replace(/\D/g, '')) || 0;
+    const badgeImages = [BADGE_ASSETS.shield, BADGE_ASSETS.medal, BADGE_ASSETS.hat];
+    return badgeImages[num % badgeImages.length];
+};
+
 function BadgeItem({ badge, onPress }: BadgeItemProps) {
     const isDefault = badge.state === 'default';
     const isSelected = badge.state === 'selected';
@@ -111,9 +116,7 @@ function BadgeItem({ badge, onPress }: BadgeItemProps) {
 
     const borderColor = isSelected
         ? FEED_COLORS.favor
-        : isDefault
-          ? FEED_COLORS.border
-          : FEED_COLORS.border;
+        : FEED_COLORS.border;
 
     const borderWidth = isSelected ? 2 : 1;
     const labelColor = isSelected
@@ -122,9 +125,7 @@ function BadgeItem({ badge, onPress }: BadgeItemProps) {
           ? FEED_COLORS.border
           : FEED_COLORS.textSecondary;
 
-    // Rotate between badge images
-    const badgeImages = [BADGE_ASSETS.shield, BADGE_ASSETS.medal, BADGE_ASSETS.hat];
-    const badgeImage = badgeImages[Math.floor(Math.random() * badgeImages.length)];
+    const badgeImage = getBadgeImage(badge.id);
 
     return (
         <Pressable
@@ -179,16 +180,15 @@ export default function BadgeSelectorModal({
 }: BadgeSelectorModalProps) {
     const [badges, setBadges] = useState(BADGE_DATA);
     const panY = useRef(new Animated.Value(0)).current;
-    const [isDragging, setIsDragging] = useState(false);
 
     const selectedCount = badges.filter((b) => b.state === 'selected').length;
 
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => isDragging,
-            onPanResponderGrant: () => {
-                setIsDragging(true);
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                // Ensure drag activates only on meaningful vertical gesture to prevent misfires
+                return Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
             },
             onPanResponderMove: (evt, gestureState) => {
                 if (gestureState.dy > 0) {
@@ -197,7 +197,6 @@ export default function BadgeSelectorModal({
             },
             onPanResponderRelease: (evt, gestureState) => {
                 if (gestureState.dy > 100) {
-                    // Dismiss modal
                     onClose?.();
                 } else {
                     Animated.spring(panY, {
@@ -205,7 +204,6 @@ export default function BadgeSelectorModal({
                         useNativeDriver: false,
                     }).start();
                 }
-                setIsDragging(false);
             },
         })
     ).current;
@@ -247,47 +245,40 @@ export default function BadgeSelectorModal({
 
     return (
         <>
-            {/* Overlay - Pressable to cancel */}
             <Pressable
                 style={styles.overlay}
                 onPress={onClose}
             />
 
-            {/* Modal Content */}
-            <Animated.View
-                style={[styles.container, animatedStyle]}
-                {...panResponder.panHandlers}
-            >
-                {/* Modal Handle */}
-                <View style={styles.modalHandle}>
-                    <View style={styles.handleBar} />
-                </View>
-
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <Text style={styles.headerTitle}>Choose Badges</Text>
-                        <Text style={styles.headerSubtitle}>
-                            {selectedCount} of {maxBadges} selected
-                        </Text>
+            <Animated.View style={[styles.container, animatedStyle]}>
+                {/* Apply pan handlers ONLY to the top drag region to prevent scroll interception */}
+                <View style={styles.dragArea}>
+                    <View style={styles.modalHandle} {...panResponder.panHandlers}>
+                        <View style={styles.handleBar} />
                     </View>
-                    <Pressable
-                        style={styles.doneButton}
-                        onPress={handleDone}
-                    >
-                        <Text style={styles.doneButtonText}>Done</Text>
-                    </Pressable>
+
+                    <View style={styles.header}>
+                        <View style={styles.headerLeft}>
+                            <Text style={styles.headerTitle}>Choose Badges</Text>
+                            <Text style={styles.headerSubtitle}>
+                                {selectedCount} of {maxBadges} selected
+                            </Text>
+                        </View>
+                        <Pressable
+                            style={styles.doneButton}
+                            onPress={handleDone}
+                        >
+                            <Text style={styles.doneButtonText}>Done</Text>
+                        </Pressable>
+                    </View>
                 </View>
 
-                {/* Selected Badges Preview */}
                 <View style={styles.previewSection}>
                     {Array.from({ length: maxBadges }).map((_, index) => {
                         const badge = selectedBadges[index];
                         const isFilled = !!badge;
                         const isEmpty = !badge;
-
-                        const badgeImages = [BADGE_ASSETS.shield, BADGE_ASSETS.medal, BADGE_ASSETS.hat];
-                        const badgeImage = isFilled ? badgeImages[index % badgeImages.length] : null;
+                        const badgeImage = isFilled ? getBadgeImage(badge.id) : null;
 
                         return (
                             <View
@@ -320,13 +311,11 @@ export default function BadgeSelectorModal({
                     })}
                 </View>
 
-                {/* Badge Grid Sections */}
                 <ScrollView
                     style={styles.badgeGridContainer}
                     showsVerticalScrollIndicator={false}
                     scrollEventThrottle={16}
                 >
-                    {/* Quest Milestones */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>QUEST MILESTONES</Text>
                         <View style={styles.badgeGrid}>
@@ -340,7 +329,6 @@ export default function BadgeSelectorModal({
                         </View>
                     </View>
 
-                    {/* Reputation */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>REPUTATION</Text>
                         <View style={styles.badgeGrid}>
@@ -354,7 +342,6 @@ export default function BadgeSelectorModal({
                         </View>
                     </View>
 
-                    {/* Special */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>SPECIAL</Text>
                         <View style={styles.badgeGrid}>
@@ -368,11 +355,9 @@ export default function BadgeSelectorModal({
                         </View>
                     </View>
 
-                    {/* Bottom padding */}
                     <View style={{ height: 20 }} />
                 </ScrollView>
 
-                {/* Toast Message */}
                 {selectedCount === maxBadges && (
                     <View style={styles.toast}>
                         <Ionicons
@@ -404,6 +389,9 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         zIndex: 2,
+    },
+    dragArea: {
+        width: '100%',
     },
     modalHandle: {
         alignItems: 'center',
@@ -520,13 +508,13 @@ const styles = StyleSheet.create({
     badgeGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        gap: 12,
+        justifyContent: 'flex-start', // Fixed alignment
+        gap: '2.6%', // Handles spacing evenly
     },
     badgeWrapper: {
-        width: '22.5%',
+        width: '24%', // Exactly 4 per row (25% - accounting for gaps)
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 16,
     },
     badgeContainer: {
         width: 64,
