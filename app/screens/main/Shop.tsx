@@ -261,11 +261,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
-    height: 64,
     borderBottomWidth: 1,
     borderBottomColor: FEED_COLORS.border,
   },
@@ -275,7 +274,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   title: {
-    fontSize: 30,
+    fontSize: 22,
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
     color: FEED_COLORS.textPrimary,

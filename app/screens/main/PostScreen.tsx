@@ -21,10 +21,10 @@ import * as Location from 'expo-location';
 import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
+import { useTokenBalance } from '../../contexts/TokenContext';
 import { FEED_CATEGORY_BG, FEED_COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
-import { useTokenBalance } from '../../contexts/TokenContext';
 
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
@@ -53,7 +53,7 @@ function FieldError({ message, visible }: { message: string; visible: boolean })
 }
 
 export default function PostScreen({ navigation }: { navigation: any }) {
-  const { balance, spendTokens, earnTokens } = useTokenBalance();
+  const { refreshBalance } = useTokenBalance();
   const [category, setCategory] = useState<QuestCategory | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -90,29 +90,17 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   }, [category, titleTrim, descTrim, locTrim]);
 
   useEffect(() => {
-    const recommended = Math.min(appraisal.tokenBounty, TOKEN_MAX, balance);
-    setTokenBounty(recommended);
-  }, [appraisal.tokenBounty, balance]);
-
-  useEffect(() => {
-    setTokenBounty((current) => {
-      const cappedMax = Math.min(TOKEN_MAX, balance);
-      if (current > cappedMax) {
-        return Math.max(TOKEN_MIN, cappedMax);
-      }
-      return current;
-    });
-  }, [balance]);
+    setTokenBounty(appraisal.tokenBounty);
+  }, [appraisal.tokenBounty]);
 
   const changeTokens = useCallback((delta: number) => {
     setTokenBounty((v) => {
-      const cappedMax = Math.min(TOKEN_MAX, balance);
       const next = v + delta;
       if (next < TOKEN_MIN) return TOKEN_MIN;
-      if (next > cappedMax) return cappedMax;
+      if (next > TOKEN_MAX) return TOKEN_MAX;
       return next;
     });
-  }, [balance]);
+  }, []);
 
   const animateDismiss = useCallback(() => {
     if (isDismissingRef.current) return;
@@ -167,19 +155,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
   const publishToSupabase = async () => {
     setIsPublishing(true);
-    let spentForPosting = false;
-
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) throw new Error('You must be logged in to post.');
-
-      if (tokenBounty > 0) {
-        const didSpend = await spendTokens(tokenBounty);
-        if (!didSpend) {
-          throw new Error('Not enough tokens for this bounty.');
-        }
-        spentForPosting = true;
-      }
 
       // Default CIT University fallback
       let lat = 10.2975; 
@@ -202,26 +180,46 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         console.log("Location fetch caught, using default fallback.", locErr.message);
       }
 
-      const { error } = await supabase.from('quests').insert({
-        user_id: user.id,
-        category: category?.toLowerCase(), 
-        title: titleTrim,
-        description: descTrim,
-        location: locTrim,
-        bonus_xp: appraisal.bonusXp,
-        token_bounty: tokenBounty,
-        latitude: lat,
-        longitude: lon,
+      const { error } = await supabase.rpc('create_quest_with_bounty', {
+        p_category: category?.toLowerCase(),
+        p_title: titleTrim,
+        p_description: descTrim,
+        p_location: locTrim,
+        p_bonus_xp: appraisal.bonusXp,
+        p_token_bounty: tokenBounty,
+        p_latitude: lat,
+        p_longitude: lon,
       });
 
-      if (error) throw error;
-      
+      if (error) {
+        const insufficientBalance =
+          error.code === 'P0001' &&
+          typeof error.message === 'string' &&
+          error.message.toLowerCase().includes('insufficient token balance');
+
+        if (insufficientBalance) {
+          throw new Error('Not enough tokens for this bounty. Lower the token reward or earn more tokens.');
+        }
+
+        throw error;
+      }
+
+      await refreshBalance();
       navigation.goBack();
     } catch (error: any) {
-      if (spentForPosting) {
-        await earnTokens(tokenBounty);
+      const isMissingRpc =
+        error?.code === '42883' ||
+        (typeof error?.message === 'string' &&
+          error.message.toLowerCase().includes('create_quest_with_bounty'));
+
+      if (isMissingRpc) {
+        Alert.alert(
+          'Database Update Required',
+          'Quest posting now requires the create_quest_with_bounty RPC. Please run the latest SQL migration in Supabase, then try again.',
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to publish quest.');
       }
-      Alert.alert('Error', error.message || 'Failed to publish quest.');
     } finally {
       setIsPublishing(false);
     }
@@ -230,10 +228,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const onPublish = useCallback(() => {
     setSubmitAttempted(true);
     if (!isValid) return;
-    if (tokenBounty > balance) {
-      Alert.alert('Insufficient tokens', 'Lower the token bounty or earn more tokens from quests.');
-      return;
-    }
 
     Alert.alert(
       'Publish quest?',
@@ -248,7 +242,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         },
       ],
     );
-  }, [isValid, category, appraisal, tokenBounty, balance, publishToSupabase]);
+  }, [isValid, category, appraisal, tokenBounty, publishToSupabase]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -447,7 +441,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <XpSpriteToken width={24} height={24} />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>Token bounty</Text>
-                    <Text style={styles.rewardSub}>Optional - uses your balance ({balance} available)</Text>
+                    <Text style={styles.rewardSub}>Optional — uses your balance</Text>
                   </View>
                 </View>
                 <View style={styles.stepper}>
@@ -466,10 +460,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <Pressable
                     hitSlop={8}
                     onPress={() => changeTokens(1)}
-                    disabled={tokenBounty >= Math.min(TOKEN_MAX, balance)}
+                    disabled={tokenBounty >= TOKEN_MAX}
                     style={({ pressed }) => [
                       styles.stepperHit,
-                      (pressed || tokenBounty >= Math.min(TOKEN_MAX, balance)) && styles.stepperDim,
+                      (pressed || tokenBounty >= TOKEN_MAX) && styles.stepperDim,
                     ]}
                   >
                     <IncrementBtn width={32} height={32} />
