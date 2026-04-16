@@ -1,88 +1,105 @@
-Lynk is a modern, high-performance campus helper platform. It transforms the traditional static profile page into a dynamic, interactive "Quest" hub where users can engage with content, complete tasks, and earn rewards.
+<div align="center">
+  <img src="assets/lynkbanner.jpg" alt="LYNK Logo" width="150"/>
 
-## Features
+  # LYNK
 
-  - **Gamified Profiles:** Every profile acts as a dashboard featuring interactive avatars, earned badges, and XP tracking.
-  - **Quest System:** Create and display "Quests" (tasks or links) that users can interact with to gain XP and tokens.
-  - **In-App Shop:** Spend earned tokens on profile customizations, such as new avatars and rarity-based badges.
+  **Connect. Complete Quests. Earn Rewards.**
 
-## Tech Stack
+</div>
 
-| Layer            | Technology                                    | Purpose / Usage                                                 |
-| ---------------- | --------------------------------------------- | --------------------------------------------------------------- |
-| Frontend         | [React Native](https://reactnative.dev/)      | Mobile app framework for iOS and Android                        |
-|                  | [Expo](https://expo.dev/)                     | Development environment, build & deployment tools               |
-|                  | [TypeScript](https://www.typescriptlang.org/) | Type safety and better code structure                           |
-|                  | [React Navigation](https://reactnavigation.org/)| Bottom tabs and native stack navigation                       |
-| Styling          | SCSS & Linear Gradients                       | Dynamic custom styling and themed visuals                       |
-| Database & Auth  | [Supabase](https://supabase.com/)             | PostgreSQL, authentication, and real-time database updates      |
+---
 
-## Prerequisites
+## 📖 About The Project
 
-| Category         | Tool / Technology         | Purpose / Notes / Installation                                   |
-| ---------------- | ------------------------- | ---------------------------------------------------------------- |
-| System           | Windows / macOS / Linux   | Standard OS for mobile development.                              |
-| Node.js          | Node.js                   | JavaScript runtime for React Native & Expo. v18+ recommended.    |
-| Package Manager  | npm                       | npm comes with Node.js.                                          |
-| Expo CLI         | Expo CLI / Expo Go        | For running and building React Native apps, testing on physical devices. |
+LYNK is a mobile application designed to merge social connectivity with engaging, real-world and digital quests. Users can interact with a dynamic feed, tackle exciting challenges, customize their profiles with unique avatars and badges, and earn rewards through our in-app shop. 
 
-## Cloning and Initialization
+## ✨ Features
 
-**Step 1:** Clone the repository
+- **Interactive Quests:** Accept, track, and complete quests to earn XP and Tokens.
+- **Social Feed:** Share your achievements and interact with the community.
+- **Dynamic Profiles:** Customize your identity with avatars, badges, and unlockable accessories.
+- **In-App Shop:** Spend earned tokens on exclusive profile cosmetics and perks.
+- **Real-Time Notifications:** Stay updated on quest statuses, social interactions, and rewards.
 
-```bash
-  git clone https://github.com/jsnaur/lynk.git
-```
+## 🛠️ Built With
 
-**Step 2:** Navigate into the project folder
+This project is built using modern, cross-platform mobile technologies:
 
-```bash
-  cd lynk
-```
+* **[React Native](https://reactnative.dev/)** - UI Framework
+* **[Expo](https://expo.dev/)** - Development Platform
+* **[TypeScript](https://www.typescriptlang.org/)** - Programming Language
+* **[Supabase](https://supabase.com/)** - Backend as a Service (Database & Authentication)
 
-**Step 3:** Install dependencies
+## 🚀 Getting Started
 
-```bash
-  npm install
-```
+Follow these steps to get a local copy up and running.
 
-**Step 4:** Set up your environment variables
-Create a `.env` file in the root directory and add your Supabase credentials:
+### Prerequisites
 
-```bash
-  EXPO_PUBLIC_SUPABASE_URL=your_supabase_url_here
-  EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-```
+* Node.js (v18 or newer recommended)
+* npm or yarn
+* Expo CLI (`npm install -g expo-cli`)
+* Expo Go app on your physical device (iOS/Android), or a running emulator/simulator.
 
-## Run Locally
+### Installation
 
-**Step 1:** Start the Expo development server
+1. Clone the repository
+   ```sh
+   git clone https://github.com/jsnaur/lynk.git
+   ```
 
-```bash
-  npm start
-```
+2.  Navigate to the project directory
+    ```sh
+    cd lynk
+    ```
+3.  Install NPM packages
+    ```sh
+    npm install
+    ```
+    *or if using yarn:*
+    ```sh
+    yarn install
+    ```
+4.  Start the Expo development server
+    ```sh
+    npx expo start
+    ```
 
-**Step 2:** Choose your development environment
+## 👥 Meet The Team
 
-  - Press `a` in the terminal to open the app on an Android emulator.
-  - Press `i` to open on an iOS simulator.
-  - Scan the QR code with the **Expo Go** app on your physical mobile device.
+We are the creators behind LYNK. Click on our profiles below to see more of our work!
 
-## Developer Profiles
-
-  - **Jesnar T. Tindogan** \<\< Project Manager | Backend \>\>
-
-    [](https://github.com/jsnaur)
-
-  - **Aldrich A. Segura** \<\< Fullstack \>\>
-
-    [](https://github.com/aldrich-star)
-
-  - **Karl Jovanne S. Claudio** \<\< Backend & QA tester \>\>
-
-    [](https://github.com/Jobanned)
-
-  - **Mark Lawrence G. Amatong** \<\< Fullstack \>\>
-
-    [](https://github.com/markuu-exe)
-
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/jsnaur">
+<img src="https://github.com/jsnaur.png" width="100px;" alt="jsnaur" style="border-radius: 50%;"/><br />
+<sub><b>jsnaur</b></sub>
+</a><br />
+<sub>Project Manager | Backend Lead Developer</sub>
+</td>
+<td align="center">
+<a href="https://github.com/aldrich-star">
+<img src="https://github.com/aldrich-star.png" width="100px;" alt="aldrich-star" style="border-radius: 50%;"/><br />
+<sub><b>aldrich-star</b></sub>
+</a><br />
+<sub>Fullstack Developer</sub>
+</td>
+<td align="center">
+<a href="https://github.com/Jobanned">
+<img src="https://github.com/Jobanned.png" width="100px;" alt="Jobanned" style="border-radius: 50%;"/><br />
+<sub><b>Jobanned</b></sub>
+</a><br />
+<sub>Backend Developer | Quality Assurance</sub>
+</td>
+<td align="center">
+<a href="https://github.com/markuu-exe">
+<img src="https://github.com/markuu-exe.png" width="100px;" alt="markuu-exe" style="border-radius: 50%;"/><br />
+<sub><b>markuu-exe</b></sub>
+</a><br />
+<sub>Fullstack Developer</sub>
+</td>
+</tr>
+</table>
+</div>
