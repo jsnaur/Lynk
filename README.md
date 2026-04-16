@@ -1,9 +1,6 @@
 <div align="center">
   <img src="assets/lynkbanner.jpg" alt="LYNK Logo" width="800" height="186" style="max-width: 100%; object-fit: cover;"/>
 
-  # LYNK
-
-  **Connect. Complete Quests. Earn Rewards.**
 
 </div>
 
