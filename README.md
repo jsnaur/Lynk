@@ -6,11 +6,19 @@
 
 ---
 
-## 📖 About The Project
+## About The Project
 
-LYNK is a mobile application designed to merge social connectivity with engaging, real-world and digital quests. Users can interact with a dynamic feed, tackle exciting challenges, customize their profiles with unique avatars and badges, and earn rewards through our in-app shop. 
+LYNK is an exclusive campus questing mobile application designed specifically for the students of the Cebu Institute of Technology - University (CIT - U). By merging social connectivity with engaging real-world and digital challenges, LYNK transforms the university experience into an interactive adventure. To ensure a safe, localized, and authentic community, registration is strictly restricted to users with a valid `@cit.edu` institutional email address.
 
-## ✨ Features
+Students can interact with a dynamic feed, tackle exciting campus-centric challenges, customize their profiles with unique avatars and badges, and earn rewards through our in-app shop.
+
+To elevate the questing experience, LYNK leverages advanced AI integrations to manage and enhance the platform:
+
+- **AI-Powered Feed Algorithm:** An intelligent recommendation system that learns from user interactions to curate a personalized feed, highlighting the most relevant campus quests, trending activities, and social posts.
+- **AI Guild Appraiser:** A smart, automated evaluator that reviews student quest submissions. It assesses the quality and validity of completed tasks to fairly distribute Experience Points (XP) and Tokens.
+- **AI Moderator:** An autonomous moderation system working 24/7 to ensure a respectful and safe campus digital environment by filtering inappropriate content and automatically enforcing community guidelines.
+
+## Features
 
 - **Interactive Quests:** Accept, track, and complete quests to earn XP and Tokens.
 - **Social Feed:** Share your achievements and interact with the community.
@@ -18,27 +26,32 @@ LYNK is a mobile application designed to merge social connectivity with engaging
 - **In-App Shop:** Spend earned tokens on exclusive profile cosmetics and perks.
 - **Real-Time Notifications:** Stay updated on quest statuses, social interactions, and rewards.
 
-## 🛠️ Built With
+## Tech Stack
 
-This project is built using modern, cross-platform mobile technologies:
+| Layer | Technology | Purpose |
+|-------|-----------|----------|
+| Runtime | [React Native](https://reactnative.dev/) | Cross-platform mobile framework for iOS and Android |
+| Tooling | [Expo](https://expo.dev/) | Development environment and build tools |
+| Language | [TypeScript](https://www.typescriptlang.org/) | Type-safe JavaScript for reliable UI components |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) | Utility-first CSS for responsive design system |
+| Backend | [Supabase](https://supabase.com/) | Real-time database, authentication, and API |
+| State Management | React Context | Global state for user authentication and token management |
 
-* **[React Native](https://reactnative.dev/)** - UI Framework
-* **[Expo](https://expo.dev/)** - Development Platform
-* **[TypeScript](https://www.typescriptlang.org/)** - Programming Language
-* **[Supabase](https://supabase.com/)** - Backend as a Service (Database & Authentication)
-
-## 🚀 Getting Started
+## Getting Started
 
 Follow these steps to get a local copy up and running.
 
-### Prerequisites
+## Prerequisites
 
-* Node.js (v18 or newer recommended)
-* npm or yarn
-* Expo CLI (`npm install -g expo-cli`)
-* Expo Go app on your physical device (iOS/Android), or a running emulator/simulator.
+| Requirement | Tool | Details |
+|-------------|------|----------|
+| Node.js | [Node.js v18+](https://nodejs.org/) | JavaScript runtime required for Expo and React Native |
+| Package Manager | npm or yarn | Comes with Node.js; yarn is optional |
+| Expo CLI | `npm install -g expo-cli` | CLI tools for running and building the app |
+| Mobile Testing | [Expo Go App](https://expo.dev/client) | Available on iOS App Store and Google Play Store |
+| Development Device | iOS/Android Device or Emulator | Physical device with Expo Go or simulator/emulator with Expo support |
 
-### Installation
+## Installation
 
 1. Clone the repository
    ```sh
@@ -62,7 +75,7 @@ Follow these steps to get a local copy up and running.
     npx expo start
     ```
 
-## 👥 Meet The Team
+## Meet The Team
 
 We are the creators behind LYNK. Click on our profiles below to see more of our work!
 
