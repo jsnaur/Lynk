@@ -5,53 +5,22 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ShopPixelIcon from '../../../assets/ShopAssets/Shop_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
-import ItemSprite0 from '../../../assets/ShopAssets/Item_Sprite.svg';
-import ItemSprite1 from '../../../assets/ShopAssets/Item_Sprite (1).svg';
-import ItemSprite2 from '../../../assets/ShopAssets/Item_Sprite (2).svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
+import { ACCESSORY_ITEMS, AccessoryItem, AccessorySlot, DEFAULT_OWNED_IDS } from '../../constants/accessories';
 import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
-
-const SPRITES = [ItemSprite0, ItemSprite1, ItemSprite2] as const;
-
-type ShopCategory = 'all' | 'hats' | 'accessories' | 'frames' | 'effects' | 'pets';
+type ShopCategory = 'all' | 'hat' | 'head' | 'pet' | 'effects' | 'frame';
 
 const FILTERS: { key: ShopCategory; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'hats', label: 'Hats' },
-  { key: 'accessories', label: 'Gear' },
-  { key: 'frames', label: 'Frames' },
+  { key: 'hat', label: 'Hats' },
+  { key: 'head', label: 'Head' },
+  { key: 'pet', label: 'Pets' },
   { key: 'effects', label: 'Effects' },
-  { key: 'pets', label: 'Pets' },
+  { key: 'frame', label: 'Frames' },
 ];
-
-type CatalogItem = {
-  id: string;
-  name: string;
-  price: number;
-  category: Exclude<ShopCategory, 'all'>;
-  sprite: 0 | 1 | 2;
-};
-
-const CATALOG: CatalogItem[] = [
-  { id: 'egg-better', name: 'Lucky Egg', price: 11, category: 'pets', sprite: 0 },
-  { id: 'car-mini', name: 'Mini Cruiser', price: 1, category: 'accessories', sprite: 1 },
-  { id: 'shades-pixel', name: 'Pixel Shades', price: 0, category: 'hats', sprite: 2 },
-  { id: 'car-lux', name: 'Campus Limo', price: 153, category: 'accessories', sprite: 0 },
-  { id: 'egg-classic', name: 'Classic Egg', price: 10, category: 'pets', sprite: 1 },
-  { id: 'board-free', name: 'Starter Board', price: 0, category: 'accessories', sprite: 2 },
-  { id: 'shades-gold', name: 'Gold Frames', price: 69, category: 'hats', sprite: 0 },
-  { id: 'shades-alt', name: 'Night Lens', price: 0, category: 'hats', sprite: 1 },
-  { id: 'egg-rare', name: 'Rare Egg', price: 50, category: 'pets', sprite: 2 },
-  { id: 'frame-neon', name: 'Neon Frame', price: 25, category: 'frames', sprite: 0 },
-  { id: 'fx-spark', name: 'Spark Trail', price: 40, category: 'effects', sprite: 1 },
-  { id: 'pet-bot', name: 'Buddy Bot', price: 99, category: 'pets', sprite: 2 },
-];
-
-const INITIAL_OWNED = new Set(['shades-pixel', 'shades-alt', 'board-free']);
 const GRID_GAP = 10;
 const H_PADDING = 16;
 
@@ -63,9 +32,9 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const navigation = useNavigation<any>();
   const { balance, spendTokens } = useTokenBalance();
   const [filter, setFilter] = useState<ShopCategory>('all');
-  const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(INITIAL_OWNED));
-  const [equippedId, setEquippedId] = useState<string>('shades-pixel');
-  const [detailItem, setDetailItem] = useState<CatalogItem | null>(null);
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
+  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AccessorySlot, string>>>({});
+  const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
 
   const columnWidth = useMemo(() => {
     const w = Dimensions.get('window').width;
@@ -73,17 +42,22 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   }, []);
 
   const visibleItems = useMemo(
-    () => (filter === 'all' ? CATALOG : CATALOG.filter((i) => i.category === filter)),
+    () => (
+      filter === 'all'
+        ? ACCESSORY_ITEMS
+        : ACCESSORY_ITEMS.filter((item) => item.slot.toLowerCase() === filter)
+    ),
     [filter],
   );
 
-  const equippedItem = useMemo(
-    () => CATALOG.find((i) => i.id === equippedId),
-    [equippedId],
-  );
-  const EquippedSprite = equippedItem ? SPRITES[equippedItem.sprite] : null;
+  const equippedItem = useMemo(() => {
+    const appliedId = appliedAccessories.Hat ?? appliedAccessories.Head ?? appliedAccessories.Pet;
+    return ACCESSORY_ITEMS.find((item) => item.id === appliedId);
+  }, [appliedAccessories]);
 
-  const completePurchase = useCallback(async (item: CatalogItem) => {
+  const EquippedSprite = equippedItem?.Sprite ?? null;
+
+  const completePurchase = useCallback(async (item: AccessoryItem) => {
     if (ownedIds.has(item.id)) return;
     if (item.price > 0) {
       const didSpend = await spendTokens(item.price);
@@ -93,16 +67,19 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       }
     }
     setOwnedIds((prev) => new Set(prev).add(item.id));
-    setEquippedId(item.id);
+    setAppliedAccessories((prev) => ({ ...prev, [item.slot]: item.id }));
   }, [ownedIds, spendTokens]);
 
-  const equip = useCallback((item: CatalogItem) => {
-    setEquippedId(item.id);
+  const equip = useCallback((item: AccessoryItem) => {
+    setAppliedAccessories((prev) => ({ ...prev, [item.slot]: item.id }));
   }, []);
 
   const onCustomize = useCallback(() => {
-    navigation.navigate('Customize');
-  }, [navigation]);
+    navigation.navigate('Customize', {
+      initialOwnedAccessoryIds: Array.from(ownedIds),
+      initialAppliedAccessories: appliedAccessories,
+    });
+  }, [appliedAccessories, navigation, ownedIds]);
 
   return (
     <View style={styles.root}>
@@ -172,8 +149,8 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
           <View style={styles.grid}>
             {visibleItems.map((item) => {
               const owned = ownedIds.has(item.id);
-              const equipped = equippedId === item.id;
-              const Sprite = SPRITES[item.sprite];
+              const equipped = appliedAccessories[item.slot] === item.id;
+              const Sprite = item.Sprite;
               return (
                 <Pressable
                   key={item.id}
@@ -229,13 +206,13 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
             id: detailItem.id,
             name: detailItem.name,
             price: detailItem.price,
-            category: detailItem.category,
-            sprite: detailItem.sprite,
+            category: detailItem.slot.toLowerCase(),
+            sprite: 0,
           }}
           balance={balance}
           owned={ownedIds.has(detailItem.id)}
-          equipped={equippedId === detailItem.id}
-          Sprite={SPRITES[detailItem.sprite]}
+          equipped={appliedAccessories[detailItem.slot] === detailItem.id}
+          Sprite={detailItem.Sprite}
           onClose={() => setDetailItem(null)}
           onPurchase={() => {
             if (!detailItem) return;

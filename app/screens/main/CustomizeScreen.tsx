@@ -393,6 +393,35 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 20,
+  },
+  baseAvatar: {
+    zIndex: 2, 
+  },
+  overlayBase: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overlayHat: {
+    top: -12,
+    zIndex: 4, 
+  },
+  overlayHead: {
+    top: 20,
+    zIndex: 3, 
+  },
+  overlayFilter: {
+    width: 84,
+    height: 84,
+    zIndex: 8,
+    opacity: 0.4,
+  },
+  overlayFrame: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    zIndex: 10,
   },
   previewContent: {
     flex: 1,

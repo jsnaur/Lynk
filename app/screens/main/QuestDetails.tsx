@@ -59,7 +59,7 @@ type UIComment = {
   author: string;
   text: string;
   time: string;
-  avatarIndex?: number | null; // Changed to track the index instead of a URL
+  avatarIndex?: number | null; 
 };
 
 type ProfilePreview = {
@@ -68,6 +68,7 @@ type ProfilePreview = {
   avatarIndex?: number | null;
   major?: string | null;
   graduationYear?: string | null;
+  bio?: string | null; // Added bio type
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
@@ -123,7 +124,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           }
         }
 
-        // 2. Fetch Comments AND Join the Profiles table (fetching avatar_index)
+        // 2. Fetch Comments AND Join the Profiles table
         const { data: cData, error: cError } = await supabase
           .from('comments')
           .select(`
@@ -143,7 +144,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             author: c.user_id === user?.id ? 'You' : (c.profiles?.display_name || 'Unknown User'),
             text: c.content,
             time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            avatarIndex: c.profiles?.avatar_index, // Store the index here
+            avatarIndex: c.profiles?.avatar_index, 
           }));
           setComments(formattedComments);
         }
@@ -159,7 +160,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 const newC = payload.new;
                 if (newC.user_id === user?.id) return; 
 
-                // Fetch new comment's author profile (fetching avatar_index)
+                // Fetch new comment's author profile
                 supabase
                   .from('profiles')
                   .select('display_name, avatar_index')
@@ -173,7 +174,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         author: profileData?.display_name || `User ${newC.user_id.substring(0, 4)}`,
                         text: newC.content,
                         time: new Date(newC.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        avatarIndex: profileData?.avatar_index, // Store the index here
+                        avatarIndex: profileData?.avatar_index,
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
                     }
@@ -277,8 +278,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const onViewProfile = async () => {
     if (!selectedComment?.userId) return;
 
-    // Open with immediate fallback data so the modal still works
-    // even if optional profile fields are unavailable.
+    // Open with immediate fallback data (now including bio)
     setSelectedProfile({
       id: selectedComment.userId,
       displayName: selectedComment.author === 'You'
@@ -287,13 +287,15 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       avatarIndex: selectedComment.avatarIndex,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
+      bio: currentUserProfile?.bio || null, // Fallback bio added
     });
     setActionsVisible(false);
     setProfilePreviewVisible(true);
 
+    // Fetch the updated profile data including the bio
     const { data: profileData, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_index, major, graduation_year')
+      .select('id, display_name, avatar_index, major, graduation_year, bio') // Added bio to the query
       .eq('id', selectedComment.userId)
       .maybeSingle();
 
@@ -307,6 +309,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       avatarIndex: profileData.avatar_index,
       major: profileData.major,
       graduationYear: profileData.graduation_year,
+      bio: profileData.bio, // Set the fetched bio here
     });
   };
 
@@ -504,8 +507,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 <View style={styles.previewIdentityText}>
                   <Text style={styles.previewName}>{selectedProfile?.displayName || 'Anonymous'}</Text>
                   <Text style={styles.previewSubtitle}>{profileSubtitle}</Text>
+                  {/* Updated Bio render here! */}
                   <Text style={styles.previewBio}>
-                    {'Profile details coming soon.'}
+                    {selectedProfile?.bio || 'Tell your campus a little about yourself...'}
                   </Text>
                 </View>
               </View>
@@ -722,7 +726,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: FEED_COLORS.surface2 || '#ececec', // Fallback background behind the SVG
+    backgroundColor: FEED_COLORS.surface2 || '#ececec',
     alignItems: 'center',
     justifyContent: 'center',
   },
