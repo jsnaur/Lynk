@@ -6,13 +6,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '../../lib/supabase'; 
 
-import { ACCESSORY_ITEMS, AccessorySlot, DEFAULT_OWNED_IDS, SLOTS } from '../../constants/accessories';
-import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
+import { 
+  ACCESSORY_ITEMS, 
+  AvatarSlot, 
+  ALL_SLOTS_Z_ORDER, 
+  BASE_TRAIT_SLOTS, 
+  WEARABLE_SLOTS 
+} from '../../constants/accessories';
+import { FEED_COLORS } from '../../constants/colors';
+
+type UI_CATEGORY = 'Base' | 'Wearables';
 
 type CustomizeScreenProps = {
   initialOwnedAccessoryIds?: string[];
-  initialAppliedAccessories?: Partial<Record<AccessorySlot, string>>;
-  onApplyAccessory?: (slot: AccessorySlot, accessoryId: string) => void;
+  initialAppliedAccessories?: Partial<Record<AvatarSlot, string>>;
+  onApplyAccessory?: (slot: AvatarSlot, accessoryId: string) => void;
 };
 
 export default function CustomizeScreen({
@@ -27,9 +35,10 @@ export default function CustomizeScreen({
     []
   );
 
-  const [activeSlot, setActiveSlot] = useState<AccessorySlot>('Hat');
+  const [activeCategory, setActiveCategory] = useState<UI_CATEGORY>('Base');
+  const [activeSlot, setActiveSlot] = useState<AvatarSlot>('Body');
   const [selectedAccessoryId, setSelectedAccessoryId] = useState<string | null>(null);
-  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AccessorySlot, string>>>(
+  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>(
     initialAppliedAccessories ?? {}
   );
   const [isSaving, setIsSaving] = useState(false);
@@ -47,18 +56,30 @@ export default function CustomizeScreen({
 
       const { data, error } = await supabase
         .from('user_avatars')
-        .select('hat, head, pet, effects, frame')
+        .select(`
+          background, back_accessory, body, bottom, top, 
+          eyes, mouth, hair_base, headgear, hair_fringe, 
+          accessory, left_hand, right_hand
+        `)
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error || !data || !isMounted) return;
 
       setAppliedAccessories({
-        Hat: data.hat ?? undefined,
-        Head: data.head ?? undefined,
-        Pet: data.pet ?? undefined,
-        Effects: data.effects ?? undefined,
-        Frame: data.frame ?? undefined,
+        Background: data.background ?? undefined,
+        BackAccessory: data.back_accessory ?? undefined,
+        Body: data.body ?? undefined,
+        Bottom: data.bottom ?? undefined,
+        Top: data.top ?? undefined,
+        Eyes: data.eyes ?? undefined,
+        Mouth: data.mouth ?? undefined,
+        HairBase: data.hair_base ?? undefined,
+        Headgear: data.headgear ?? undefined,
+        HairFringe: data.hair_fringe ?? undefined,
+        Accessory: data.accessory ?? undefined,
+        LeftHand: data.left_hand ?? undefined,
+        RightHand: data.right_hand ?? undefined,
       });
     };
 
@@ -68,6 +89,14 @@ export default function CustomizeScreen({
       isMounted = false;
     };
   }, []);
+
+  const currentSlots = activeCategory === 'Base' ? BASE_TRAIT_SLOTS : WEARABLE_SLOTS;
+
+  // Auto-switch to the first slot of the category when changing categories
+  useEffect(() => {
+    setActiveSlot(currentSlots[0]);
+    setSelectedAccessoryId(null);
+  }, [activeCategory]);
 
   const slotItems = useMemo(
     () => ACCESSORY_ITEMS.filter((item) => item.slot === activeSlot),
@@ -87,7 +116,6 @@ export default function CustomizeScreen({
   const isSelectedApplied = 
     !!selectedAccessory && appliedAccessories[selectedAccessory.slot] === selectedAccessory.id;
 
-  // You can interact if an item is selected, you own it, and it's not currently saving.
   const canInteract = 
     !!selectedAccessory && 
     ownedIds.has(selectedAccessory.id) && 
@@ -104,14 +132,11 @@ export default function CustomizeScreen({
     const previousAppliedState = appliedAccessories;
     const slotToUpdate = selectedAccessory.slot;
 
-    // 1. Optimistic UI Update (Equip OR Unequip)
+    // Optimistic UI Update
     const newAppliedState = { ...appliedAccessories };
-    
     if (isSelectedApplied) {
-      // If it's already applied, we unequip it
       delete newAppliedState[slotToUpdate];
     } else {
-      // Otherwise, we equip it
       newAppliedState[slotToUpdate] = selectedAccessory.id;
     }
     
@@ -130,16 +155,24 @@ export default function CustomizeScreen({
       return;
     }
 
-    // 2. Save to Supabase user_avatars table
+    // Save to Supabase using new snake_case columns
     const { error } = await supabase
       .from('user_avatars')
       .upsert({
         user_id: user.id,
-        hat: newAppliedState.Hat || null,
-        head: newAppliedState.Head || null,
-        pet: newAppliedState.Pet || null,
-        effects: newAppliedState.Effects || null,
-        frame: newAppliedState.Frame || null,
+        background: newAppliedState.Background || null,
+        back_accessory: newAppliedState.BackAccessory || null,
+        body: newAppliedState.Body || null,
+        bottom: newAppliedState.Bottom || null,
+        top: newAppliedState.Top || null,
+        eyes: newAppliedState.Eyes || null,
+        mouth: newAppliedState.Mouth || null,
+        hair_base: newAppliedState.HairBase || null,
+        headgear: newAppliedState.Headgear || null,
+        hair_fringe: newAppliedState.HairFringe || null,
+        accessory: newAppliedState.Accessory || null,
+        left_hand: newAppliedState.LeftHand || null,
+        right_hand: newAppliedState.RightHand || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
@@ -160,69 +193,64 @@ export default function CustomizeScreen({
       <StatusBar style="light" />
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
-          <Text style={styles.title}>Customize your Avatar</Text>
+          <Text style={styles.title}>Customize</Text>
         </View>
 
         <View style={styles.previewCard}>
-          {/* Wrapped in a relative container so the Pet frame can hang outside */}
+          {/* Main Rendering Container: Sized up from 45x45 to display properly */}
           <View style={styles.avatarContainer}>
-            <View style={styles.avatarCircle}>
-              {/* Base Avatar */}
-              <Ionicons name="person" size={48} color={FEED_COLORS.textPrimary} style={styles.baseAvatar} />
+            
+            {/* The exact rendering order handles Z-Index correctly in React Native */}
+            {ALL_SLOTS_Z_ORDER.map((slot) => {
+              const accessoryId = appliedAccessories[slot];
+              if (!accessoryId) return null;
 
-              {/* Render all applied accessories on the avatar EXCEPT the Pet */}
-              {SLOTS.filter(slot => slot !== 'Pet').map((slot) => {
-                const accessoryId = appliedAccessories[slot];
-                if (!accessoryId) return null;
+              const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+              if (!accessory) return null;
 
-                const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
-                if (!accessory) return null;
+              const Sprite = accessory.Sprite;
 
-                const Sprite = accessory.Sprite; // FIX 1: Use .Sprite
-                
-                const overlayStyle = 
-                  slot === 'Hat' ? styles.overlayHat :
-                  slot === 'Head' ? styles.overlayHead :
-                  slot === 'Effects' ? styles.overlayFilter :
-                  slot === 'Frame' ? styles.overlayFrame : {};
-
-                const iconSize = (slot === 'Frame' || slot === 'Effects') ? 84 : 40;
-
-                return (
-                  <View key={slot} style={[styles.overlayBase, overlayStyle]} pointerEvents="none">
-                    <Sprite width={iconSize} height={iconSize} />
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Separate Pet Frame */}
-            <View style={styles.petFrame}>
-              {(() => {
-                const petId = appliedAccessories['Pet'];
-                if (!petId) return (
-                  <Ionicons name="paw" size={16} color={FEED_COLORS.textSecondary} style={{ opacity: 0.3 }} />
-                );
-                
-                const petItem = ACCESSORY_ITEMS.find(item => item.id === petId);
-                if (!petItem) return null;
-
-                const PetSprite = petItem.Sprite; // FIX 2: Use .Sprite
-                return <PetSprite width={24} height={24} />;
-              })()}
-            </View>
+              return (
+                <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
+                  {/* We set width/height to 100% so the 45x45 SVG scales up to fill the 180x180 container perfectly */}
+                  <Sprite width="100%" height="100%" />
+                </View>
+              );
+            })}
           </View>
 
-          <View style={styles.previewTextWrap}>
-            <Text style={styles.previewLabel}>Active {activeSlot}</Text>
-            <Text style={styles.previewName}>{activeAccessoryForSlot?.name ?? 'None'}</Text>
+          <View style={styles.previewContent}>
+            {/* Top Level Category Toggle */}
+            <View style={styles.categoryToggleContainer}>
+              <Pressable
+                style={[styles.catBtn, activeCategory === 'Base' && styles.catBtnActive]}
+                onPress={() => setActiveCategory('Base')}
+              >
+                <Text style={[styles.catBtnText, activeCategory === 'Base' && styles.catBtnTextActive]}>
+                  Base Traits
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.catBtn, activeCategory === 'Wearables' && styles.catBtnActive]}
+                onPress={() => setActiveCategory('Wearables')}
+              >
+                <Text style={[styles.catBtnText, activeCategory === 'Wearables' && styles.catBtnTextActive]}>
+                  Wearables
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.previewTextWrap}>
+              <Text style={styles.previewLabel}>Active {activeSlot}</Text>
+              <Text style={styles.previewName}>{activeAccessoryForSlot?.name ?? 'None'}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Slot Tabs */}
+        {/* Dynamic Slot Tabs based on activeCategory */}
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
-            {SLOTS.map((slot) => {
+            {currentSlots.map((slot) => {
               const isActiveTab = activeSlot === slot;
               return (
                 <Pressable
@@ -243,14 +271,14 @@ export default function CustomizeScreen({
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
           {slotItems.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No accessories available for this slot yet.</Text>
+              <Text style={styles.emptyStateText}>No items available for this slot yet.</Text>
             </View>
           ) : (
             slotItems.map((item) => {
               const owned = ownedIds.has(item.id);
               const selected = selectedAccessoryId === item.id;
               const applied = appliedAccessories[item.slot] === item.id;
-              const Sprite = item.Sprite; // FIX 3: Use .Sprite
+              const Sprite = item.Sprite;
 
               return (
                 <Pressable
@@ -275,7 +303,7 @@ export default function CustomizeScreen({
                   <View style={styles.itemRight}>
                     {applied ? (
                       <View style={styles.statePill}>
-                        <Text style={styles.statePillText}>Applied</Text>
+                        <Text style={styles.statePillText}>Equipped</Text>
                       </View>
                     ) : selected ? (
                       <Ionicons name="checkmark-circle" size={22} color={FEED_COLORS.item} />
@@ -305,7 +333,7 @@ export default function CustomizeScreen({
                   ? 'Select an Item' 
                   : isSelectedApplied 
                     ? `Unequip ${selectedAccessory.slot}` 
-                    : `Apply to ${selectedAccessory.slot}`
+                    : `Equip to ${selectedAccessory.slot}`
               }
             </Text>
           </Pressable>
@@ -345,35 +373,24 @@ const styles = StyleSheet.create({
     backgroundColor: FEED_COLORS.surface,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
   },
   avatarContainer: {
-    position: 'relative',
-    width: 84,
-    height: 84,
-  },
-  avatarCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 140, // Scaled up size to let 45x45 pixels look crisp
+    height: 140,
     backgroundColor: FEED_COLORS.surface2,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: FEED_COLORS.border,
-    position: 'relative', 
-    overflow: 'hidden', 
+    position: 'relative',
+    overflow: 'hidden',
   },
-  petFrame: {
+  layerAbsolute: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: FEED_COLORS.surface,
-    borderWidth: 1,
-    borderColor: FEED_COLORS.border,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
@@ -406,8 +423,42 @@ const styles = StyleSheet.create({
     borderRadius: 42,
     zIndex: 10,
   },
-  previewTextWrap: {
+  previewContent: {
     flex: 1,
+    justifyContent: 'space-between',
+    height: 140,
+    paddingVertical: 4,
+  },
+  categoryToggleContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  catBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: FEED_COLORS.surface2,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  catBtnActive: {
+    backgroundColor: `${FEED_COLORS.favor}15`,
+    borderColor: FEED_COLORS.favor,
+  },
+  catBtnText: {
+    fontSize: 12,
+    color: FEED_COLORS.textSecondary,
+    fontFamily: 'DMSans-Medium',
+  },
+  catBtnTextActive: {
+    color: FEED_COLORS.favor,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '700',
+  },
+  previewTextWrap: {
+    justifyContent: 'flex-end',
   },
   previewLabel: {
     fontSize: 12,
@@ -415,8 +466,8 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Medium',
   },
   previewName: {
-    marginTop: 2,
-    fontSize: 16,
+    marginTop: 4,
+    fontSize: 18,
     color: FEED_COLORS.textPrimary,
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
@@ -429,7 +480,7 @@ const styles = StyleSheet.create({
   tabsContent: {
     paddingHorizontal: 16,
     gap: 8,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   tab: {
     paddingHorizontal: 16,
@@ -488,7 +539,7 @@ const styles = StyleSheet.create({
   },
   itemCardSelected: {
     borderColor: FEED_COLORS.favor,
-    backgroundColor: 'rgba(0, 245, 255, 0.09)',
+    backgroundColor: `${FEED_COLORS.favor}15`,
   },
   itemLeft: {
     flexDirection: 'row',
