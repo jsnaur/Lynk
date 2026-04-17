@@ -7,9 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
-import { ACCESSORY_ITEMS, AccessoryItem, AccessorySlot, DEFAULT_OWNED_IDS } from '../../constants/accessories';
+import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS } from '../../constants/accessories';
 import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
-import { ACCESSORY_ITEMS, DEFAULT_OWNED_IDS } from '../../constants/accessories';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 
@@ -23,41 +22,21 @@ const FILTERS: { key: ShopCategory; label: string }[] = [
   { key: 'wearables', label: 'Wearables' },
 ];
 
-type CatalogItem = {
-  id: string;
-  name: string;
-  price: number;
-  category: Exclude<ShopCategory, 'all'>;
-  slot: string;
-  Sprite: any;
+const SLOT_TO_CATEGORY: { [key: string]: ShopCategory } = {
+  'Body': 'body',
+  'HairBase': 'hair',
+  'HairFringe': 'hair',
+  'Eyes': 'face',
+  'Mouth': 'face',
+  'Top': 'wearables',
+  'Bottom': 'wearables',
+  'BackAccessory': 'wearables',
+  'Headgear': 'wearables',
+  'Accessory': 'wearables',
+  'LeftHand': 'wearables',
+  'RightHand': 'wearables',
+  'Background': 'wearables',
 };
-
-const buildCatalog = (): CatalogItem[] => {
-  const slots: { [key: string]: ShopCategory } = {
-    'Body': 'body',
-    'HairBase': 'hair',
-    'Eyes': 'face',
-    'Mouth': 'face',
-    'Top': 'wearables',
-    'Bottom': 'wearables',
-    'BackAccessory': 'wearables',
-    'Headgear': 'wearables',
-    'Accessory': 'wearables',
-    'LeftHand': 'wearables',
-    'RightHand': 'wearables',
-  };
-
-  return ACCESSORY_ITEMS.map(item => ({
-    id: item.id,
-    name: item.name,
-    price: item.price,
-    category: slots[item.slot] as Exclude<ShopCategory, 'all'>,
-    slot: item.slot,
-    Sprite: item.Sprite,
-  }));
-};
-
-const CATALOG = buildCatalog();
 const GRID_GAP = 10;
 const H_PADDING = 16;
 
@@ -70,7 +49,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const { balance, spendTokens } = useTokenBalance();
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
-  const [detailItem, setDetailItem] = useState<CatalogItem | null>(null);
+  const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
 
   const columnWidth = useMemo(() => {
     const w = Dimensions.get('window').width;
@@ -81,7 +60,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     () => (
       filter === 'all'
         ? ACCESSORY_ITEMS
-        : ACCESSORY_ITEMS.filter((item) => item.slot.toLowerCase() === filter)
+        : ACCESSORY_ITEMS.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter)
     ),
     [filter],
   );
@@ -196,13 +175,13 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
             id: detailItem.id,
             name: detailItem.name,
             price: detailItem.price,
-            category: detailItem.category,
+            category: SLOT_TO_CATEGORY[detailItem.slot] as Exclude<ShopCategory, 'all'>,
             sprite: 0,
           }}
           balance={balance}
           owned={ownedIds.has(detailItem.id)}
           equipped={false}
-          Sprite={detailItem.Sprite}
+          Sprite={detailItem.Sprite as any}
           onClose={() => setDetailItem(null)}
           onPurchase={() => {
             if (!detailItem) return;
