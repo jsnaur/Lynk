@@ -1,59 +1,106 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ItemSprite0 from '../../../assets/ShopAssets/Item_Sprite.svg';
-import ItemSprite1 from '../../../assets/ShopAssets/Item_Sprite (1).svg';
-import ItemSprite2 from '../../../assets/ShopAssets/Item_Sprite (2).svg';
-import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
+import { supabase } from '../../lib/supabase'; 
 
-const SPRITES = [ItemSprite0, ItemSprite1, ItemSprite2] as const;
+import { 
+  ACCESSORY_ITEMS, 
+  AvatarSlot, 
+  ALL_SLOTS_Z_ORDER, 
+  BASE_TRAIT_SLOTS, 
+  WEARABLE_SLOTS 
+} from '../../constants/accessories';
+import { FEED_COLORS } from '../../constants/colors';
 
-type AccessoryItem = {
-  id: string;
-  name: string;
-  price: number;
-  sprite: 0 | 1 | 2;
-};
+type UI_CATEGORY = 'Base' | 'Wearables';
 
 type CustomizeScreenProps = {
   initialOwnedAccessoryIds?: string[];
-  initialAppliedAccessoryId?: string;
-  onApplyAccessory?: (accessoryId: string) => void;
+  initialAppliedAccessories?: Partial<Record<AvatarSlot, string>>;
+  onApplyAccessory?: (slot: AvatarSlot, accessoryId: string) => void;
 };
-
-const ACCESSORY_ITEMS: AccessoryItem[] = [
-  { id: 'board-free', name: 'Starter Board', price: 0, sprite: 2 },
-  { id: 'car-mini', name: 'Mini Cruiser', price: 1, sprite: 1 },
-  { id: 'car-lux', name: 'Campus Limo', price: 153, sprite: 0 },
-];
-
-const DEFAULT_OWNED_IDS = new Set(['board-free', 'car-mini']);
 
 export default function CustomizeScreen({
   initialOwnedAccessoryIds,
-  initialAppliedAccessoryId,
+  initialAppliedAccessories,
   onApplyAccessory,
 }: CustomizeScreenProps) {
+  
+  // TESTING OVERRIDE: Automatically set all items as "Owned"
   const ownedIds = useMemo(
-    () => new Set(initialOwnedAccessoryIds ?? Array.from(DEFAULT_OWNED_IDS)),
-    [initialOwnedAccessoryIds],
+    () => new Set(ACCESSORY_ITEMS.map(item => item.id)),
+    []
   );
 
-  const ownedAccessoryItems = useMemo(
-    () => ACCESSORY_ITEMS.filter((item) => ownedIds.has(item.id)),
-    [ownedIds],
+  const [activeCategory, setActiveCategory] = useState<UI_CATEGORY>('Base');
+  const [activeSlot, setActiveSlot] = useState<AvatarSlot>('Body');
+  const [selectedAccessoryId, setSelectedAccessoryId] = useState<string | null>(null);
+  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>(
+    initialAppliedAccessories ?? {}
   );
+  const [isSaving, setIsSaving] = useState(false);
 
-  const fallbackOwnedId = ownedAccessoryItems[0]?.id ?? '';
+  useEffect(() => {
+    let isMounted = true;
 
-  const [selectedAccessoryId, setSelectedAccessoryId] = useState<string>(
-    initialAppliedAccessoryId ?? fallbackOwnedId,
-  );
-  const [appliedAccessoryId, setAppliedAccessoryId] = useState<string>(
-    initialAppliedAccessoryId ?? fallbackOwnedId,
+    const loadSavedAccessories = async () => {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) return;
+
+      const { data, error } = await supabase
+        .from('user_avatars')
+        .select(`
+          background, back_accessory, body, bottom, top, 
+          eyes, mouth, hair_base, headgear, hair_fringe, 
+          accessory, left_hand, right_hand
+        `)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error || !data || !isMounted) return;
+
+      setAppliedAccessories({
+        Background: data.background ?? undefined,
+        BackAccessory: data.back_accessory ?? undefined,
+        Body: data.body ?? undefined,
+        Bottom: data.bottom ?? undefined,
+        Top: data.top ?? undefined,
+        Eyes: data.eyes ?? undefined,
+        Mouth: data.mouth ?? undefined,
+        HairBase: data.hair_base ?? undefined,
+        Headgear: data.headgear ?? undefined,
+        HairFringe: data.hair_fringe ?? undefined,
+        Accessory: data.accessory ?? undefined,
+        LeftHand: data.left_hand ?? undefined,
+        RightHand: data.right_hand ?? undefined,
+      });
+    };
+
+    loadSavedAccessories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const currentSlots = activeCategory === 'Base' ? BASE_TRAIT_SLOTS : WEARABLE_SLOTS;
+
+  // Auto-switch to the first slot of the category when changing categories
+  useEffect(() => {
+    setActiveSlot(currentSlots[0]);
+    setSelectedAccessoryId(null);
+  }, [activeCategory]);
+
+  const slotItems = useMemo(
+    () => ACCESSORY_ITEMS.filter((item) => item.slot === activeSlot),
+    [activeSlot],
   );
 
   const selectedAccessory = useMemo(
@@ -61,17 +108,20 @@ export default function CustomizeScreen({
     [selectedAccessoryId],
   );
 
-  const appliedAccessory = useMemo(
-    () => ACCESSORY_ITEMS.find((item) => item.id === appliedAccessoryId),
-    [appliedAccessoryId],
+  const activeAccessoryForSlot = useMemo(
+    () => ACCESSORY_ITEMS.find((item) => item.id === appliedAccessories[activeSlot]),
+    [appliedAccessories, activeSlot],
   );
 
-  const canApply =
-    !!selectedAccessory &&
-    ownedIds.has(selectedAccessory.id) &&
-    selectedAccessory.id !== appliedAccessoryId;
+  const isSelectedApplied = 
+    !!selectedAccessory && appliedAccessories[selectedAccessory.slot] === selectedAccessory.id;
 
-  const applySelectedAccessory = () => {
+  const canInteract = 
+    !!selectedAccessory && 
+    ownedIds.has(selectedAccessory.id) && 
+    !isSaving;
+
+  const toggleSelectedAccessory = async () => {
     if (!selectedAccessory) return;
 
     if (!ownedIds.has(selectedAccessory.id)) {
@@ -79,93 +129,213 @@ export default function CustomizeScreen({
       return;
     }
 
-    setAppliedAccessoryId(selectedAccessory.id);
-    onApplyAccessory?.(selectedAccessory.id);
-    Alert.alert('Accessory Applied', `${selectedAccessory.name} is now active.`);
-  };
+    const previousAppliedState = appliedAccessories;
+    const slotToUpdate = selectedAccessory.slot;
 
-  const AppliedSprite = appliedAccessory ? SPRITES[appliedAccessory.sprite] : null;
+    // Optimistic UI Update
+    const newAppliedState = { ...appliedAccessories };
+    if (isSelectedApplied) {
+      delete newAppliedState[slotToUpdate];
+    } else {
+      newAppliedState[slotToUpdate] = selectedAccessory.id;
+    }
+    
+    setAppliedAccessories(newAppliedState);
+    setIsSaving(true);
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      setAppliedAccessories(previousAppliedState);
+      setIsSaving(false);
+      Alert.alert('Authentication required', 'Please log in again to save your accessory.');
+      return;
+    }
+
+    // Save to Supabase using new snake_case columns
+    const { error } = await supabase
+      .from('user_avatars')
+      .upsert({
+        user_id: user.id,
+        background: newAppliedState.Background || null,
+        back_accessory: newAppliedState.BackAccessory || null,
+        body: newAppliedState.Body || null,
+        bottom: newAppliedState.Bottom || null,
+        top: newAppliedState.Top || null,
+        eyes: newAppliedState.Eyes || null,
+        mouth: newAppliedState.Mouth || null,
+        hair_base: newAppliedState.HairBase || null,
+        headgear: newAppliedState.Headgear || null,
+        hair_fringe: newAppliedState.HairFringe || null,
+        accessory: newAppliedState.Accessory || null,
+        left_hand: newAppliedState.LeftHand || null,
+        right_hand: newAppliedState.RightHand || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+
+    if (error) {
+      console.error(error);
+      setAppliedAccessories(previousAppliedState);
+      Alert.alert('Error', 'Failed to save accessory. Please try again.');
+      setIsSaving(false);
+      return;
+    }
+
+    setIsSaving(false);
+    onApplyAccessory?.(slotToUpdate, isSelectedApplied ? '' : selectedAccessory.id);
+  };
 
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
-          <Text style={styles.title}>Customize your Avatar</Text>
+          <Text style={styles.title}>Customize</Text>
         </View>
 
         <View style={styles.previewCard}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={48} color={FEED_COLORS.textPrimary} />
-            {AppliedSprite && (
-              <View style={styles.appliedOverlay}>
-                <AppliedSprite width={44} height={44} />
-              </View>
-            )}
+          {/* Main Rendering Container: Sized up from 45x45 to display properly */}
+          <View style={styles.avatarContainer}>
+            
+            {/* The exact rendering order handles Z-Index correctly in React Native */}
+            {ALL_SLOTS_Z_ORDER.map((slot) => {
+              const accessoryId = appliedAccessories[slot];
+              if (!accessoryId) return null;
+
+              const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+              if (!accessory) return null;
+
+              const Sprite = accessory.Sprite;
+
+              return (
+                <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
+                  {/* We set width/height to 100% so the 45x45 SVG scales up to fill the 180x180 container perfectly */}
+                  <Sprite width="100%" height="100%" />
+                </View>
+              );
+            })}
           </View>
 
-          <View style={styles.previewTextWrap}>
-            <Text style={styles.previewLabel}>Active Accessory</Text>
-            <Text style={styles.previewName}>{appliedAccessory?.name ?? 'None'}</Text>
+          <View style={styles.previewContent}>
+            {/* Top Level Category Toggle */}
+            <View style={styles.categoryToggleContainer}>
+              <Pressable
+                style={[styles.catBtn, activeCategory === 'Base' && styles.catBtnActive]}
+                onPress={() => setActiveCategory('Base')}
+              >
+                <Text style={[styles.catBtnText, activeCategory === 'Base' && styles.catBtnTextActive]}>
+                  Base Traits
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.catBtn, activeCategory === 'Wearables' && styles.catBtnActive]}
+                onPress={() => setActiveCategory('Wearables')}
+              >
+                <Text style={[styles.catBtnText, activeCategory === 'Wearables' && styles.catBtnTextActive]}>
+                  Wearables
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.previewTextWrap}>
+              <Text style={styles.previewLabel}>Active {activeSlot}</Text>
+              <Text style={styles.previewName}>{activeAccessoryForSlot?.name ?? 'None'}</Text>
+            </View>
           </View>
         </View>
 
+        {/* Dynamic Slot Tabs based on activeCategory */}
+        <View style={styles.tabsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+            {currentSlots.map((slot) => {
+              const isActiveTab = activeSlot === slot;
+              return (
+                <Pressable
+                  key={slot}
+                  onPress={() => {
+                    setActiveSlot(slot);
+                    setSelectedAccessoryId(null);
+                  }}
+                  style={[styles.tab, isActiveTab && styles.tabActive]}
+                >
+                  <Text style={[styles.tabText, isActiveTab && styles.tabTextActive]}>{slot}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {ownedAccessoryItems.length === 0 ? (
+          {slotItems.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No owned accessories yet. Buy one in Shop to customize.</Text>
+              <Text style={styles.emptyStateText}>No items available for this slot yet.</Text>
             </View>
-          ) : ownedAccessoryItems.map((item) => {
-            const owned = ownedIds.has(item.id);
-            const selected = selectedAccessoryId === item.id;
-            const applied = appliedAccessoryId === item.id;
-            const Sprite = SPRITES[item.sprite];
+          ) : (
+            slotItems.map((item) => {
+              const owned = ownedIds.has(item.id);
+              const selected = selectedAccessoryId === item.id;
+              const applied = appliedAccessories[item.slot] === item.id;
+              const Sprite = item.Sprite;
 
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => setSelectedAccessoryId(item.id)}
-                style={({ pressed }) => [
-                  styles.itemCard,
-                  selected && styles.itemCardSelected,
-                  pressed && { opacity: 0.92 },
-                ]}
-              >
-                <View style={styles.itemLeft}>
-                  <View style={styles.itemSpriteWrap}>
-                    <Sprite width={40} height={40} />
-                  </View>
-                  <View>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemMeta}>{owned ? 'Owned' : `Locked • ${item.price} tokens`}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.itemRight}>
-                  {applied ? (
-                    <View style={styles.statePill}>
-                      <Text style={styles.statePillText}>Applied</Text>
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={() => setSelectedAccessoryId(item.id)}
+                  style={({ pressed }) => [
+                    styles.itemCard,
+                    selected && styles.itemCardSelected,
+                    pressed && { opacity: 0.92 },
+                  ]}
+                >
+                  <View style={styles.itemLeft}>
+                    <View style={styles.itemSpriteWrap}>
+                      <Sprite width={40} height={40} />
                     </View>
-                  ) : selected ? (
-                    <Ionicons name="checkmark-circle" size={22} color={FEED_COLORS.item} />
-                  ) : null}
-                </View>
-              </Pressable>
-            );
-          })}
+                    <View>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <Text style={styles.itemMeta}>{owned ? 'Owned' : `Locked • ${item.price} tokens`}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.itemRight}>
+                    {applied ? (
+                      <View style={styles.statePill}>
+                        <Text style={styles.statePillText}>Equipped</Text>
+                      </View>
+                    ) : selected ? (
+                      <Ionicons name="checkmark-circle" size={22} color={FEED_COLORS.item} />
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
           <Pressable
-            onPress={applySelectedAccessory}
-            disabled={!canApply}
+            onPress={toggleSelectedAccessory}
+            disabled={!canInteract}
             style={({ pressed }) => [
               styles.applyBtn,
-              !canApply && styles.applyBtnDisabled,
-              pressed && canApply && { opacity: 0.9 },
+              isSelectedApplied && styles.unequipBtn, 
+              !canInteract && styles.applyBtnDisabled,
+              pressed && canInteract && { opacity: 0.9 },
             ]}
           >
-            <Text style={styles.applyBtnText}>{canApply ? 'Apply Accessory' : 'Accessory Applied'}</Text>
+            <Text style={[styles.applyBtnText, isSelectedApplied && styles.unequipBtnText]}>
+              {isSaving 
+                ? 'Saving...' 
+                : !selectedAccessory 
+                  ? 'Select an Item' 
+                  : isSelectedApplied 
+                    ? `Unequip ${selectedAccessory.slot}` 
+                    : `Equip to ${selectedAccessory.slot}`
+              }
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -193,12 +363,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: FEED_COLORS.textPrimary,
   },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    color: FEED_COLORS.textSecondary,
-    fontFamily: 'DMSans-Regular',
-  },
   previewCard: {
     marginHorizontal: 16,
     marginTop: 14,
@@ -209,33 +373,63 @@ const styles = StyleSheet.create({
     backgroundColor: FEED_COLORS.surface,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
   },
-  avatarCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarContainer: {
+    width: 140, // Scaled up size to let 45x45 pixels look crisp
+    height: 140,
     backgroundColor: FEED_COLORS.surface2,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: FEED_COLORS.border,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  appliedOverlay: {
+  layerAbsolute: {
     position: 'absolute',
-    right: -6,
-    bottom: -4,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: FEED_PILL_BG.token,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.4)',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  previewTextWrap: {
+  previewContent: {
     flex: 1,
+    justifyContent: 'space-between',
+    height: 140,
+    paddingVertical: 4,
+  },
+  categoryToggleContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  catBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: FEED_COLORS.surface2,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  catBtnActive: {
+    backgroundColor: `${FEED_COLORS.favor}15`,
+    borderColor: FEED_COLORS.favor,
+  },
+  catBtnText: {
+    fontSize: 12,
+    color: FEED_COLORS.textSecondary,
+    fontFamily: 'DMSans-Medium',
+  },
+  catBtnTextActive: {
+    color: FEED_COLORS.favor,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '700',
+  },
+  previewTextWrap: {
+    justifyContent: 'flex-end',
   },
   previewLabel: {
     fontSize: 12,
@@ -243,9 +437,41 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Medium',
   },
   previewName: {
-    marginTop: 2,
-    fontSize: 16,
+    marginTop: 4,
+    fontSize: 18,
     color: FEED_COLORS.textPrimary,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '700',
+  },
+  tabsContainer: {
+    marginTop: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: FEED_COLORS.border,
+  },
+  tabsContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+    paddingBottom: 12,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: FEED_COLORS.surface,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+  },
+  tabActive: {
+    backgroundColor: FEED_COLORS.item,
+    borderColor: FEED_COLORS.item,
+  },
+  tabText: {
+    fontSize: 14,
+    color: FEED_COLORS.textSecondary,
+    fontFamily: 'DMSans-Medium',
+  },
+  tabTextActive: {
+    color: '#102010',
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
   },
@@ -284,7 +510,7 @@ const styles = StyleSheet.create({
   },
   itemCardSelected: {
     borderColor: FEED_COLORS.favor,
-    backgroundColor: 'rgba(0, 245, 255, 0.09)',
+    backgroundColor: `${FEED_COLORS.favor}15`,
   },
   itemLeft: {
     flexDirection: 'row',
@@ -345,6 +571,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: FEED_COLORS.item,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.item,
+  },
+  unequipBtn: {
+    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+    borderColor: 'rgba(255, 68, 68, 0.4)',
   },
   applyBtnDisabled: {
     opacity: 0.5,
@@ -354,5 +586,8 @@ const styles = StyleSheet.create({
     color: '#102010',
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
+  },
+  unequipBtnText: {
+    color: '#ff4444',
   },
 });
