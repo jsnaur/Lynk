@@ -5,353 +5,292 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
 import { supabase } from "../../lib/supabase";
 import { FEED_COLORS } from "../../constants/colors";
+import { ImageSprite } from "../../components/sprites";
+import { ACCESSORY_ITEMS, DEFAULT_OWNED_IDS } from "../../constants/accessories";
 
-import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
-import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
-import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
-import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
-import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
-import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
-import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
+import BaseMasc_A from "../../../assets/AvatarAssets/Masculine/BaseMasc_A.png";
+import BaseMasc_B from "../../../assets/AvatarAssets/Masculine/BaseMasc_B.png";
+import BaseMasc_C from "../../../assets/AvatarAssets/Masculine/BaseMasc_C.png";
+import BaseMasc_D from "../../../assets/AvatarAssets/Masculine/BaseMasc_D.png";
+import BaseFem_A from "../../../assets/AvatarAssets/Feminine/BaseFem_A.png";
+import BaseFem_B from "../../../assets/AvatarAssets/Feminine/BaseFem_B.png";
+import BaseFem_C from "../../../assets/AvatarAssets/Feminine/BaseFem_C.png";
+import BaseFem_D from "../../../assets/AvatarAssets/Feminine/BaseFem_D.png";
 
 type Props = NativeStackScreenProps<any, "ProfileSetup">;
 
-const majorOptions = [
-  "Computer Science",
-  "Information Technology",
-  "Business",
-  "Architecture",
-  "Computer Engineering",
-  "Electrical Engineering",
-  "Mechanical Engineering",
-  "Chemical Engineering",
-  "Industrial Engineering",
-  "Mechatronics Engineering",
-  "Civil Engineering",
-  "Mining Engineering",
-  "Electronics Engineering",
-  "Psychology",
-  "Nursing",
-  "Criminology",
-  "Accounting",
-  "Tourism Management",
-  "Hotel Management",
+type BodyType = 'body-m-1' | 'body-m-2' | 'body-m-3' | 'body-m-4' | 'body-f-1' | 'body-f-2' | 'body-f-3' | 'body-f-4';
+type Gender = 'male' | 'female';
+
+const BODY_TYPES: { id: BodyType; name: string; gender: Gender; source: any }[] = [
+  { id: 'body-f-1', name: 'Light', gender: 'female', source: BaseFem_A },
+  { id: 'body-f-2', name: 'Medium Light', gender: 'female', source: BaseFem_B },
+  { id: 'body-f-3', name: 'Medium Dark', gender: 'female', source: BaseFem_C },
+  { id: 'body-f-4', name: 'Dark', gender: 'female', source: BaseFem_D },
+  { id: 'body-m-1', name: 'Light', gender: 'male', source: BaseMasc_A },
+  { id: 'body-m-2', name: 'Medium Light', gender: 'male', source: BaseMasc_B },
+  { id: 'body-m-3', name: 'Medium Dark', gender: 'male', source: BaseMasc_C },
+  { id: 'body-m-4', name: 'Dark', gender: 'male', source: BaseMasc_D },
 ];
 
-const graduationYearOptions = [
-  "2026",
-  "2027",
-  "2028",
-  "2029",
-  "2030",
-  "2031",
-  "2032",
-];
-
-const avatarAssets = [
-  Avatar1,
-  Avatar2,
-  Avatar3,
-  Avatar4,
-  Avatar5,
-  Avatar6
-];
-
-const frameDefs = [
-  { id: "1", assetIndex: 0 },
-  { id: "2", assetIndex: 1 },
-  { id: "3", assetIndex: 2 },
-  { id: "4", assetIndex: 3 },
-  { id: "5", assetIndex: 4 },
-  { id: "6", assetIndex: 5 },
-  { id: "7", assetIndex: 0 },
-  { id: "8", assetIndex: 1 }
-] as const;
-
-const buildFrames = () =>
-  frameDefs.map((def) => ({
-    ...def,
-    Component: avatarAssets[def.assetIndex]
-  }));
-
-const FRAMES = buildFrames();
-
-const defaultSelectedId = FRAMES[0].id;
+const ACCESSORY_SLOT_NAMES = {
+  'HairBase': 'Hair',
+  'Eyes': 'Eyes',
+  'Mouth': 'Mouth',
+};
 
 const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
-  const [selectedId, setSelectedId] = useState<string>(defaultSelectedId);
+  const [step, setStep] = useState<1 | 2>(1);
   const [displayName, setDisplayName] = useState<string>("");
-  const [selectedMajor, setSelectedMajor] = useState<string>("");
-  const [majorOpen, setMajorOpen] = useState<boolean>(false);
-  const [graduationYear, setGraduationYear] = useState<string>("");
-  const [yearOpen, setYearOpen] = useState<boolean>(false);
+  const [selectedBodyId, setSelectedBodyId] = useState<BodyType>('body-f-1');
+  const [selectedAccessories, setSelectedAccessories] = useState<Set<string>>(
+    new Set(['hair-base-1', 'eyes-normal', 'mouth-smile'])
+  );
   const [errorMessage, setErrorMessage] = useState<string>("");
 
-  const SelectedAvatar = useMemo(() => {
-    return FRAMES.find((f) => f.id === selectedId)?.Component;
-  }, [selectedId]);
+  const selectedBodyType = BODY_TYPES.find(b => b.id === selectedBodyId)!;
+  const bodyGender = selectedBodyType.gender;
+
+  // Get accessories filtered by gender
+  const availableAccessories = useMemo(() => {
+    const slots = ['HairBase', 'Eyes', 'Mouth'];
+    return slots.map(slot => ({
+      slot,
+      items: ACCESSORY_ITEMS.filter(item => 
+        item.slot === slot && 
+        DEFAULT_OWNED_IDS.has(item.id)
+      )
+    })).filter(group => group.items.length > 0);
+  }, []);
+
+  const emptySlots = useMemo(() => {
+    const slots = ['HairBase', 'Eyes', 'Mouth'];
+    return slots.filter(slot => 
+      !availableAccessories.some(group => group.slot === slot)
+    );
+  }, [availableAccessories]);
 
   const handleLogout = useCallback(async () => {
-    setMajorOpen(false);
-    setYearOpen(false);
     setErrorMessage("");
-    // Log the user out instead of allowing them to bypass profile setup
     await supabase.auth.signOut();
   }, []);
 
   const handleContinue = useCallback(async () => {
-    // 1. Validation
-    if (!displayName.trim() || !selectedMajor || !graduationYear) {
-      setErrorMessage("Please complete all fields to continue.");
+    if (step === 1) {
+      if (!displayName.trim()) {
+        setErrorMessage("Please enter a display name.");
+        return;
+      }
+      setErrorMessage("");
+      setStep(2);
       return;
     }
 
-    setErrorMessage(""); // clear previous errors
+    // Step 2: Complete profile
+    setErrorMessage("");
 
-    const selected = FRAMES.find((f) => f.id === selectedId);
-    if (selected) {
-      try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError || !user) {
-          setErrorMessage("Could not verify user session.");
-          return;
-        }
-
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            avatar_index: selected.assetIndex,
-            display_name: displayName.trim(),
-            major: selectedMajor,
-            graduation_year: graduationYear.trim()
-          })
-          .eq('id', user.id);
-
-        if (updateError) {
-          setErrorMessage("Failed to save profile. Please try again.");
-          return;
-        }
-      } catch (err) {
-        console.error(err);
-        setErrorMessage("An unexpected error occurred.");
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        setErrorMessage("Could not verify user session.");
         return;
       }
-    }
 
-    setMajorOpen(false);
-    setYearOpen(false);
-    
-    // Switch to Main Stack safely
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Main" as never }],
-    });
-  }, [navigation, selectedId, displayName, selectedMajor, graduationYear]);
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          avatar_body: selectedBodyId,
+          avatar_accessories: Array.from(selectedAccessories),
+          display_name: displayName.trim(),
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        setErrorMessage("Failed to save profile. Please try again.");
+        return;
+      }
+
+      // Switch to Main Stack safely
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Main" as never }],
+      });
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("An unexpected error occurred.");
+    }
+  }, [step, displayName, selectedBodyId, selectedAccessories, navigation]);
+
+  const handleBack = useCallback(() => {
+    if (step === 2) {
+      setStep(1);
+      setErrorMessage("");
+    }
+  }, [step]);
 
   return (
     <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox]}>
-      
-      {/* HEADER */}
       <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
         <View style={[styles.headerTextBlock, styles.textCommon]}>
-          <Text style={[styles.screenTitle, styles.screenTitleTypo]}>Set Up Your Profile</Text>
+          <Text style={[styles.screenTitle, styles.screenTitleTypo]}>
+            {step === 1 ? 'Create Your Avatar' : 'Customize Your Look'}
+          </Text>
           <Text style={[styles.screenSubtitle, styles.hintBodyTypo]}>
-            Tell us about yourself.{"\n"}This is public on your campus.
+            {step === 1 
+              ? `Step 1 of 2: Choose your body type${"\n"}This is public on your campus.`
+              : `Step 2 of 2: Choose your features${"\n"}Hair, eyes, and expression.`
+            }
           </Text>
         </View>
       </View>
 
-      {/* FORM */}
-      <View style={[styles.utilityInfoForm, styles.utilityInfoFormFlexBox]}>
-        <Text style={[styles.fieldGroupLabel, styles.hintTitleTypo]}>
-          YOUR INFO
-        </Text>
-
-        <View style={styles.fieldLayout}>
-          <TextInput
-            value={displayName}
-            onChangeText={(text) => {
-              setDisplayName(text);
-              if (errorMessage) setErrorMessage("");
-            }}
-            placeholder="Display Name (visible to campus)"
-            placeholderTextColor={FEED_COLORS.textSecondary}
-            style={[styles.textInput, localStyles.textInputColorOverride]}
-            autoCapitalize="words"
-          />
-        </View>
-
-        <View style={[styles.dropdownWrapper, majorOpen && styles.dropdownWrapperOnTop]}>
-          <Pressable
-            onPress={() => {
-              setMajorOpen((v) => !v);
-              setYearOpen(false);
-              if (errorMessage) setErrorMessage("");
-            }}
-            style={({ pressed }) => [
-              styles.dropdownSelectField,
-              styles.fieldLayout,
-              majorOpen && styles.majorSelectFieldOpen,
-              pressed && styles.dropdownPressed,
-            ]}
-          >
-            <Text
-              style={[
-                styles.dropdownValue,
-                selectedMajor ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
-              ]}
-            >
-              {selectedMajor || "Select your major..."}
+      {step === 1 ? (
+        <>
+          {/* STEP 1: Display Name & Body Type */}
+          <View style={[styles.utilityInfoForm, styles.utilityInfoFormFlexBox]}>
+            <Text style={[styles.fieldGroupLabel, styles.hintTitleTypo]}>
+              YOUR INFO
             </Text>
-            <Ionicons
-              name={majorOpen ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={FEED_COLORS.textSecondary}
-            />
-          </Pressable>
 
-          {majorOpen && (
-            <View style={styles.majorDropdownList}>
-              <ScrollView
-                style={styles.majorDropdownScroll}
-                contentContainerStyle={styles.majorDropdownContent}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator
-              >
-                {majorOptions.map((major) => (
-                  <Pressable
-                    key={major}
-                    onPress={() => {
-                      setSelectedMajor(major);
-                      setMajorOpen(false);
-                    }}
-                    style={({ pressed }) => [
-                      styles.majorDropdownOption,
-                      pressed && styles.majorDropdownOptionPressed,
-                    ]}
-                  >
-                    <Text style={styles.dropdownOptionText}>{major}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+            <View style={styles.fieldLayout}>
+              <TextInput
+                value={displayName}
+                onChangeText={(text) => {
+                  setDisplayName(text);
+                  if (errorMessage) setErrorMessage("");
+                }}
+                placeholder="Display Name (visible to campus)"
+                placeholderTextColor={FEED_COLORS.textSecondary}
+                style={[styles.textInput, localStyles.textInputColorOverride]}
+                autoCapitalize="words"
+              />
             </View>
-          )}
-        </View>
-
-        <View style={[styles.dropdownWrapper, yearOpen && styles.dropdownWrapperOnTop]}>
-          <Pressable
-            onPress={() => {
-              setYearOpen((v) => !v);
-              setMajorOpen(false);
-              if (errorMessage) setErrorMessage("");
-            }}
-            style={({ pressed }) => [
-              styles.dropdownSelectField,
-              styles.fieldLayout,
-              yearOpen && styles.yearSelectFieldOpen,
-              pressed && styles.dropdownPressed,
-            ]}
-          >
-            <Text
-              style={[
-                styles.dropdownValue,
-                graduationYear ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
-              ]}
-            >
-              {graduationYear || "Graduation Year"}
-            </Text>
-            <Ionicons
-              name={yearOpen ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={FEED_COLORS.textSecondary}
-            />
-          </Pressable>
-
-          {yearOpen && (
-            <View style={styles.yearDropdownList}>
-              <ScrollView
-                style={styles.yearDropdownScroll}
-                contentContainerStyle={styles.yearDropdownContent}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator
-              >
-                {graduationYearOptions.map((year) => (
-                  <Pressable
-                    key={year}
-                    onPress={() => {
-                      setGraduationYear(year);
-                      setYearOpen(false);
-                    }}
-                    style={({ pressed }) => [
-                      styles.yearDropdownOption,
-                      pressed && styles.yearDropdownOptionPressed,
-                    ]}
-                  >
-                    <Text style={styles.dropdownOptionText}>{year}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* AVATAR SECTION */}
-      <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
-        
-        <View style={styles.setupCtaBarFlexBox}>
-          <View style={styles.dividerLineL} />
-          <Text style={styles.dividerLabel}>CHOOSE YOUR AVATAR</Text>
-          <View style={styles.dividerLineL} />
-        </View>
-
-        {/* SELECTED AVATAR */}
-        <View style={[styles.avatarPreviewRow, styles.setupCtaBarFlexBox]}>
-          <View style={[styles.selectedAvatarFrameIcon, localStyles.selectedAvatarContainer]}>
-            {SelectedAvatar && <SelectedAvatar width={72} height={72} style={localStyles.selectedAvatarSvg} />}
           </View>
 
-          <View style={styles.textCommon}>
-            <Text style={[styles.hintTitle, styles.hintTitleTypo]}>
-              Your Avatar
-            </Text>
-            <Text style={[styles.hintBody, styles.hintBodyTypo]}>
-              Represents you on the quest board.{"\n"}Unlock more in the Shop.
-            </Text>
+          {/* BODY TYPE SELECTION */}
+          <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
+            <View style={styles.setupCtaBarFlexBox}>
+              <View style={styles.dividerLineL} />
+              <Text style={styles.dividerLabel}>FEMALE BODY TYPES</Text>
+              <View style={styles.dividerLineL} />
+            </View>
+
+            <ScrollView style={localStyles.bodyTypeGrid} contentContainerStyle={localStyles.bodyTypeGridContent} horizontal showsHorizontalScrollIndicator={false}>
+              {BODY_TYPES.filter(b => b.gender === 'female').map((bodyType) => {
+                const isSelected = selectedBodyId === bodyType.id;
+                return (
+                  <Pressable
+                    key={bodyType.id}
+                    onPress={() => setSelectedBodyId(bodyType.id as BodyType)}
+                    style={[
+                      localStyles.bodyTypeOption,
+                      isSelected && localStyles.bodyTypeOptionSelected,
+                    ]}
+                  >
+                    <View style={localStyles.bodyTypePreview}>
+                      <ImageSprite source={bodyType.source} width={64} height={64} />
+                    </View>
+                    <Text style={localStyles.bodyTypeLabel}>{bodyType.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.setupCtaBarFlexBox}>
+              <View style={styles.dividerLineL} />
+              <Text style={styles.dividerLabel}>MALE BODY TYPES</Text>
+              <View style={styles.dividerLineL} />
+            </View>
+
+            <ScrollView style={localStyles.bodyTypeGrid} contentContainerStyle={localStyles.bodyTypeGridContent} horizontal showsHorizontalScrollIndicator={false}>
+              {BODY_TYPES.filter(b => b.gender === 'male').map((bodyType) => {
+                const isSelected = selectedBodyId === bodyType.id;
+                return (
+                  <Pressable
+                    key={bodyType.id}
+                    onPress={() => setSelectedBodyId(bodyType.id as BodyType)}
+                    style={[
+                      localStyles.bodyTypeOption,
+                      isSelected && localStyles.bodyTypeOptionSelected,
+                    ]}
+                  >
+                    <View style={localStyles.bodyTypePreview}>
+                      <ImageSprite source={bodyType.source} width={64} height={64} />
+                    </View>
+                    <Text style={localStyles.bodyTypeLabel}>{bodyType.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
-        </View>
+        </>
+      ) : (
+        <>
+          {/* STEP 2: Accessories */}
+          <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
+            <View style={styles.setupCtaBarFlexBox}>
+              <View style={styles.dividerLineL} />
+              <Text style={styles.dividerLabel}>CUSTOMIZE</Text>
+              <View style={styles.dividerLineL} />
+            </View>
 
-        {/* GRID */}
-        <View style={styles.avatarGrid}>
-          {FRAMES.map((frame) => {
-            const isSelected = selectedId === frame.id;
-            const AvatarComponent = frame.Component;
+            {/* Available Accessory Groups */}
+            {availableAccessories.map((group) => (
+              <View key={group.slot} style={localStyles.accessorySection}>
+                <Text style={localStyles.accessorySectionTitle}>
+                  {ACCESSORY_SLOT_NAMES[group.slot as keyof typeof ACCESSORY_SLOT_NAMES]}
+                </Text>
+                <ScrollView 
+                  style={localStyles.accessoryGrid} 
+                  contentContainerStyle={localStyles.accessoryGridContent}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                >
+                  {group.items.map((item) => {
+                    const isSelected = selectedAccessories.has(item.id);
+                    return (
+                      <Pressable
+                        key={item.id}
+                        onPress={() => {
+                          const newAccessories = new Set(selectedAccessories);
+                          // Replace other items in same slot
+                          const sameSlotIds = group.items.map(i => i.id);
+                          sameSlotIds.forEach(id => newAccessories.delete(id));
+                          newAccessories.add(item.id);
+                          setSelectedAccessories(newAccessories);
+                        }}
+                        style={[
+                          localStyles.accessoryOption,
+                          isSelected && localStyles.accessoryOptionSelected,
+                        ]}
+                      >
+                        <View style={localStyles.accessoryPreview}>
+                          {item.Sprite && React.createElement(item.Sprite, { width: 56, height: 56 })}
+                        </View>
+                        <Text style={localStyles.accessoryLabel} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ))}
 
-            return (
-              <Pressable
-                key={frame.id}
-                onPress={() => setSelectedId(frame.id)}
-                style={({ pressed }) => [
-                  styles.avatarGridItem,
-                  styles.avatarItemLayout,
-                  localStyles.gridAvatarContainer,
-                  isSelected && localStyles.gridAvatarSelected,
-                  pressed && { opacity: 0.8 }
-                ]}
-              >
-                <AvatarComponent width={48} height={48} style={localStyles.gridAvatarSvg} />
-
-                {isSelected && (
-                  <View style={localStyles.checkBadge}>
-                    <SelectedCheckIcon width={10} height={10} />
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
+            {/* Empty States */}
+            {emptySlots.length > 0 && (
+              <View style={localStyles.emptyStateContainer}>
+                <Ionicons name="alert-circle-outline" size={24} color={FEED_COLORS.textSecondary} />
+                <Text style={localStyles.emptyStateTitle}>More Coming Soon</Text>
+                <Text style={localStyles.emptyStateText}>
+                  {emptySlots.map(slot => ACCESSORY_SLOT_NAMES[slot as keyof typeof ACCESSORY_SLOT_NAMES]).join(', ')} options will be available in the Shop soon.
+                </Text>
+              </View>
+            )}
+          </View>
+        </>
+      )}
 
       {/* ERROR MESSAGE DISPLAY */}
       {errorMessage ? (
@@ -363,18 +302,35 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
 
       {/* BUTTONS */}
       <View style={[styles.setupCtaBar, styles.setupCtaBarFlexBox]}>
-        <Pressable
-          onPress={handleLogout}
-          style={({ pressed }) => [
-            styles.ctaButton,
-            styles.ctaLayout,
-            pressed && styles.ctaPressed
-          ]}
-        >
-          <Text style={[styles.buttonLabel, styles.buttonPosition]}>
-            Log Out
-          </Text>
-        </Pressable>
+        {step === 2 && (
+          <Pressable
+            onPress={handleBack}
+            style={({ pressed }) => [
+              styles.ctaButton,
+              styles.ctaLayout,
+              pressed && styles.ctaPressed
+            ]}
+          >
+            <Text style={[styles.buttonLabel, styles.buttonPosition]}>
+              ← Back
+            </Text>
+          </Pressable>
+        )}
+
+        {step === 1 && (
+          <Pressable
+            onPress={handleLogout}
+            style={({ pressed }) => [
+              styles.ctaButton,
+              styles.ctaLayout,
+              pressed && styles.ctaPressed
+            ]}
+          >
+            <Text style={[styles.buttonLabel, styles.buttonPosition]}>
+              Log Out
+            </Text>
+          </Pressable>
+        )}
 
         <Pressable
           onPress={handleContinue}
@@ -386,7 +342,7 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
           ]}
         >
           <Text style={[styles.buttonLabel2, styles.buttonPosition, localStyles.ctaTextActive]}>
-            Continue →
+            {step === 1 ? 'Next →' : 'Create Profile →'}
           </Text>
         </Pressable>
       </View>
@@ -394,63 +350,123 @@ const ProfileSetupScreen: FC<Props> = ({ navigation }) => {
   );
 };
 
-// Local stylesheet overrides for direct UI fixes
 const localStyles = StyleSheet.create({
   textInputColorOverride: {
     color: '#FFFFFF',
   },
-  dropdownTextActive: {
-    color: '#FFFFFF',
+  bodyTypeGrid: {
+    marginVertical: 12,
   },
-  dropdownTextPlaceholder: {
-    color: '#8a8a9a',
+  bodyTypeGridContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+    paddingBottom: 12,
   },
-  selectedAvatarContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 20,
-    backgroundColor: '#1E1E1E',
-    borderWidth: 2,
-    borderColor: '#333333',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  selectedAvatarSvg: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-  },
-  gridAvatarContainer: {
-    width: 64,
-    height: 64,
+  bodyTypeOption: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderRadius: 16,
-    backgroundColor: '#1E1E1E',
     borderWidth: 2,
     borderColor: 'transparent',
-    overflow: 'hidden',
-    position: 'relative',
-    margin: 4,
+    backgroundColor: '#1E1E1E',
+    minWidth: 90,
   },
-  gridAvatarSelected: {
+  bodyTypeOptionSelected: {
     borderColor: '#00F5FF',
+    backgroundColor: 'rgba(0, 245, 255, 0.1)',
   },
-  gridAvatarSvg: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-  },
-  checkBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#00F5FF',
+  bodyTypePreview: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: '#151515',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  bodyTypeLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans-Medium',
+    fontWeight: '500',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  accessorySection: {
+    marginVertical: 16,
+    paddingHorizontal: 16,
+  },
+  accessorySectionTitle: {
+    fontSize: 12,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: '#8a8a9a',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  accessoryGrid: {
+    marginBottom: 8,
+  },
+  accessoryGridContent: {
+    paddingHorizontal: 0,
+    gap: 12,
+    paddingRight: 16,
+  },
+  accessoryOption: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#1E1E1E'
+    borderColor: 'transparent',
+    backgroundColor: '#1E1E1E',
+    minWidth: 80,
+  },
+  accessoryOptionSelected: {
+    borderColor: '#00F5FF',
+    backgroundColor: 'rgba(0, 245, 255, 0.1)',
+  },
+  accessoryPreview: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    backgroundColor: '#151515',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  accessoryLabel: {
+    fontSize: 10,
+    fontFamily: 'DMSans-Medium',
+    fontWeight: '500',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  emptyStateContainer: {
+    marginVertical: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(138, 138, 154, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 138, 154, 0.2)',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyStateTitle: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  emptyStateText: {
+    fontSize: 12,
+    fontFamily: 'DMSans-Regular',
+    color: '#8a8a9a',
+    textAlign: 'center',
   },
   ctaButtonActive: {
     backgroundColor: '#00F5FF',

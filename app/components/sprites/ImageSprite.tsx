@@ -20,6 +20,9 @@ export default function ImageSprite({
         { width, height }
       ]}
       resizeMode="contain"
+      onLoad={(e) => {
+        // Log loaded dimensions for debugging if needed
+      }}
     />
   );
 }
@@ -27,5 +30,6 @@ export default function ImageSprite({
 const styles = StyleSheet.create({
   image: {
     alignSelf: 'center',
-  },
+    imageRendering: 'pixelated',
+  } as any,
 });
