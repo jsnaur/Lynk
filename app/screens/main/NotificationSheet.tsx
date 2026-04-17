@@ -1,278 +1,336 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    Modal,
     View,
     Text,
-    Pressable,
     StyleSheet,
-    ScrollView,
-    SectionList,
-    SectionListData,
+    Pressable,
+    FlatList,
+    Dimensions,
+    Animated,
+    ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import NotificationRow, { NotificationState, NotificationType } from '../../components/rows/NotificationRow';
 import { FEED_COLORS } from '../../constants/colors';
+import { supabase } from '../../lib/supabase';
 
-export interface Notification {
+type Notification = {
     id: string;
-    type: NotificationType;
-    state: NotificationState;
-    timestamp: string;
-    title?: string;
-    description?: string;
-    date: 'today' | 'earlier';
-}
+    created_at: string;
+    title: string;
+    description: string;
+    is_read: boolean;
+    type: string;
+    reference_id?: string;
+};
 
-export interface NotificationSheetProps {
-    notifications?: Notification[];
-    onClose?: () => void;
-    onMarkAllRead?: () => void;
+type NotificationSheetProps = {
+    visible: boolean;
+    onClose: () => void;
     onNotificationPress?: (notification: Notification) => void;
-    isEmpty?: boolean;
-}
-
-interface GroupedNotifications {
-    today: Notification[];
-    earlier: Notification[];
-}
-
-const groupNotifications = (notifications: Notification[]): GroupedNotifications => {
-    return {
-        today: notifications.filter((n) => n.date === 'today'),
-        earlier: notifications.filter((n) => n.date === 'earlier'),
-    };
+    onUnreadCountHint?: (unreadCount: number) => void;
 };
 
 export default function NotificationSheet({
-    notifications = [],
+    visible,
     onClose,
-    onMarkAllRead,
     onNotificationPress,
-    isEmpty = notifications.length === 0,
+    onUnreadCountHint,
 }: NotificationSheetProps) {
-    const unreadCount = useMemo(
-        () => notifications.filter((n) => n.state === 'Unread').length,
-        [notifications]
-    );
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [errorText, setErrorText] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-    const grouped = useMemo(
-        () => groupNotifications(notifications),
-        [notifications]
-    );
+    // Animation Values
+    const scaleAnim = useRef(new Animated.Value(0)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
 
-    if (isEmpty) {
-        return (
-            <View style={styles.container}>
-                {/* Modal Handle */}
-                <View style={styles.modalHandle}>
-                    <View style={styles.handleBar} />
-                </View>
+    useEffect(() => {
+        if (visible) {
+            fetchNotifications();
+            // Pop-out Animation
+            Animated.parallel([
+                Animated.spring(scaleAnim, {
+                    toValue: 1,
+                    friction: 6,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacityAnim, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } else {
+            scaleAnim.setValue(0);
+            opacityAnim.setValue(0);
+        }
+    }, [visible]);
 
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Notifications</Text>
-                    <Pressable onPress={onClose}>
-                        <Ionicons name="close" size={24} color={FEED_COLORS.textPrimary} />
-                    </Pressable>
-                </View>
+    const fetchNotifications = async () => {
+        setErrorText(null);
+        setLoading(true);
+        try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError) throw userError;
 
-                {/* Empty State */}
-                <View style={styles.emptyStateContainer}>
-                    <Ionicons
-                        name="notifications-off"
-                        size={40}
-                        color={FEED_COLORS.border}
-                    />
-                    <Text style={styles.emptyTitle}>All caught up</Text>
-                    <Text style={styles.emptyDescription}>
-                        Notifications from quest activity will appear here
-                    </Text>
-                </View>
-            </View>
+            if (!user) {
+                setCurrentUserId(null);
+                setNotifications([]);
+                setErrorText('You are not logged in.');
+                return;
+            }
+            setCurrentUserId(user.id);
+
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('recipient_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setNotifications(data ?? []);
+
+            const unread = (data ?? []).reduce((acc, n) => acc + (n?.is_read ? 0 : 1), 0);
+            onUnreadCountHint?.(unread);
+        } catch (e: any) {
+            console.error('fetchNotifications error:', e?.message ?? e);
+            setErrorText('Failed to load notifications.');
+            setNotifications([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePress = async (item: Notification) => {
+        // 1. Optimistic UI update
+        setNotifications(prev => 
+            prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
         );
-    }
+
+        // 2. Update Database
+        if (!item.is_read) {
+            await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('id', item.id);
+        }
+
+        // 3. Callback to handle navigation (e.g., go to Quest Detail)
+        onNotificationPress?.(item);
+    };
+
+    const handleDeleteOne = async (item: Notification) => {
+        if (!currentUserId) return;
+
+        // optimistic remove
+        const prev = notifications;
+        setNotifications((cur) => cur.filter((n) => n.id !== item.id));
+        onUnreadCountHint?.(
+            prev.reduce((acc, n) => acc + (n.id !== item.id && !n.is_read ? 1 : 0), 0),
+        );
+
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('id', item.id)
+            .eq('recipient_id', currentUserId);
+
+        if (error) {
+            console.error('delete notification error:', error.message);
+            setNotifications(prev);
+            onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
+            Alert.alert('Error', 'Failed to delete notification.');
+        }
+    };
+
+    const handleClearAll = async () => {
+        if (!currentUserId) return;
+
+        Alert.alert(
+            'Clear notifications',
+            'This will remove all notifications from your inbox.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Clear',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const prev = notifications;
+                        setNotifications([]);
+                        onUnreadCountHint?.(0);
+
+                        const { error } = await supabase
+                            .from('notifications')
+                            .delete()
+                            .eq('recipient_id', currentUserId);
+
+                        if (error) {
+                            console.error('clear notifications error:', error.message);
+                            setNotifications(prev);
+                            onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
+                            Alert.alert('Error', 'Failed to clear notifications.');
+                        }
+                    },
+                },
+            ],
+        );
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchNotifications();
+        setRefreshing(false);
+    };
+
+    const timeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - date.getTime()) / 60000);
+        if (diff < 1) return 'Just now';
+        if (diff < 60) return `${diff}m ago`;
+        if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+        return `${Math.floor(diff / 1440)}d ago`;
+    };
+
+    const renderItem = ({ item }: { item: Notification }) => (
+        <Pressable
+            style={[styles.notificationItem, !item.is_read && styles.unreadItem]}
+            onPress={() => handlePress(item)}
+            onLongPress={() => handleDeleteOne(item)}
+        >
+            <View style={styles.iconContainer}>
+                <Ionicons
+                    name={item.is_read ? 'notifications-outline' : 'notifications'}
+                    size={20}
+                    color={!item.is_read ? FEED_COLORS.favor : FEED_COLORS.textSecondary}
+                />
+            </View>
+            <View style={styles.textContainer}>
+                <Text style={styles.notificationTitle}>{item.title}</Text>
+                <Text style={styles.notificationDesc} numberOfLines={2}>{item.description}</Text>
+                <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
+            </View>
+            {!item.is_read && <View style={styles.unreadDot} />}
+            <Pressable
+                onPress={() => handleDeleteOne(item)}
+                hitSlop={10}
+                style={styles.deleteButton}
+                accessibilityRole="button"
+                accessibilityLabel="Delete notification"
+            >
+                <Ionicons name="trash-outline" size={18} color={FEED_COLORS.textSecondary} />
+            </Pressable>
+        </Pressable>
+    );
 
     return (
-        <View style={styles.container}>
-            {/* Modal Handle */}
-            <View style={styles.modalHandle}>
-                <View style={styles.handleBar} />
-            </View>
-
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <Text style={styles.headerTitle}>Notifications</Text>
-                    {unreadCount > 0 && (
-                        <View style={styles.unreadChip}>
-                            <Text style={styles.unreadChipText}>
-                                {unreadCount}
-                            </Text>
+        <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+            <Pressable style={styles.backdrop} onPress={onClose} />
+            <Animated.View 
+                style={[
+                    styles.bubbleContainer, 
+                    { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }
+                ]}
+            >
+                <View style={styles.triangle} />
+                <View style={styles.contentBox}>
+                    <View style={styles.header}>
+                        <Text style={styles.headerTitle}>Notifications</Text>
+                        <View style={styles.headerActions}>
+                            <Pressable onPress={handleClearAll} hitSlop={10} style={styles.clearButton}>
+                                <Text style={styles.clearText}>Clear</Text>
+                            </Pressable>
+                            <Pressable onPress={onClose} hitSlop={10}>
+                                <Ionicons name="close" size={22} color={FEED_COLORS.textSecondary} />
+                            </Pressable>
                         </View>
+                    </View>
+
+                    {loading ? (
+                        <ActivityIndicator style={{ padding: 20 }} color={FEED_COLORS.favor} />
+                    ) : (
+                        <FlatList
+                            data={notifications}
+                            keyExtractor={(item) => item.id}
+                            renderItem={renderItem}
+                            contentContainerStyle={styles.listContent}
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            ListEmptyComponent={
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyText}>
+                                        {errorText ? errorText : 'No notifications yet.'}
+                                    </Text>
+                                </View>
+                            }
+                        />
                     )}
                 </View>
-                <View style={styles.headerRight}>
-                    <Pressable onPress={onMarkAllRead}>
-                        <Text style={styles.markAllReadButton}>Mark all read</Text>
-                    </Pressable>
-                    <Pressable onPress={onClose}>
-                        <Ionicons name="close" size={24} color={FEED_COLORS.textPrimary} />
-                    </Pressable>
-                </View>
-            </View>
-
-            {/* Notifications List */}
-            <ScrollView
-                style={styles.scrollContainer}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Today Section */}
-                {grouped.today.length > 0 && (
-                    <View style={styles.section}>
-                        <View style={styles.sectionLabelContainer}>
-                            <Text style={styles.sectionLabel}>TODAY</Text>
-                        </View>
-                        <View style={styles.sectionList}>
-                            {grouped.today.map((notification) => (
-                                <NotificationRow
-                                    key={notification.id}
-                                    type={notification.type}
-                                    state={notification.state}
-                                    timestamp={notification.timestamp}
-                                    title={notification.title}
-                                    description={notification.description}
-                                    onPress={() => onNotificationPress?.(notification)}
-                                />
-                            ))}
-                        </View>
-                    </View>
-                )}
-
-                {/* Earlier Section */}
-                {grouped.earlier.length > 0 && (
-                    <View style={styles.section}>
-                        <View style={styles.sectionLabelContainer}>
-                            <Text style={styles.sectionLabel}>EARLIER</Text>
-                        </View>
-                        <View style={styles.sectionList}>
-                            {grouped.earlier.map((notification) => (
-                                <NotificationRow
-                                    key={notification.id}
-                                    type={notification.type}
-                                    state={notification.state}
-                                    timestamp={notification.timestamp}
-                                    title={notification.title}
-                                    description={notification.description}
-                                    onPress={() => onNotificationPress?.(notification)}
-                                />
-                            ))}
-                        </View>
-                    </View>
-                )}
-            </ScrollView>
-        </View>
+            </Animated.View>
+        </Modal>
     );
 }
 
+const { width } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        maxHeight: '90%',
+    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+    bubbleContainer: {
+        position: 'absolute',
+        top: 85,
+        right: 16,
+        width: width * 0.85,
+        maxWidth: 340,
+        maxHeight: 400,
+        // Using transformOrigin to anchor the scale to the top-right
+        // @ts-ignore
+        transformOrigin: 'top right',
+    },
+    triangle: {
+        width: 0, height: 0,
+        borderLeftWidth: 10, borderRightWidth: 10, borderBottomWidth: 10,
+        borderLeftColor: 'transparent', borderRightColor: 'transparent',
+        borderBottomColor: FEED_COLORS.surface,
+        alignSelf: 'flex-end',
+        marginRight: 8,
+    },
+    contentBox: {
         backgroundColor: FEED_COLORS.surface,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-    },
-    modalHandle: {
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingBottom: 8,
-    },
-    handleBar: {
-        width: 36,
-        height: 4,
-        backgroundColor: FEED_COLORS.border,
-        borderRadius: 2,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: FEED_COLORS.border,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 24,
-        paddingVertical: 16,
+        padding: 16,
         borderBottomWidth: 1,
         borderBottomColor: FEED_COLORS.border,
     },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    headerRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: FEED_COLORS.textPrimary,
-    },
-    unreadChip: {
-        backgroundColor: FEED_COLORS.error,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    unreadChipText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: FEED_COLORS.textPrimary,
-    },
-    markAllReadButton: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: FEED_COLORS.favor,
-    },
-    scrollContainer: {
-        flex: 1,
-    },
-    section: {
-        marginBottom: 0,
-    },
-    sectionLabelContainer: {
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        alignItems: 'flex-start',
-        borderTopWidth: 1,
-        borderTopColor: FEED_COLORS.border,
-    },
-    sectionLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: FEED_COLORS.textSecondary,
-        letterSpacing: 1.2,
-        textTransform: 'uppercase',
-    },
-    sectionList: {
-        borderTopWidth: 1,
-        borderTopColor: FEED_COLORS.border,
-    },
-    emptyStateContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-        gap: 16,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
-    },
-    emptyDescription: {
-        fontSize: 14,
-        fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
-        textAlign: 'center',
-        lineHeight: 20,
-    },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    clearButton: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 10, backgroundColor: FEED_COLORS.surface2 },
+    clearText: { color: FEED_COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
+    headerTitle: { fontSize: 16, fontWeight: 'bold', color: FEED_COLORS.textPrimary },
+    listContent: { paddingBottom: 10 },
+    notificationItem: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, alignItems: 'center' },
+    unreadItem: { backgroundColor: 'rgba(239, 68, 68, 0.03)' },
+    iconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: FEED_COLORS.surface2, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    textContainer: { flex: 1 },
+    notificationTitle: { fontSize: 14, fontWeight: '600', color: FEED_COLORS.textPrimary },
+    notificationDesc: { fontSize: 13, color: FEED_COLORS.textSecondary, marginTop: 2 },
+    timeText: { fontSize: 11, color: FEED_COLORS.textSecondary, marginTop: 4 },
+    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: FEED_COLORS.favor, alignSelf: 'center' },
+    deleteButton: { marginLeft: 10, padding: 4, borderRadius: 10 },
+    emptyState: { padding: 30, alignItems: 'center' },
+    emptyText: { color: FEED_COLORS.textSecondary },
 });
