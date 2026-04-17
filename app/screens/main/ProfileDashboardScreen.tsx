@@ -183,11 +183,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         ? avatarAssets[profile.avatar_index] 
         : avatarAssets[0];
 
-    // Safely fallback across all potential DB column naming conventions
     const gradYearDisplay = profile?.graduation_year || profile?.graduationYear || '2027';
     const shortYear = gradYearDisplay.slice(-2);
     const majorDisplay = profile?.major || 'Undeclared';
-    const displayName = profile?.display_name || profile?.full_name || profile?.displayName || profile?.fullName || 'Anonymous';
+    const displayName = profile?.display_name || profile?.displayName || 'Anonymous';
     const bioDisplay = profile?.bio || 'Tell your campus a little about yourself...';
 
     return (
@@ -350,26 +349,41 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     }}
                     onClose={() => setState({ ...state, editProfileVisible: false })}
                     onSave={async (data: any) => {
+                        // 1. OPTIMISTIC UPDATE: Instantly change the UI
+                        setProfile((prev: any) => ({
+                            ...prev,
+                            display_name: data.displayName,
+                            bio: data.bio,
+                            major: data.major,
+                            graduation_year: data.graduationYear
+                        }));
+
+                        // 2. Close the modal instantly
+                        setState({ ...state, editProfileVisible: false });
+
+                        // 3. Save to Supabase
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
                             if (user) {
-                                await supabase
+                                const { error } = await supabase
                                     .from('profiles')
                                     .update({
                                         display_name: data.displayName,
-                                        full_name: data.displayName, // Ensure coverage across setups
                                         bio: data.bio,
                                         major: data.major,
                                         graduation_year: data.graduationYear
                                     })
                                     .eq('id', user.id);
+                                    
+                                if (error) {
+                                    console.error("Supabase Save Error:", error.message);
+                                }
                             }
-                            await fetchProfile(); // Refresh Data locally
+                            
+                            await fetchProfile(); 
                         } catch (e) {
                             console.error("Error updating profile", e);
-                        } finally {
-                            setState({ ...state, editProfileVisible: false });
-                        }
+                        } 
                     }}
                 />
             )}
