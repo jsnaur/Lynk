@@ -101,7 +101,7 @@ We are the creators behind LYNK. Click on our profiles below to see more of our 
 <img src="https://github.com/Jobanned.png" width="100px;" alt="Jobanned" style="border-radius: 50%;"/><br />
 <sub><b>Jobanned</b></sub>
 </a><br />
-<sub>Backend Developer | Quality Assurance</sub>
+<sub>Fullstack Developer</sub>
 </td>
 <td align="center">
 <a href="https://github.com/markuu-exe">

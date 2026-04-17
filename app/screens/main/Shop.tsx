@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
+import { ACCESSORY_ITEMS, AccessoryItem, AccessorySlot, DEFAULT_OWNED_IDS } from '../../constants/accessories';
 import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 import { ACCESSORY_ITEMS, DEFAULT_OWNED_IDS } from '../../constants/accessories';
 import ItemsDetailsSheet from './Items_detailsSheet';
@@ -77,11 +78,15 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   }, []);
 
   const visibleItems = useMemo(
-    () => (filter === 'all' ? CATALOG : CATALOG.filter((i) => i.category === filter)),
+    () => (
+      filter === 'all'
+        ? ACCESSORY_ITEMS
+        : ACCESSORY_ITEMS.filter((item) => item.slot.toLowerCase() === filter)
+    ),
     [filter],
   );
 
-  const completePurchase = useCallback(async (item: CatalogItem) => {
+  const completePurchase = useCallback(async (item: AccessoryItem) => {
     if (ownedIds.has(item.id)) return;
     if (item.price > 0) {
       const didSpend = await spendTokens(item.price);
