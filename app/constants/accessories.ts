@@ -1,4 +1,5 @@
-import { ComponentType } from 'react';
+import React, { ComponentType } from 'react';
+import { ImageSprite } from '../components/sprites';
 
 // ============================================================================
 // ASSET IMPORTS - 8 Body Types (4 Masculine + 4 Feminine)
@@ -30,11 +31,6 @@ import Accessory01 from '../../assets/AvatarAssets/Masculine/Accessory01.png';
 import LeftHand01 from '../../assets/AvatarAssets/Masculine/LeftHand01.png';
 import RightHand01 from '../../assets/AvatarAssets/Masculine/RightHand01.png';
 
-// TODO: Create an ImageSprite component in components/sprites/
-// The component should accept { source, width?, height? } props
-// and render the image at the specified dimensions (default 45x45)
-// Then import it here and use in ACCESSORY_ITEMS below
-
 export type AvatarSlot = 
   | 'Background' 
   | 'BackAccessory' 
@@ -56,7 +52,6 @@ export type AccessoryItem = {
   price: number;
   slot: AvatarSlot;
   Sprite: ComponentType<{ width?: number | string; height?: number | string }>;
-  asset?: any; // TODO: Replace with actual image source type once rendering is implemented
 };
 
 // Precise Z-Order defined by your rules (back to front)
@@ -86,37 +81,33 @@ export const WEARABLE_SLOTS: AvatarSlot[] = [
 ];
 
 // Initial mock data with 8 body types (4 Male, 4 Female) and shared assets
-// TODO: Update Sprite components once ImageSprite component is created
-// For now, using placeholder function that returns null
-const PlaceholderSprite: ComponentType<any> = () => null;
-
 export const ACCESSORY_ITEMS: AccessoryItem[] = [
   // Backgrounds
-  { id: 'bg-default', name: 'Default BG', price: 0, slot: 'Background', Sprite: PlaceholderSprite, asset: Background01 },
+  { id: 'bg-default', name: 'Default BG', price: 0, slot: 'Background', Sprite: (p: any) => React.createElement(ImageSprite, { source: Background01, ...p }) },
   
   // Body (Skin Colors) - 4 Male, 4 Female
-  { id: 'body-m-1', name: 'Male Tone A', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseMasc_A },
-  { id: 'body-m-2', name: 'Male Tone B', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseMasc_B },
-  { id: 'body-m-3', name: 'Male Tone C', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseMasc_C },
-  { id: 'body-m-4', name: 'Male Tone D', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseMasc_D },
+  { id: 'body-m-1', name: 'Male Tone A', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseMasc_A, ...p }) },
+  { id: 'body-m-2', name: 'Male Tone B', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseMasc_B, ...p }) },
+  { id: 'body-m-3', name: 'Male Tone C', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseMasc_C, ...p }) },
+  { id: 'body-m-4', name: 'Male Tone D', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseMasc_D, ...p }) },
   
-  { id: 'body-f-1', name: 'Female Tone A', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseFem_A },
-  { id: 'body-f-2', name: 'Female Tone B', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseFem_B },
-  { id: 'body-f-3', name: 'Female Tone C', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseFem_C },
-  { id: 'body-f-4', name: 'Female Tone D', price: 0, slot: 'Body', Sprite: PlaceholderSprite, asset: BaseFem_D },
+  { id: 'body-f-1', name: 'Female Tone A', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseFem_A, ...p }) },
+  { id: 'body-f-2', name: 'Female Tone B', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseFem_B, ...p }) },
+  { id: 'body-f-3', name: 'Female Tone C', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseFem_C, ...p }) },
+  { id: 'body-f-4', name: 'Female Tone D', price: 0, slot: 'Body', Sprite: (p: any) => React.createElement(ImageSprite, { source: BaseFem_D, ...p }) },
 
   // Wearables
-  { id: 'top-basic', name: 'Basic Shirt', price: 50, slot: 'Top', Sprite: PlaceholderSprite, asset: M_Top01 },
-  { id: 'bot-jeans', name: 'Blue Jeans', price: 50, slot: 'Bottom', Sprite: PlaceholderSprite, asset: M_Bot01 },
-  { id: 'hair-base-1', name: 'Short Hair', price: 0, slot: 'HairBase', Sprite: PlaceholderSprite, asset: M_Hair_Base01 },
-  { id: 'hair-fringe-1', name: 'Hair Fringe', price: 0, slot: 'HairFringe', Sprite: PlaceholderSprite, asset: M_Hair_Fringe01 },
-  { id: 'eyes-normal', name: 'Normal Eyes', price: 0, slot: 'Eyes', Sprite: PlaceholderSprite, asset: Eye01 },
-  { id: 'mouth-smile', name: 'Smile', price: 0, slot: 'Mouth', Sprite: PlaceholderSprite, asset: Mouth01 },
-  { id: 'back-acc-1', name: 'Back Accessory', price: 50, slot: 'BackAccessory', Sprite: PlaceholderSprite, asset: BackAccessory01 },
-  { id: 'headgear-1', name: 'Headgear', price: 75, slot: 'Headgear', Sprite: PlaceholderSprite, asset: Headgear01 },
-  { id: 'acc-1', name: 'Accessory', price: 50, slot: 'Accessory', Sprite: PlaceholderSprite, asset: Accessory01 },
-  { id: 'left-hand-1', name: 'Left Hand Item', price: 50, slot: 'LeftHand', Sprite: PlaceholderSprite, asset: LeftHand01 },
-  { id: 'right-hand-1', name: 'Right Hand Item', price: 50, slot: 'RightHand', Sprite: PlaceholderSprite, asset: RightHand01 },
+  { id: 'top-basic', name: 'Basic Shirt', price: 50, slot: 'Top', Sprite: (p: any) => React.createElement(ImageSprite, { source: M_Top01, ...p }) },
+  { id: 'bot-jeans', name: 'Blue Jeans', price: 50, slot: 'Bottom', Sprite: (p: any) => React.createElement(ImageSprite, { source: M_Bot01, ...p }) },
+  { id: 'hair-base-1', name: 'Short Hair', price: 0, slot: 'HairBase', Sprite: (p: any) => React.createElement(ImageSprite, { source: M_Hair_Base01, ...p }) },
+  { id: 'hair-fringe-1', name: 'Hair Fringe', price: 0, slot: 'HairFringe', Sprite: (p: any) => React.createElement(ImageSprite, { source: M_Hair_Fringe01, ...p }) },
+  { id: 'eyes-normal', name: 'Normal Eyes', price: 0, slot: 'Eyes', Sprite: (p: any) => React.createElement(ImageSprite, { source: Eye01, ...p }) },
+  { id: 'mouth-smile', name: 'Smile', price: 0, slot: 'Mouth', Sprite: (p: any) => React.createElement(ImageSprite, { source: Mouth01, ...p }) },
+  { id: 'back-acc-1', name: 'Back Accessory', price: 50, slot: 'BackAccessory', Sprite: (p: any) => React.createElement(ImageSprite, { source: BackAccessory01, ...p }) },
+  { id: 'headgear-1', name: 'Headgear', price: 75, slot: 'Headgear', Sprite: (p: any) => React.createElement(ImageSprite, { source: Headgear01, ...p }) },
+  { id: 'acc-1', name: 'Accessory', price: 50, slot: 'Accessory', Sprite: (p: any) => React.createElement(ImageSprite, { source: Accessory01, ...p }) },
+  { id: 'left-hand-1', name: 'Left Hand Item', price: 50, slot: 'LeftHand', Sprite: (p: any) => React.createElement(ImageSprite, { source: LeftHand01, ...p }) },
+  { id: 'right-hand-1', name: 'Right Hand Item', price: 50, slot: 'RightHand', Sprite: (p: any) => React.createElement(ImageSprite, { source: RightHand01, ...p }) },
 ];
 
 export const DEFAULT_OWNED_IDS = new Set<string>([
