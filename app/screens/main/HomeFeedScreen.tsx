@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Pressable,
     RefreshControl,
@@ -15,11 +15,10 @@ import * as Location from 'expo-location';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
 import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
-import { NotificationsButton } from '../../components/buttons';
 import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categories';
-import NotificationSheet from './NotificationSheet';
 import { supabase } from '../../lib/supabase';
 import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
+import NotificationSheet from './NotificationSheet';
 
 // Local Avatars
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
@@ -89,7 +88,9 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     const [initialLoading, setInitialLoading] = useState(true);
     const [quests, setQuests] = useState<FeedQuest[]>([]);
     const [currentUserAvatarIndex, setCurrentUserAvatarIndex] = useState<number>(0);
-    const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
+    const [isNotifOpen, setIsNotifOpen] = useState(false); 
+    const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+    const notifChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     const fetchProfile = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -105,6 +106,30 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         }
     };
 
+    const fetchUnreadNotifCount = async () => {
+        try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError) throw userError;
+            if (!user) {
+                setUnreadNotifCount(0);
+                return;
+            }
+
+            // Count unread notifications for current user
+            const { count, error } = await supabase
+                .from('notifications')
+                .select('id', { count: 'exact', head: true })
+                .eq('recipient_id', user.id)
+                .eq('is_read', false);
+
+            if (error) throw error;
+            setUnreadNotifCount(count ?? 0);
+        } catch (e: any) {
+            console.error('fetchUnreadNotifCount error:', e?.message ?? e);
+            // Keep UI stable; don't block feed if this fails
+        }
+    };
+
     const fetchQuests = async () => {
         try {
             // Default CIT University Coordinates
@@ -114,7 +139,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
             try {
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
-                    // Check if physical GPS is turned on to avoid the "unsatisfied settings" crash
                     const servicesEnabled = await Location.hasServicesEnabledAsync();
                     if (servicesEnabled) {
                         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -142,20 +166,17 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 }));
             };
 
-            // Call the Hybrid Batch Reranker with an optimistic callback
             const aiSortedQuests = await getPersonalizedFeed(
                 lat, 
                 lon, 
                 undefined, 
                 (fastQuests) => {
-                    // Immediate raw DB update -> snuffs out UI lag immediately
                     setQuests(formatQuests(fastQuests));
                     setInitialLoading(false);
                     setRefreshing(false); 
                 }
             );
 
-            // Once the AI is finished sorting (a few seconds later), silently update the order
             setQuests(formatQuests(aiSortedQuests));
 
         } catch (error) {
@@ -165,18 +186,69 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         }
     };
 
+    const ensureNotificationsSubscription = useCallback(async () => {
+        try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError) throw userError;
+            if (!user) return;
+
+            // If we already have a channel, leave it (keeps things simple / avoids duplicates)
+            if (notifChannelRef.current) return;
+
+            const channel = supabase
+                .channel(`notifications:recipient_id=eq.${user.id}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `recipient_id=eq.${user.id}`,
+                    },
+                    async () => {
+                        // Any insert/update/delete can change unread count
+                        await fetchUnreadNotifCount();
+                    },
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        // Make sure badge is correct right after subscribe
+                        fetchUnreadNotifCount();
+                    }
+                });
+
+            notifChannelRef.current = channel;
+        } catch (e: any) {
+            console.error('ensureNotificationsSubscription error:', e?.message ?? e);
+        }
+    }, []);
+
     useEffect(() => {
         fetchProfile();
         fetchQuests();
+        fetchUnreadNotifCount();
+        ensureNotificationsSubscription();
     }, []);
 
     useEffect(() => {
         const unsubscribe = navigation?.addListener?.('focus', () => {
             fetchProfile();
             fetchQuests();
+            fetchUnreadNotifCount();
+            ensureNotificationsSubscription();
         });
         return unsubscribe;
     }, [navigation]);
+
+    useEffect(() => {
+        return () => {
+            const channel = notifChannelRef.current;
+            if (channel) {
+                supabase.removeChannel(channel);
+                notifChannelRef.current = null;
+            }
+        };
+    }, []);
 
     const onProfilePress = useCallback(() => {
         onTabPress?.('Profile');
@@ -220,11 +292,20 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     <Text style={styles.logo}>LYNK</Text>
 
                     <Pressable
-                        onPress={() => setNotificationSheetVisible(true)}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        style={styles.notificationWrapper}
+                        onPress={() => setIsNotifOpen(true)}
+                        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
                         accessibilityRole="button"
                     >
-                        <NotificationsButton count={3} onPress={() => setNotificationSheetVisible(true)} />
+                        <Ionicons name="notifications-outline" size={26} color={FEED_COLORS.textPrimary} />
+                        
+                        {unreadNotifCount > 0 && (
+                            <View style={styles.notificationBadge}>
+                                <Text style={styles.notificationBadgeText}>
+                                    {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                                </Text>
+                            </View>
+                        )}
                     </Pressable>
                 </View>
 
@@ -299,22 +380,87 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
             </SafeAreaView>
 
             <BottomNav activeTab="Feed" onTabPress={onTabPress} />
+            
+            {/* Conditional rendering guarantees it will NOT show up early */}
+            {isNotifOpen && (
+                <NotificationSheet 
+                    visible={isNotifOpen} 
+                    onClose={() => {
+                        setIsNotifOpen(false);
+                        fetchUnreadNotifCount();
+                    }} 
+                    onUnreadCountHint={(count) => setUnreadNotifCount(count)}
+                    onNotificationPress={async (item) => {
+                        try {
+                            setIsNotifOpen(false);
+                            fetchUnreadNotifCount();
 
-            {notificationSheetVisible && (
-                <>
-                    <Pressable
-                        style={styles.backdrop}
-                        onPress={() => setNotificationSheetVisible(false)}
-                    />
-                    <View style={styles.sheetContainer}>
-                        <NotificationSheet
-                            onClose={() => setNotificationSheetVisible(false)}
-                            onNotificationPress={(notification) => {
-                                setNotificationSheetVisible(false);
-                            }}
-                        />
-                    </View>
-                </>
+                            if (!item.reference_id) return;
+
+                            // Quest-related notification types open quest detail
+                            if (
+                                item.type === 'new_quest' ||
+                                item.type === 'comment' ||
+                                item.type === 'quest_accepted' ||
+                                item.type === 'quest_completed'
+                            ) {
+                                const { data, error } = await supabase
+                                    .from('quests')
+                                    .select(`
+                                        id,
+                                        user_id,
+                                        category,
+                                        title,
+                                        description,
+                                        created_at,
+                                        bonus_xp,
+                                        token_bounty,
+                                        accepted_by,
+                                        profiles!quests_user_id_fkey(display_name, avatar_index)
+                                    `)
+                                    .eq('id', item.reference_id)
+                                    .single();
+
+                                if (error || !data) {
+                                    console.error('Failed to load quest for notification:', error?.message);
+                                    return;
+                                }
+
+                                const poster = Array.isArray((data as any).profiles)
+                                    ? (data as any).profiles[0]
+                                    : (data as any).profiles;
+
+                                const questForNav: FeedQuest & {
+                                    id?: string;
+                                    user_id?: string;
+                                    description?: string;
+                                    bonus_xp?: number;
+                                    token_bounty?: number;
+                                    accepted_by?: string;
+                                } = {
+                                    id: data.id,
+                                    category: String(data.category).toLowerCase() as FeedCategory,
+                                    title: data.title,
+                                    preview: data.description,
+                                    posterName: poster?.display_name || 'Anonymous',
+                                    posterAvatarIndex: poster?.avatar_index ?? 0,
+                                    ago: timeAgo(data.created_at),
+                                    xp: 50 + (data.bonus_xp || 0),
+                                    token: data.token_bounty || 0,
+                                    user_id: data.user_id,
+                                    description: data.description,
+                                    bonus_xp: data.bonus_xp || 0,
+                                    token_bounty: data.token_bounty || 0,
+                                    accepted_by: data.accepted_by ?? undefined,
+                                };
+
+                                navigation?.navigate?.('QuestDetail', { quest: questForNav });
+                            }
+                        } catch (e: any) {
+                            console.error('Notification press handler error:', e?.message ?? e);
+                        }
+                    }}
+                />
             )}
         </View>
     );
@@ -410,20 +556,31 @@ const styles = StyleSheet.create({
         color: FEED_COLORS.textSecondary,
         textAlign: 'center',
     },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 999,
+    notificationWrapper: {
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    sheetContainer: {
+    notificationBadge: {
         position: 'absolute',
-        bottom: 60,
-        left: 0,
-        right: 0,
-        maxHeight: '80%',
-        zIndex: 1000,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        overflow: 'hidden',
+        top: -2,
+        right: -2,
+        backgroundColor: '#EF4444', 
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: FEED_COLORS.bg, 
+        paddingHorizontal: 4,
+        zIndex: 2,
+    },
+    notificationBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
 });
