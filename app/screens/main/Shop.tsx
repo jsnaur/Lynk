@@ -7,35 +7,36 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
-import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS } from '../../constants/accessories';
+import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 
-type ShopCategory = 'all' | 'body' | 'hair' | 'face' | 'wearables';
+type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
 const FILTERS: { key: ShopCategory; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'body', label: 'Bodies' },
-  { key: 'hair', label: 'Hair' },
+  { key: 'clothing', label: 'Clothing' },
+  { key: 'accessories', label: 'Accessories' },
   { key: 'face', label: 'Face' },
-  { key: 'wearables', label: 'Wearables' },
+  { key: 'hairstyles', label: 'Hairstyles' },
+  { key: 'backgrounds', label: 'Backgrounds' },
 ];
 
 const SLOT_TO_CATEGORY: { [key: string]: ShopCategory } = {
-  'Body': 'body',
-  'HairBase': 'hair',
-  'HairFringe': 'hair',
+  'HairBase': 'hairstyles',
+  'HairFringe': 'hairstyles',
+  'Top': 'clothing',
+  'Bottom': 'clothing',
+  'Headgear': 'accessories',
+  'Accessory': 'accessories',
+  'LeftHand': 'accessories',
+  'RightHand': 'accessories',
+  'BackAccessory': 'accessories',
+  'Background': 'backgrounds',
+  'Body': 'all', // Bodies are not sold
   'Eyes': 'face',
   'Mouth': 'face',
-  'Top': 'wearables',
-  'Bottom': 'wearables',
-  'BackAccessory': 'wearables',
-  'Headgear': 'wearables',
-  'Accessory': 'wearables',
-  'LeftHand': 'wearables',
-  'RightHand': 'wearables',
-  'Background': 'wearables',
 };
 const GRID_GAP = 10;
 const H_PADDING = 16;
@@ -50,18 +51,23 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
   const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
+  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
 
   const columnWidth = useMemo(() => {
     const w = Dimensions.get('window').width;
-    return (w - H_PADDING * 2 - GRID_GAP) / 2;
+    return (w - H_PADDING * 2 - GRID_GAP * 2) / 3;
   }, []);
 
   const visibleItems = useMemo(
-    () => (
-      filter === 'all'
-        ? ACCESSORY_ITEMS
-        : ACCESSORY_ITEMS.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter)
-    ),
+    () => {
+      // Filter out items that don't have a category (Body, Eyes, Mouth)
+      const sellableItems = ACCESSORY_ITEMS.filter((item) => item.slot in SLOT_TO_CATEGORY);
+      
+      if (filter === 'all') {
+        return sellableItems;
+      }
+      return sellableItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
+    },
     [filter],
   );
 
@@ -83,12 +89,48 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Avatar Shop</Text>
+            <Ionicons name="storefront" size={20} color={FEED_COLORS.textPrimary} />
+            <Text style={styles.title}>Shop</Text>
           </View>
           <View style={styles.balanceChip}>
-            <TokenPixelIcon width={18} height={18} />
+            <TokenPixelIcon width={16} height={16} />
             <Text style={styles.balanceText}>{balance}</Text>
           </View>
+        </View>
+
+        <View style={styles.previewCard}>
+          <View style={styles.avatarContainer}>
+            {ALL_SLOTS_Z_ORDER.map((slot) => {
+              const accessoryId = appliedAccessories[slot];
+              if (!accessoryId) return null;
+
+              const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+              if (!accessory) return null;
+
+              const Sprite = accessory.Sprite;
+
+              return (
+                <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
+                  <Sprite width="100%" height="100%" />
+                </View>
+              );
+            })}
+          </View>
+
+          <View style={styles.previewTextBlock}>
+            <Text style={styles.previewTitle}>Your Avatar</Text>
+            <Text style={styles.previewEquipped}>
+              Equipped: {Object.keys(appliedAccessories).length > 0 ? 'Pixel Shades' : 'None'}
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={() => navigation.navigate('Customize')}
+            style={styles.customizeButton}
+          >
+            <Ionicons name="sparkles" size={18} color={FEED_COLORS.favor} />
+            <Text style={styles.customizeButtonText}>Customize</Text>
+          </Pressable>
         </View>
 
         <View style={styles.filterRow}>
@@ -240,6 +282,70 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono-Bold',
     fontWeight: '700',
     color: FEED_COLORS.token,
+  },
+  previewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
+  },
+  avatarContainer: {
+    width: 64,
+    height: 64,
+    backgroundColor: FEED_COLORS.surface2,
+    borderRadius: 14,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    borderWidth: 1.5,
+    borderColor: FEED_COLORS.border,
+  },
+  layerAbsolute: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  customizeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface2,
+  },
+  customizeButtonText: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Medium',
+    fontWeight: '500',
+    color: FEED_COLORS.textPrimary,
+  },
+  previewTextBlock: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  previewTitle: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: FEED_COLORS.textPrimary,
+  },
+  previewEquipped: {
+    fontSize: 12,
+    fontFamily: 'DMSans-Regular',
+    fontWeight: '400',
+    color: FEED_COLORS.textSecondary,
   },
   filterRow: {
     borderBottomWidth: 1,

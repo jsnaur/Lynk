@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import ProfileSetupScreen from '../screens/auth/ProfileSetupScreen';
+import ProfileSetupScreen from '../screens/auth/ProfileSetupScreenA';
+import ProfileSetupScreenB from '../screens/auth/ProfileSetupScreenB';
 import { supabase } from '../lib/supabase'; 
 import { Session } from '@supabase/supabase-js';
 import { View, ActivityIndicator } from 'react-native';
@@ -90,12 +91,14 @@ const AppNavigator = () => {
         isNewUser ? (
           <>
             <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+            <Stack.Screen name="ProfileSetupB" component={ProfileSetupScreenB} />
             <Stack.Screen name="Main" component={MainNavigator} />
           </>
         ) : (
           <>
             <Stack.Screen name="Main" component={MainNavigator} />
             <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+            <Stack.Screen name="ProfileSetupB" component={ProfileSetupScreenB} />
           </>
         )
       ) : (
