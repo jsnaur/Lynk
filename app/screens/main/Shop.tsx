@@ -12,31 +12,31 @@ import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 
-type ShopCategory = 'all' | 'hair' | 'top' | 'bottom' | 'headgear' | 'accessory' | 'lefthand' | 'righthand' | 'back';
+type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
 const FILTERS: { key: ShopCategory; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'hair', label: 'Hair' },
-  { key: 'top', label: 'Tops' },
-  { key: 'bottom', label: 'Bottoms' },
-  { key: 'headgear', label: 'Headgear' },
-  { key: 'accessory', label: 'Accessories' },
-  { key: 'lefthand', label: 'Left Hand' },
-  { key: 'righthand', label: 'Right Hand' },
-  { key: 'back', label: 'Back' },
+  { key: 'clothing', label: 'Clothing' },
+  { key: 'accessories', label: 'Accessories' },
+  { key: 'face', label: 'Face' },
+  { key: 'hairstyles', label: 'Hairstyles' },
+  { key: 'backgrounds', label: 'Backgrounds' },
 ];
 
 const SLOT_TO_CATEGORY: { [key: string]: ShopCategory } = {
-  'HairBase': 'hair',
-  'HairFringe': 'hair',
-  'Top': 'top',
-  'Bottom': 'bottom',
-  'Headgear': 'headgear',
-  'Accessory': 'accessory',
-  'LeftHand': 'lefthand',
-  'RightHand': 'righthand',
-  'BackAccessory': 'back',
-  'Background': 'back',
+  'HairBase': 'hairstyles',
+  'HairFringe': 'hairstyles',
+  'Top': 'clothing',
+  'Bottom': 'clothing',
+  'Headgear': 'accessories',
+  'Accessory': 'accessories',
+  'LeftHand': 'accessories',
+  'RightHand': 'accessories',
+  'BackAccessory': 'accessories',
+  'Background': 'backgrounds',
+  'Body': 'all', // Bodies are not sold
+  'Eyes': 'face',
+  'Mouth': 'face',
 };
 const GRID_GAP = 10;
 const H_PADDING = 16;
@@ -55,7 +55,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
   const columnWidth = useMemo(() => {
     const w = Dimensions.get('window').width;
-    return (w - H_PADDING * 2 - GRID_GAP) / 2;
+    return (w - H_PADDING * 2 - GRID_GAP * 2) / 3;
   }, []);
 
   const visibleItems = useMemo(
@@ -89,10 +89,11 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Avatar Shop</Text>
+            <Ionicons name="storefront" size={20} color={FEED_COLORS.textPrimary} />
+            <Text style={styles.title}>Shop</Text>
           </View>
           <View style={styles.balanceChip}>
-            <TokenPixelIcon width={18} height={18} />
+            <TokenPixelIcon width={16} height={16} />
             <Text style={styles.balanceText}>{balance}</Text>
           </View>
         </View>
@@ -114,6 +115,13 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
                 </View>
               );
             })}
+          </View>
+
+          <View style={styles.previewTextBlock}>
+            <Text style={styles.previewTitle}>Your Avatar</Text>
+            <Text style={styles.previewEquipped}>
+              Equipped: {Object.keys(appliedAccessories).length > 0 ? 'Pixel Shades' : 'None'}
+            </Text>
           </View>
 
           <Pressable
@@ -286,14 +294,16 @@ const styles = StyleSheet.create({
     backgroundColor: FEED_COLORS.surface,
   },
   avatarContainer: {
-    width: 100,
-    height: 100,
+    width: 64,
+    height: 64,
     backgroundColor: FEED_COLORS.surface2,
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    borderWidth: 1.5,
+    borderColor: FEED_COLORS.border,
   },
   layerAbsolute: {
     position: 'absolute',
@@ -301,23 +311,41 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   customizeButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: FEED_COLORS.favor,
-    backgroundColor: 'rgba(0, 245, 255, 0.12)',
+    borderColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface2,
   },
   customizeButtonText: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Medium',
+    fontWeight: '500',
+    color: FEED_COLORS.textPrimary,
+  },
+  previewTextBlock: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  previewTitle: {
     fontSize: 14,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.favor,
+    color: FEED_COLORS.textPrimary,
+  },
+  previewEquipped: {
+    fontSize: 12,
+    fontFamily: 'DMSans-Regular',
+    fontWeight: '400',
+    color: FEED_COLORS.textSecondary,
   },
   filterRow: {
     borderBottomWidth: 1,

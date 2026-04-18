@@ -1,5 +1,5 @@
 import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
@@ -118,94 +118,96 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
   }, [displayName, selectedMajor, graduationYear, selectedId, navigation]);
 
   return (
-    <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox]}>
-      <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
-        <View style={styles.progressBarTrack}>
-          <View style={[styles.progressBarFill, localStyles.progressBarFillLarge]} />
-        </View>
-        <View style={[styles.headerTextBlock, styles.textCommon]}>
-          <Text style={styles.stepLabel}>Step 2 of 2</Text>
-          <Text style={[styles.screenTitle, styles.screenTitleTypo]}>Set Up Your Avatar</Text>
-          <Text style={[styles.screenSubtitle, styles.hintBodyTypo]}>
-            Get yourself dressed.{"\n"}More wearables in the shop.
-          </Text>
-        </View>
-      </View>
-
-      <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
-        <View style={[styles.avatarPreviewRow, styles.setupCtaBarFlexBox]}>
-          <View style={[styles.selectedAvatarFrameIcon, localStyles.selectedAvatarContainer]}>
-            {SelectedAvatar && <SelectedAvatar width={72} height={72} style={localStyles.selectedAvatarSvg} />}
+    <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
+          <View style={styles.progressBarTrack}>
+            <View style={[styles.progressBarFill, localStyles.progressBarFillLarge]} />
           </View>
-
-          <View style={styles.textCommon}>
-            <Text style={[styles.hintTitle, styles.hintTitleTypo]}>Your Avatar</Text>
-            <Text style={[styles.hintBody, styles.hintBodyTypo]}>
-              Represents you on the quest board.{"\n"}Unlock more in the Shop.
+          <View style={[styles.headerTextBlock, styles.textCommon]}>
+            <Text style={styles.stepLabel}>Step 2 of 2</Text>
+            <Text style={[styles.screenTitle, styles.screenTitleTypo]}>Set Up Your Avatar</Text>
+            <Text style={[styles.screenSubtitle, styles.hintBodyTypo]}>
+              Get yourself dressed.{"\n"}More wearables in the shop.
             </Text>
           </View>
         </View>
 
-        {categoryGroups.map((group) => {
-          const activeIndex =
-            group.label === "FACE"
-              ? selectedFace
-              : group.label === "HAIR"
-              ? selectedHair
-              : group.label === "TOP"
-              ? selectedTop
-              : selectedBottom;
-
-          const setActive =
-            group.label === "FACE"
-              ? setSelectedFace
-              : group.label === "HAIR"
-              ? setSelectedHair
-              : group.label === "TOP"
-              ? setSelectedTop
-              : setSelectedBottom;
-
-          return (
-            <View key={group.label} style={localStyles.categorySection}>
-              <View style={[styles.setupCtaBarFlexBox, localStyles.categoryHeader]}>
-                <View style={styles.dividerLineL} />
-                <Text style={styles.dividerLabel}>{group.label}</Text>
-                <View style={styles.dividerLineL} />
-              </View>
-              <View style={localStyles.categoryRow}>
-                {group.options.map((Option, index) => {
-                  const isSelected = index === activeIndex;
-                  return (
-                    <Pressable
-                      key={`${group.label}-${index}`}
-                      onPress={() => setActive(index)}
-                      style={({ pressed }) => [
-                        localStyles.customOption,
-                        isSelected && localStyles.customOptionSelected,
-                        pressed && { opacity: 0.8 }
-                      ]}
-                    >
-                      <Option width={44} height={44} style={localStyles.customSprite} />
-                      {isSelected && (
-                        <View style={localStyles.selectionBadge}>
-                          <SelectedCheckIcon width={10} height={10} />
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
+        <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
+          <View style={[styles.avatarPreviewRow, styles.setupCtaBarFlexBox]}>
+            <View style={[styles.selectedAvatarFrameIcon, localStyles.selectedAvatarContainer]}>
+              {SelectedAvatar && <SelectedAvatar width={72} height={72} style={localStyles.selectedAvatarSvg} />}
             </View>
-          );
-        })}
-      </View>
 
-      {errorMessage ? (
-        <View style={localStyles.errorContainer}>
-          <Ionicons name="alert-circle" size={18} color="#FF3B30" />
-          <Text style={localStyles.errorText}>{errorMessage}</Text>
+            <View style={styles.textCommon}>
+              <Text style={[styles.hintTitle, styles.hintTitleTypo]}>Your Avatar</Text>
+              <Text style={[styles.hintBody, styles.hintBodyTypo]}>
+                Represents you on the quest board.{"\n"}Unlock more in the Shop.
+              </Text>
+            </View>
+          </View>
+
+          {categoryGroups.map((group) => {
+            const activeIndex =
+              group.label === "FACE"
+                ? selectedFace
+                : group.label === "HAIR"
+                ? selectedHair
+                : group.label === "TOP"
+                ? selectedTop
+                : selectedBottom;
+
+            const setActive =
+              group.label === "FACE"
+                ? setSelectedFace
+                : group.label === "HAIR"
+                ? setSelectedHair
+                : group.label === "TOP"
+                ? setSelectedTop
+                : setSelectedBottom;
+
+            return (
+              <View key={group.label} style={localStyles.categorySection}>
+                <View style={[styles.setupCtaBarFlexBox, localStyles.categoryHeader]}>
+                  <View style={styles.dividerLineL} />
+                  <Text style={styles.dividerLabel}>{group.label}</Text>
+                  <View style={styles.dividerLineL} />
+                </View>
+                <View style={localStyles.categoryRow}>
+                  {group.options.map((Option, index) => {
+                    const isSelected = index === activeIndex;
+                    return (
+                      <Pressable
+                        key={`${group.label}-${index}`}
+                        onPress={() => setActive(index)}
+                        style={({ pressed }) => [
+                          localStyles.customOption,
+                          isSelected && localStyles.customOptionSelected,
+                          pressed && { opacity: 0.8 }
+                        ]}
+                      >
+                        <Option width={44} height={44} style={localStyles.customSprite} />
+                        {isSelected && (
+                          <View style={localStyles.selectionBadge}>
+                            <SelectedCheckIcon width={10} height={10} />
+                          </View>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })}
         </View>
-      ) : null}
+
+        {errorMessage ? (
+          <View style={localStyles.errorContainer}>
+            <Ionicons name="alert-circle" size={18} color="#FF3B30" />
+            <Text style={localStyles.errorText}>{errorMessage}</Text>
+          </View>
+        ) : null}
+      </ScrollView>
 
       <View style={[styles.setupCtaBar, styles.setupCtaBarFlexBox]}>
         <Pressable
