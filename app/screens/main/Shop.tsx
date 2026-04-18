@@ -7,35 +7,36 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
-import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS } from '../../constants/accessories';
+import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 
-type ShopCategory = 'all' | 'body' | 'hair' | 'face' | 'wearables';
+type ShopCategory = 'all' | 'hair' | 'top' | 'bottom' | 'headgear' | 'accessory' | 'lefthand' | 'righthand' | 'back';
 
 const FILTERS: { key: ShopCategory; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'body', label: 'Bodies' },
   { key: 'hair', label: 'Hair' },
-  { key: 'face', label: 'Face' },
-  { key: 'wearables', label: 'Wearables' },
+  { key: 'top', label: 'Tops' },
+  { key: 'bottom', label: 'Bottoms' },
+  { key: 'headgear', label: 'Headgear' },
+  { key: 'accessory', label: 'Accessories' },
+  { key: 'lefthand', label: 'Left Hand' },
+  { key: 'righthand', label: 'Right Hand' },
+  { key: 'back', label: 'Back' },
 ];
 
 const SLOT_TO_CATEGORY: { [key: string]: ShopCategory } = {
-  'Body': 'body',
   'HairBase': 'hair',
   'HairFringe': 'hair',
-  'Eyes': 'face',
-  'Mouth': 'face',
-  'Top': 'wearables',
-  'Bottom': 'wearables',
-  'BackAccessory': 'wearables',
-  'Headgear': 'wearables',
-  'Accessory': 'wearables',
-  'LeftHand': 'wearables',
-  'RightHand': 'wearables',
-  'Background': 'wearables',
+  'Top': 'top',
+  'Bottom': 'bottom',
+  'Headgear': 'headgear',
+  'Accessory': 'accessory',
+  'LeftHand': 'lefthand',
+  'RightHand': 'righthand',
+  'BackAccessory': 'back',
+  'Background': 'back',
 };
 const GRID_GAP = 10;
 const H_PADDING = 16;
@@ -50,6 +51,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
   const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
+  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
 
   const columnWidth = useMemo(() => {
     const w = Dimensions.get('window').width;
@@ -57,11 +59,15 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   }, []);
 
   const visibleItems = useMemo(
-    () => (
-      filter === 'all'
-        ? ACCESSORY_ITEMS
-        : ACCESSORY_ITEMS.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter)
-    ),
+    () => {
+      // Filter out items that don't have a category (Body, Eyes, Mouth)
+      const sellableItems = ACCESSORY_ITEMS.filter((item) => item.slot in SLOT_TO_CATEGORY);
+      
+      if (filter === 'all') {
+        return sellableItems;
+      }
+      return sellableItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
+    },
     [filter],
   );
 
@@ -89,6 +95,34 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
             <TokenPixelIcon width={18} height={18} />
             <Text style={styles.balanceText}>{balance}</Text>
           </View>
+        </View>
+
+        <View style={styles.previewCard}>
+          <View style={styles.avatarContainer}>
+            {ALL_SLOTS_Z_ORDER.map((slot) => {
+              const accessoryId = appliedAccessories[slot];
+              if (!accessoryId) return null;
+
+              const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+              if (!accessory) return null;
+
+              const Sprite = accessory.Sprite;
+
+              return (
+                <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
+                  <Sprite width="100%" height="100%" />
+                </View>
+              );
+            })}
+          </View>
+
+          <Pressable
+            onPress={() => navigation.navigate('Customize')}
+            style={styles.customizeButton}
+          >
+            <Ionicons name="sparkles" size={18} color={FEED_COLORS.favor} />
+            <Text style={styles.customizeButtonText}>Customize</Text>
+          </Pressable>
         </View>
 
         <View style={styles.filterRow}>
@@ -240,6 +274,50 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono-Bold',
     fontWeight: '700',
     color: FEED_COLORS.token,
+  },
+  previewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: FEED_COLORS.border,
+    backgroundColor: FEED_COLORS.surface,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    backgroundColor: FEED_COLORS.surface2,
+    borderRadius: 12,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  layerAbsolute: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  customizeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: FEED_COLORS.favor,
+    backgroundColor: 'rgba(0, 245, 255, 0.12)',
+  },
+  customizeButtonText: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: FEED_COLORS.favor,
   },
   filterRow: {
     borderBottomWidth: 1,

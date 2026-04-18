@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 
 import { supabase } from '../../lib/supabase'; 
 
@@ -28,6 +29,7 @@ export default function CustomizeScreen({
   initialAppliedAccessories,
   onApplyAccessory,
 }: CustomizeScreenProps) {
+  const navigation = useNavigation<any>();
   
   // TESTING OVERRIDE: Automatically set all items as "Owned"
   const ownedIds = useMemo(
@@ -42,6 +44,65 @@ export default function CustomizeScreen({
     initialAppliedAccessories ?? {}
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  // Save to DB when user navigates back
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', async (e: any) => {
+      // Check if there are any changes to save
+      if (Object.keys(appliedAccessories).length === 0) {
+        return; // No changes, allow navigation
+      }
+
+      e.preventDefault(); // Prevent navigation while saving
+
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          // No user, allow navigation
+          navigation.dispatch(e.data.action);
+          return;
+        }
+
+        // Save to Supabase - WAIT for completion
+        const { error } = await supabase
+          .from('user_avatars')
+          .upsert({
+            user_id: user.id,
+            background: appliedAccessories.Background || null,
+            back_accessory: appliedAccessories.BackAccessory || null,
+            body: appliedAccessories.Body || null,
+            bottom: appliedAccessories.Bottom || null,
+            top: appliedAccessories.Top || null,
+            eyes: appliedAccessories.Eyes || null,
+            mouth: appliedAccessories.Mouth || null,
+            hair_base: appliedAccessories.HairBase || null,
+            headgear: appliedAccessories.Headgear || null,
+            hair_fringe: appliedAccessories.HairFringe || null,
+            accessory: appliedAccessories.Accessory || null,
+            left_hand: appliedAccessories.LeftHand || null,
+            right_hand: appliedAccessories.RightHand || null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+
+        if (error) {
+          console.error('Failed to save avatar:', error);
+          Alert.alert('Error', 'Failed to save your avatar. Please try again.');
+          return; // Don't allow navigation if save failed
+        }
+
+        // Save succeeded, now allow navigation
+        navigation.dispatch(e.data.action);
+      } catch (err) {
+        console.error('Error saving avatar:', err);
+        Alert.alert('Error', 'An error occurred while saving.');
+      }
+    });
+
+    return unsubscribe;
+  }, [appliedAccessories, navigation]);
 
   useEffect(() => {
     let isMounted = true;
@@ -118,10 +179,9 @@ export default function CustomizeScreen({
 
   const canInteract = 
     !!selectedAccessory && 
-    ownedIds.has(selectedAccessory.id) && 
-    !isSaving;
+    ownedIds.has(selectedAccessory.id);
 
-  const toggleSelectedAccessory = async () => {
+  const toggleSelectedAccessory = () => {
     if (!selectedAccessory) return;
 
     if (!ownedIds.has(selectedAccessory.id)) {
@@ -129,71 +189,35 @@ export default function CustomizeScreen({
       return;
     }
 
-    const previousAppliedState = appliedAccessories;
     const slotToUpdate = selectedAccessory.slot;
+    const wasApplied = appliedAccessories[slotToUpdate] === selectedAccessory.id;
 
-    // Optimistic UI Update
+    // Instant local state update
     const newAppliedState = { ...appliedAccessories };
-    if (isSelectedApplied) {
+    if (wasApplied) {
       delete newAppliedState[slotToUpdate];
     } else {
       newAppliedState[slotToUpdate] = selectedAccessory.id;
     }
     
     setAppliedAccessories(newAppliedState);
-    setIsSaving(true);
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      setAppliedAccessories(previousAppliedState);
-      setIsSaving(false);
-      Alert.alert('Authentication required', 'Please log in again to save your accessory.');
-      return;
-    }
-
-    // Save to Supabase using new snake_case columns
-    const { error } = await supabase
-      .from('user_avatars')
-      .upsert({
-        user_id: user.id,
-        background: newAppliedState.Background || null,
-        back_accessory: newAppliedState.BackAccessory || null,
-        body: newAppliedState.Body || null,
-        bottom: newAppliedState.Bottom || null,
-        top: newAppliedState.Top || null,
-        eyes: newAppliedState.Eyes || null,
-        mouth: newAppliedState.Mouth || null,
-        hair_base: newAppliedState.HairBase || null,
-        headgear: newAppliedState.Headgear || null,
-        hair_fringe: newAppliedState.HairFringe || null,
-        accessory: newAppliedState.Accessory || null,
-        left_hand: newAppliedState.LeftHand || null,
-        right_hand: newAppliedState.RightHand || null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-
-    if (error) {
-      console.error(error);
-      setAppliedAccessories(previousAppliedState);
-      Alert.alert('Error', 'Failed to save accessory. Please try again.');
-      setIsSaving(false);
-      return;
-    }
-
-    setIsSaving(false);
-    onApplyAccessory?.(slotToUpdate, isSelectedApplied ? '' : selectedAccessory.id);
+    onApplyAccessory?.(slotToUpdate, wasApplied ? '' : selectedAccessory.id);
   };
 
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.backButton}
+          >
+            <Ionicons name="chevron-back" size={24} color={FEED_COLORS.textPrimary} />
+          </Pressable>
           <Text style={styles.title}>Customize</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.previewCard}>
@@ -212,8 +236,7 @@ export default function CustomizeScreen({
 
               return (
                 <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
-                  {/* We set width/height to 100% so the 45x45 SVG scales up to fill the 180x180 container perfectly */}
-                  <Sprite width="100%" height="100%" />
+                  <Sprite width={140} height={140} />
                 </View>
               );
             })}
@@ -327,13 +350,11 @@ export default function CustomizeScreen({
             ]}
           >
             <Text style={[styles.applyBtnText, isSelectedApplied && styles.unequipBtnText]}>
-              {isSaving 
-                ? 'Saving...' 
-                : !selectedAccessory 
-                  ? 'Select an Item' 
-                  : isSelectedApplied 
-                    ? `Unequip ${selectedAccessory.slot}` 
-                    : `Equip to ${selectedAccessory.slot}`
+              {!selectedAccessory 
+                ? 'Select an Item' 
+                : isSelectedApplied 
+                  ? `Unequip ${selectedAccessory.slot}` 
+                  : `Equip to ${selectedAccessory.slot}`
               }
             </Text>
           </Pressable>
@@ -352,16 +373,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: FEED_COLORS.border,
+    gap: 12,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerSpacer: {
+    flex: 1,
   },
   title: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 18,
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
     color: FEED_COLORS.textPrimary,
+    textAlign: 'center',
   },
   previewCard: {
     marginHorizontal: 16,
@@ -510,7 +543,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 24,
     gap: 10,
   },
   emptyState: {
@@ -588,8 +621,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: FEED_COLORS.border,
     backgroundColor: FEED_COLORS.bg,
