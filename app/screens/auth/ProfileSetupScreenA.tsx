@@ -116,7 +116,8 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
   }, [navigation, selectedId, displayName, selectedMajor, graduationYear]);
 
   return (
-    <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox]}>
+    <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
       <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
         <View style={styles.progressBarTrack}>
           <View style={styles.progressBarFill} />
@@ -312,12 +313,13 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      {errorMessage ? (
-        <View style={localStyles.errorContainer}>
-          <Ionicons name="alert-circle" size={18} color="#FF3B30" />
-          <Text style={localStyles.errorText}>{errorMessage}</Text>
-        </View>
-      ) : null}
+        {errorMessage ? (
+          <View style={localStyles.errorContainer}>
+            <Ionicons name="alert-circle" size={18} color="#FF3B30" />
+            <Text style={localStyles.errorText}>{errorMessage}</Text>
+          </View>
+        ) : null}
+      </ScrollView>
 
       <View style={[styles.setupCtaBar, styles.setupCtaBarFlexBox]}>
         <Pressable
