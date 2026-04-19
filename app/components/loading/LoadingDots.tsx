@@ -1,69 +1,76 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
+import { COLORS } from '../../constants/colors';
 
-type LoadingDotsProps = {
-  phase?: 1 | 2 | 3 | 4;
-};
+interface LoadingDotsProps {
+  color?: string;
+  size?: number;
+}
 
-export default function LoadingDots({ phase = 1 }: LoadingDotsProps) {
-  const dotPositions = [
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-  ];
+export default function LoadingDots({ color = COLORS.textPrimary, size = 6 }: LoadingDotsProps) {
+  const anim1 = useRef(new Animated.Value(0)).current;
+  const anim2 = useRef(new Animated.Value(0)).current;
+  const anim3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const animations = dotPositions.map((dot, index) => {
+    const createAnimation = (anim: Animated.Value, delay: number) => {
       return Animated.sequence([
-        Animated.delay(index * 150),
+        Animated.delay(delay),
         Animated.loop(
           Animated.sequence([
-            Animated.timing(dot, {
-              toValue: -8,
-              duration: 300,
+            Animated.timing(anim, {
+              toValue: 1,
+              duration: 400,
               useNativeDriver: true,
             }),
-            Animated.timing(dot, {
+            Animated.timing(anim, {
               toValue: 0,
-              duration: 300,
+              duration: 400,
               useNativeDriver: true,
             }),
           ])
         ),
       ]);
-    });
+    };
 
-    Animated.parallel(animations).start();
-  }, []);
+    createAnimation(anim1, 0).start();
+    createAnimation(anim2, 200).start();
+    createAnimation(anim3, 400).start();
+  }, [anim1, anim2, anim3]);
+
+  const dotStyle = (anim: Animated.Value) => ({
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    backgroundColor: color,
+    opacity: anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.3, 1],
+    }),
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -size / 2],
+        }),
+      },
+    ],
+  });
 
   return (
     <View style={styles.container}>
-      {dotPositions.map((position, index) => (
-        <Animated.View
-          key={index}
-          style={[
-            styles.dot,
-            { transform: [{ translateY: position }] },
-          ]}
-        />
-      ))}
+      <Animated.View style={dotStyle(anim1)} />
+      <Animated.View style={dotStyle(anim2)} />
+      <Animated.View style={dotStyle(anim3)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: 40,
-    height: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#666',
+    gap: 4,
   },
 });

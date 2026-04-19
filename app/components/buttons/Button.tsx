@@ -1,88 +1,57 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
 import { COLORS } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 
-type ButtonVariant = 'primary' | 'secondary' | 'success' | 'error' | 'text';
-type ButtonSize = 'small' | 'medium' | 'large';
+export type ButtonVariant = 'Primary' | 'Secondary' | 'Outline' | 'Danger';
 
-type ButtonProps = {
-  title: string;
+interface ButtonProps {
+  label: string;
+  onPress?: () => void;
   variant?: ButtonVariant;
-  size?: ButtonSize;
   disabled?: boolean;
   loading?: boolean;
-  icon?: string;
-  iconPosition?: 'left' | 'right';
-  onPress?: () => void;
-};
+  style?: ViewStyle;
+}
 
 export default function Button({
-  title,
-  variant = 'primary',
-  size = 'medium',
+  label,
+  onPress,
+  variant = 'Primary',
   disabled = false,
   loading = false,
-  icon,
-  iconPosition = 'left',
-  onPress,
+  style,
 }: ButtonProps) {
   const getBackgroundColor = () => {
-    if (disabled) return '#3a3a48';
+    if (disabled) return COLORS.surface2;
     switch (variant) {
-      case 'primary':
-        return COLORS.favor;
-      case 'secondary':
-        return '#26262e';
-      case 'success':
-        return COLORS.item;
-      case 'error':
-        return COLORS.error;
-      case 'text':
-        return 'transparent';
-      default:
-        return COLORS.favor;
+      case 'Primary': return COLORS.favor;
+      case 'Secondary': return COLORS.surface2;
+      case 'Danger': return COLORS.error;
+      case 'Outline': return 'transparent';
+      default: return COLORS.favor;
     }
+  };
+
+  const getBorderColor = () => {
+    if (disabled) return 'transparent';
+    if (variant === 'Outline') return COLORS.border;
+    return 'transparent';
   };
 
   const getTextColor = () => {
-    if (variant === 'text' || (disabled && variant !== 'secondary')) {
-      return '#8a8a9a';
-    }
-    if (variant === 'secondary') return '#f0f0f5';
-    if (variant === 'success' || variant === 'error') return '#1a1a1f';
-    return '#1a1a1f';
-  };
-
-  const getPadding = () => {
-    switch (size) {
-      case 'small':
-        return { paddingHorizontal: 12, paddingVertical: 8 };
-      case 'medium':
-        return { paddingHorizontal: 16, paddingVertical: 12 };
-      case 'large':
-        return { paddingHorizontal: 24, paddingVertical: 16 };
+    if (disabled) return COLORS.textSecondary;
+    switch (variant) {
+      case 'Primary':
+      case 'Danger':
+        return COLORS.bg;
+      case 'Secondary':
+      case 'Outline':
+        return COLORS.textPrimary;
       default:
-        return { paddingHorizontal: 16, paddingVertical: 12 };
+        return COLORS.bg;
     }
   };
-
-  const getFontSize = () => {
-    switch (size) {
-      case 'small':
-        return 12;
-      case 'medium':
-        return 14;
-      case 'large':
-        return 16;
-      default:
-        return 14;
-    }
-  };
-
-  const isSecondary = variant === 'secondary';
-  const borderColor = isSecondary ? '#3a3a48' : 'transparent';
 
   return (
     <TouchableOpacity
@@ -90,59 +59,36 @@ export default function Button({
         styles.container,
         {
           backgroundColor: getBackgroundColor(),
-          borderColor,
-          opacity: disabled ? 0.6 : 1,
+          borderColor: getBorderColor(),
+          borderWidth: variant === 'Outline' ? 1 : 0,
         },
-        getPadding(),
+        style,
       ]}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}
     >
-      <View style={styles.content}>
-        {loading && (
-          <ActivityIndicator color={getTextColor()} size="small" />
-        )}
-        
-        {!loading && icon && iconPosition === 'left' && (
-          <MaterialCommunityIcons
-            name={icon as any}
-            size={getFontSize()}
-            color={getTextColor()}
-          />
-        )}
-
-        <Text style={[styles.text, { color: getTextColor(), fontSize: getFontSize() }]}>
-          {title}
-        </Text>
-
-        {!loading && icon && iconPosition === 'right' && (
-          <MaterialCommunityIcons
-            name={icon as any}
-            size={getFontSize()}
-            color={getTextColor()}
-          />
-        )}
-      </View>
+      {loading ? (
+        <ActivityIndicator color={getTextColor()} />
+      ) : (
+        <Text style={[styles.label, { color: getTextColor() }]}>{label}</Text>
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    height: 48,
     borderRadius: 12,
-    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  content: {
+    paddingHorizontal: 24,
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
   },
-  text: {
+  label: {
+    fontSize: 16,
+    fontFamily: FONTS.body,
     fontWeight: '600',
-    fontFamily: FONTS.body, // Default button text maps to body (DMSans)
   },
 });
