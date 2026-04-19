@@ -19,24 +19,8 @@ import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categorie
 import { supabase } from '../../lib/supabase';
 import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
 import NotificationSheet from './NotificationSheet';
-
-// Local Avatars
-import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
-import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
-import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
-import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
-import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
-import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
 import { FEED_COLORS } from '../../constants/colors';
-
-const avatarAssets = [
-    Avatar1,
-    Avatar2,
-    Avatar3,
-    Avatar4,
-    Avatar5,
-    Avatar6
-];
+import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
@@ -86,8 +70,10 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
-    const [quests, setQuests] = useState<FeedQuest[]>([]);
-    const [currentUserAvatarIndex, setCurrentUserAvatarIndex] = useState<number>(0);
+    const [quests, setQuests] = useState<any[]>([]); // Using any internally due to FeedQuest strictness
+    
+    // Store JSON avatar instead of an index
+    const [currentUserAccessories, setCurrentUserAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
     const [isNotifOpen, setIsNotifOpen] = useState(false); 
     const [unreadNotifCount, setUnreadNotifCount] = useState(0);
     const notifChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -97,11 +83,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         if (user) {
             const { data } = await supabase
                 .from('profiles')
-                .select('avatar_index')
+                .select('equipped_accessories')
                 .eq('id', user.id)
                 .single();
-            if (data && data.avatar_index !== undefined && data.avatar_index !== null) {
-                setCurrentUserAvatarIndex(data.avatar_index);
+            if (data?.equipped_accessories) {
+                setCurrentUserAccessories(data.equipped_accessories as Partial<Record<AvatarSlot, string>>);
             }
         }
     };
@@ -115,7 +101,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 return;
             }
 
-            // Count unread notifications for current user
             const { count, error } = await supabase
                 .from('notifications')
                 .select('id', { count: 'exact', head: true })
@@ -126,13 +111,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
             setUnreadNotifCount(count ?? 0);
         } catch (e: any) {
             console.error('fetchUnreadNotifCount error:', e?.message ?? e);
-            // Keep UI stable; don't block feed if this fails
         }
     };
 
     const fetchQuests = async () => {
         try {
-            // Default CIT University Coordinates
             let lat = 10.2975;
             let lon = 123.8803;
 
@@ -152,7 +135,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 console.log("Silent fallback to CIT location due to:", err.message);
             }
 
-            const formatQuests = (rawQuests: any[]): FeedQuest[] => {
+            const formatQuests = (rawQuests: any[]) => {
                 return rawQuests.map((q: any) => ({
                     id: q.id,
                     category: q.category.toLowerCase() as FeedCategory,
@@ -160,7 +143,8 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     title: q.title,
                     preview: q.description,
                     posterName: q.poster_name || 'Anonymous',
-                    posterAvatarIndex: q.avatar_index || 0,
+                    // Using posterAccessories instead of posterAvatarIndex
+                    posterAccessories: q.equipped_accessories || {},
                     xp: 50 + (q.bonus_xp || 0), 
                     token: q.token_bounty,
                 }));
@@ -192,7 +176,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
             if (userError) throw userError;
             if (!user) return;
 
-            // If we already have a channel, leave it (keeps things simple / avoids duplicates)
             if (notifChannelRef.current) return;
 
             const channel = supabase
@@ -206,13 +189,11 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         filter: `recipient_id=eq.${user.id}`,
                     },
                     async () => {
-                        // Any insert/update/delete can change unread count
                         await fetchUnreadNotifCount();
                     },
                 )
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
-                        // Make sure badge is correct right after subscribe
                         fetchUnreadNotifCount();
                     }
                 });
@@ -267,8 +248,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         fetchQuests();
     }, []);
 
-    const CurrentUserAvatar = avatarAssets[currentUserAvatarIndex] || avatarAssets[0];
-
     return (
         <View style={styles.root}>
             <StatusBar style="light" />
@@ -284,7 +263,20 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                             {initialLoading ? (
                                 <Ionicons name="person" size={22} color={FEED_COLORS.textPrimary} />
                             ) : (
-                                <CurrentUserAvatar width={32} height={32} />
+                                <View style={{ width: 32, height: 32, position: 'relative' }}>
+                                    {ALL_SLOTS_Z_ORDER.map(slot => {
+                                        const accId = currentUserAccessories[slot];
+                                        if (!accId) return null;
+                                        const item = ACCESSORY_ITEMS.find(i => i.id === accId);
+                                        if (!item) return null;
+                                        const Sprite = item.Sprite;
+                                        return (
+                                            <View key={slot} style={StyleSheet.absoluteFill} pointerEvents="none">
+                                                <Sprite width="100%" height="100%" />
+                                            </View>
+                                        );
+                                    })}
+                                </View>
                             )}
                         </View>
                     </Pressable>
@@ -371,7 +363,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         filteredQuests.map((quest) => (
                             <PostCard
                                 key={quest.id}
-                                quest={quest}
+                                quest={quest as any} // Requires categories.ts FeedQuest update for strict matching
                                 onPress={() => navigation?.navigate?.('QuestDetail', { quest })}
                             />
                         ))
@@ -381,7 +373,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
             <BottomNav activeTab="Feed" onTabPress={onTabPress} />
             
-            {/* Conditional rendering guarantees it will NOT show up early */}
             {isNotifOpen && (
                 <NotificationSheet 
                     visible={isNotifOpen} 
@@ -397,7 +388,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
                             if (!item.reference_id) return;
 
-                            // Quest-related notification types open quest detail
                             if (
                                 item.type === 'new_quest' ||
                                 item.type === 'comment' ||
@@ -416,7 +406,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                         bonus_xp,
                                         token_bounty,
                                         accepted_by,
-                                        profiles!quests_user_id_fkey(display_name, avatar_index)
+                                        profiles!quests_user_id_fkey(display_name, equipped_accessories)
                                     `)
                                     .eq('id', item.reference_id)
                                     .single();
@@ -430,20 +420,13 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                     ? (data as any).profiles[0]
                                     : (data as any).profiles;
 
-                                const questForNav: FeedQuest & {
-                                    id?: string;
-                                    user_id?: string;
-                                    description?: string;
-                                    bonus_xp?: number;
-                                    token_bounty?: number;
-                                    accepted_by?: string;
-                                } = {
+                                const questForNav: any = {
                                     id: data.id,
                                     category: String(data.category).toLowerCase() as FeedCategory,
                                     title: data.title,
                                     preview: data.description,
                                     posterName: poster?.display_name || 'Anonymous',
-                                    posterAvatarIndex: poster?.avatar_index ?? 0,
+                                    posterAccessories: poster?.equipped_accessories || {},
                                     ago: timeAgo(data.created_at),
                                     xp: 50 + (data.bonus_xp || 0),
                                     token: data.token_bounty || 0,
@@ -467,120 +450,20 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 }
 
 const styles = StyleSheet.create({
-    root: {
-        flex: 1,
-        backgroundColor: FEED_COLORS.bg,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    header: {
-        borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
-        height: 76,
-        position: 'relative',
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-    },
-    avatarChip: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: FEED_COLORS.surface2,
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-    },
-    profileButton: {
-        borderRadius: 24,
-        position: 'relative',
-        zIndex: 3,
-        elevation: 3,
-    },
-    logo: {
-        color: FEED_COLORS.textPrimary,
-        fontSize: 30,
-        letterSpacing: 4,
-        lineHeight: 32,
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 12,
-        textAlign: 'center',
-    },
-    filterBar: {
-        borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 8,
-    },
-    filterChip: {
-        flex: 1,
-        minHeight: 36,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: FEED_COLORS.border,
-        backgroundColor: FEED_COLORS.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    filterChipText: {
-        fontSize: 13,
-        color: FEED_COLORS.textSecondary,
-        fontWeight: '500',
-    },
-    feedContent: {
-        padding: 16,
-        gap: 12,
-        paddingBottom: 112,
-    },
-    emptyStateContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 64,
-    },
-    emptyStateTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
-        marginBottom: 8,
-    },
-    emptyStateSubtitle: {
-        fontSize: 14,
-        color: FEED_COLORS.textSecondary,
-        textAlign: 'center',
-    },
-    notificationWrapper: {
-        width: 36,
-        height: 36,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: -2,
-        right: -2,
-        backgroundColor: '#EF4444', 
-        borderRadius: 10,
-        minWidth: 20,
-        height: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: FEED_COLORS.bg, 
-        paddingHorizontal: 4,
-        zIndex: 2,
-    },
-    notificationBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 10,
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
+    root: { flex: 1, backgroundColor: FEED_COLORS.bg },
+    safeArea: { flex: 1 },
+    header: { borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, height: 76, position: 'relative', paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+    avatarChip: { width: 36, height: 36, borderRadius: 18, backgroundColor: FEED_COLORS.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    profileButton: { borderRadius: 24, position: 'relative', zIndex: 3, elevation: 3 },
+    logo: { color: FEED_COLORS.textPrimary, fontSize: 30, letterSpacing: 4, lineHeight: 32, position: 'absolute', left: 0, right: 0, bottom: 12, textAlign: 'center' },
+    filterBar: { borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    filterChip: { flex: 1, minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: FEED_COLORS.border, backgroundColor: FEED_COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+    filterChipText: { fontSize: 13, color: FEED_COLORS.textSecondary, fontWeight: '500' },
+    feedContent: { padding: 16, gap: 12, paddingBottom: 112 },
+    emptyStateContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64 },
+    emptyStateTitle: { fontSize: 18, fontWeight: '600', color: FEED_COLORS.textPrimary, marginBottom: 8 },
+    emptyStateSubtitle: { fontSize: 14, color: FEED_COLORS.textSecondary, textAlign: 'center' },
+    notificationWrapper: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: '#EF4444', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: FEED_COLORS.bg, paddingHorizontal: 4, zIndex: 2 },
+    notificationBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
 });
