@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Text, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type ItemState = 'Default' | 'Selected' | 'Disabled';
 
@@ -46,9 +47,9 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      backgroundColor: isDefault || isDisabled ? '#31313c' : `${FEED_COLORS.favor}1a`, // 10% opacity for selected
+      backgroundColor: isDefault || isDisabled ? '#31313c' : withOpacity(COLORS.favor, 0.1),
       borderWidth: isSelected ? 2 : 1,
-      borderColor: isSelected ? FEED_COLORS.favor : '#3a3a48',
+      borderColor: isSelected ? COLORS.favor : '#3a3a48',
     },
     badgeSprite: {
       width: 44,
@@ -62,27 +63,22 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
       right: 2,
       width: 16,
       height: 16,
-      backgroundColor: FEED_COLORS.favor,
+      backgroundColor: COLORS.favor,
       borderRadius: 8,
       borderWidth: 1,
       borderColor: '#26262e',
       justifyContent: 'center',
       alignItems: 'center',
     },
-    checkIcon: {
-      width: 12,
-      height: 12,
-      resizeMode: 'contain',
-    },
     label: {
       fontSize: 10,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: isSelected ? '500' : '400',
       textAlign: 'center',
       color: isDefault
         ? '#8a8a9a'
         : isSelected
-        ? FEED_COLORS.favor
+        ? COLORS.favor
         : '#3a3a48',
       width: '100%',
     },

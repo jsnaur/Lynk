@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
 
 type AvatarGridItemProps = {
   state?: 'Default' | 'Selected' | 'Locked';
@@ -28,7 +28,7 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
   let borderWidth = 1;
 
   if (isSelected) {
-    backgroundColor = `${COLORS.favor}15`;
+    backgroundColor = withOpacity(COLORS.favor, 0.15);
     borderColor = COLORS.favor;
     borderWidth = 2;
   }

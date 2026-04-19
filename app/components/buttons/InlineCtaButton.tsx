@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 import LoadingDots from '../loading/LoadingDots';
 
 type ButtonState = 'Disabled' | 'Active' | 'Loading';
@@ -28,13 +29,13 @@ const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({
       minHeight: 32,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: isDisabled ? '#31313c' : isActive ? FEED_COLORS.favor : `${FEED_COLORS.favor}66`, // loading: 40% opacity
-      width: isLoading ? 'auto' : 'auto', // responsive width
+      backgroundColor: isDisabled ? '#31313c' : isActive ? COLORS.favor : withOpacity(COLORS.favor, 0.4),
+      width: isLoading ? 'auto' : 'auto', 
       minWidth: isLoading ? 85 : 'auto',
     },
     text: {
       fontSize: 14,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: '600',
       color: isDisabled ? '#8a8a9a' : '#1a1a1f',
       textAlign: 'center',
