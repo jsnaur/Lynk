@@ -139,6 +139,25 @@ export const ALL_SLOTS_Z_ORDER: AvatarSlot[] = [
   'RightHand'
 ];
 
+export const BASE_TRAIT_SLOTS: AvatarSlot[] = [
+  'Body',
+  'Eyes',
+  'Mouth',
+  'HairBase',
+  'HairFringe'
+];
+
+export const WEARABLE_SLOTS: AvatarSlot[] = [
+  'Background',
+  'BackAccessory',
+  'Top',
+  'Bottom',
+  'Headgear',
+  'Accessory',
+  'LeftHand',
+  'RightHand'
+];
+
 export const ACCESSORY_ITEMS: AccessoryItem[] = [
   // --- BODIES ---
   { id: 'body-masc-a', name: 'Masc Tone A', price: 0, slot: 'Body', gender: 'Masc', rarity: 'Common', Sprite: createSpr(BODY_Masc_A) },
