@@ -29,7 +29,7 @@ const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({
       minHeight: 32,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: isDisabled ? '#31313c' : isActive ? COLORS.favor : withOpacity(COLORS.favor, 0.4),
+      backgroundColor: isDisabled ? COLORS.surface2 : isActive ? COLORS.favor : withOpacity(COLORS.favor, 0.4),
       width: isLoading ? 'auto' : 'auto', 
       minWidth: isLoading ? 85 : 'auto',
     },
@@ -37,7 +37,7 @@ const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({
       fontSize: 14,
       fontFamily: FONTS.body,
       fontWeight: '600',
-      color: isDisabled ? '#8a8a9a' : '#1a1a1f',
+      color: isDisabled ? COLORS.textSecondary : COLORS.bg,
       textAlign: 'center',
     },
     loadingContainer: {

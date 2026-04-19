@@ -53,10 +53,10 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
   };
 
   const getIconColor = (): string => {
-    if (displayState === 'Default') return '#8a8a9a';
+    if (displayState === 'Default') return COLORS.textSecondary;
     if (displayState === 'Selected') return getCategoryColor();
     if (displayState === 'Error') return COLORS.error;
-    return '#8a8a9a';
+    return COLORS.textSecondary;
   };
 
   const styles = StyleSheet.create({
@@ -69,7 +69,7 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
       gap: 4,
       backgroundColor:
         displayState === 'Default'
-          ? '#26262e'
+          ? COLORS.surface
           : displayState === 'Selected'
           ? withOpacity(getCategoryColor(), 0.15)
           : withOpacity(COLORS.error, 0.15),
@@ -85,7 +85,7 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
       fontSize: 11,
       fontFamily: FONTS.body,
       fontWeight: '500',
-      color: displayState === 'Default' ? '#8a8a9a' : getIconColor(),
+      color: displayState === 'Default' ? COLORS.textSecondary : getIconColor(),
       textAlign: 'center',
     },
   });

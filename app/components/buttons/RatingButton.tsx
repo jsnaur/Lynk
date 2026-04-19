@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
 
 type RatingButtonProps = {
   direction?: 'Up' | 'Down';
@@ -14,19 +14,18 @@ export default function RatingButton({
   state = 'Default',
   onPress,
 }: RatingButtonProps) {
-  const [isPressing, setIsPressing] = useState(false);
   const isUp = direction === 'Up';
   const isSelected = state === 'Selected';
   const isPressed = state === 'Pressed';
 
-  let borderColor = '#3a3a48';
-  let backgroundColor = '#26262e';
-  let iconColor = '#8a8a9a';
+  let borderColor: string = COLORS.border;
+  let backgroundColor: string = COLORS.surface;
+  let iconColor: string = COLORS.textSecondary;
 
   if (isSelected || isPressed) {
-    const selectedColor = isUp ? FEED_COLORS.xp : FEED_COLORS.study;
+    const selectedColor = isUp ? COLORS.xp : COLORS.study;
     borderColor = selectedColor;
-    backgroundColor = `${selectedColor}20`;
+    backgroundColor = withOpacity(selectedColor, 0.2);
     iconColor = selectedColor;
   }
 

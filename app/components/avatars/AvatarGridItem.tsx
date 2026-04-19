@@ -23,8 +23,8 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
     onPress?.(newSelected);
   };
 
-  let borderColor = '#3a3a48';
-  let backgroundColor = '#26262e';
+  let borderColor: string = COLORS.border;
+  let backgroundColor: string = COLORS.surface;
   let borderWidth = 1;
 
   if (isSelected) {
@@ -65,7 +65,7 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
           <MaterialCommunityIcons
             name="lock"
             size={16}
-            color="#f0f0f5"
+            color={COLORS.textPrimary}
           />
         </View>
       )}
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#3a3a48',
+    backgroundColor: COLORS.border,
   },
   checkBadge: {
     position: 'absolute',

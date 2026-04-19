@@ -47,9 +47,9 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      backgroundColor: isDefault || isDisabled ? '#31313c' : withOpacity(COLORS.favor, 0.1),
+      backgroundColor: isDefault || isDisabled ? COLORS.surface2 : withOpacity(COLORS.favor, 0.1),
       borderWidth: isSelected ? 2 : 1,
-      borderColor: isSelected ? COLORS.favor : '#3a3a48',
+      borderColor: isSelected ? COLORS.favor : COLORS.border,
     },
     badgeSprite: {
       width: 44,
@@ -66,7 +66,7 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
       backgroundColor: COLORS.favor,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: '#26262e',
+      borderColor: COLORS.surface,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -76,10 +76,10 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
       fontWeight: isSelected ? '500' : '400',
       textAlign: 'center',
       color: isDefault
-        ? '#8a8a9a'
+        ? COLORS.textSecondary
         : isSelected
         ? COLORS.favor
-        : '#3a3a48',
+        : COLORS.border,
       width: '100%',
     },
   });
@@ -100,7 +100,7 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
             style={[
               styles.badgeSprite,
               {
-                backgroundColor: isDisabled ? '#3a3a48' : '#2a2a35',
+                backgroundColor: isDisabled ? COLORS.border : COLORS.surface2,
                 borderRadius: 8,
               },
             ]}
@@ -110,7 +110,7 @@ const BadgeSelectorItem: React.FC<BadgeSelectorItemProps> = ({
         {/* Selected Check Badge */}
         {isSelected && (
           <View style={styles.selectedCheckBadge}>
-            <Ionicons name="checkmark" size={10} color="#1a1a1f" />
+            <Ionicons name="checkmark" size={10} color={COLORS.bg} />
           </View>
         )}
       </View>
