@@ -15,34 +15,43 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   // Filter items flagged as "setup" and match the selected gender or "Shared"
-  const eyesOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Eyes' && i.isSetup), []);
-  const mouthOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Mouth' && i.isSetup), []);
-  const topOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Top' && i.isSetup && (i.gender === gender || i.gender === 'Shared')), [gender]);
-  const bottomOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Bottom' && i.isSetup && (i.gender === gender || i.gender === 'Shared')), [gender]);
+  // Limited to 2 options to enforce simplicity
+  const hairBaseOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'HairBase' && i.isSetup && (i.gender === gender || i.gender === 'Shared')).slice(0, 2), [gender]);
+  const hairFringeOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'HairFringe' && i.isSetup && (i.gender === gender || i.gender === 'Shared')).slice(0, 2), [gender]);
+  const eyesOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Eyes' && i.isSetup).slice(0, 2), []);
+  const mouthOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Mouth' && i.isSetup).slice(0, 2), []);
+  const topOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Top' && i.isSetup && (i.gender === gender || i.gender === 'Shared')).slice(0, 2), [gender]);
+  const bottomOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Bottom' && i.isSetup && (i.gender === gender || i.gender === 'Shared')).slice(0, 2), [gender]);
 
+  const [selectedHairBaseId, setSelectedHairBaseId] = useState<string>(hairBaseOptions[0]?.id || "");
+  const [selectedHairFringeId, setSelectedHairFringeId] = useState<string>(hairFringeOptions[0]?.id || "");
   const [selectedEyeId, setSelectedEyeId] = useState<string>(eyesOptions[0]?.id || "");
   const [selectedMouthId, setSelectedMouthId] = useState<string>(mouthOptions[0]?.id || "");
   const [selectedTopId, setSelectedTopId] = useState<string>(topOptions[0]?.id || "");
   const [selectedBottomId, setSelectedBottomId] = useState<string>(bottomOptions[0]?.id || "");
 
   const categoryGroups = useMemo(() => [
+    { label: "HAIR BASE", options: hairBaseOptions, activeId: selectedHairBaseId, setter: setSelectedHairBaseId },
+    { label: "HAIR FRINGE", options: hairFringeOptions, activeId: selectedHairFringeId, setter: setSelectedHairFringeId },
     { label: "EYES", options: eyesOptions, activeId: selectedEyeId, setter: setSelectedEyeId },
     { label: "MOUTH", options: mouthOptions, activeId: selectedMouthId, setter: setSelectedMouthId },
     { label: "TOP", options: topOptions, activeId: selectedTopId, setter: setSelectedTopId },
     { label: "BOTTOM", options: bottomOptions, activeId: selectedBottomId, setter: setSelectedBottomId },
-  ], [eyesOptions, mouthOptions, topOptions, bottomOptions, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
+  ], [hairBaseOptions, hairFringeOptions, eyesOptions, mouthOptions, topOptions, bottomOptions, selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
 
   // Current applied layers for live preview
   const activeLayers = useMemo(() => {
     const layers: Partial<Record<AvatarSlot, string>> = {
       Body: selectedBodyId,
+      HairBase: selectedHairBaseId,
+      HairFringe: selectedHairFringeId,
       Eyes: selectedEyeId,
       Mouth: selectedMouthId,
       Top: selectedTopId,
       Bottom: selectedBottomId,
     };
     return layers;
-  }, [selectedBodyId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
+  }, [selectedBodyId, selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
 
   useEffect(() => {
     if (!displayName || !selectedMajor || !graduationYear || !selectedBodyId) {
