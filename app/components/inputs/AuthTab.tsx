@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type AuthTabProps = {
   activeTab?: 'Left' | 'Right';
@@ -54,7 +55,7 @@ export default function AuthTab({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#26262e',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     padding: 4,
     flexDirection: 'row',
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     flex: 1,
-    backgroundColor: '#31313c',
+    backgroundColor: COLORS.surface2,
     borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
@@ -83,15 +84,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeTabText: {
-    color: '#f0f0f5',
+    color: COLORS.textPrimary,
     fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'DM_Sans-SemiBold',
+    fontFamily: FONTS.body,
   },
   inactiveTabText: {
-    color: '#8a8a9a',
+    color: COLORS.textSecondary,
     fontSize: 15,
     fontWeight: '400',
-    fontFamily: 'DM_Sans-Regular',
+    fontFamily: FONTS.body,
   },
 });

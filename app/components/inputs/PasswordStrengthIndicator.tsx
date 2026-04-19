@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type StrengthLevel = 'Empty' | 'Weak' | 'Fair' | 'Good' | 'Strong';
 
@@ -21,36 +22,36 @@ const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({ f
     const isFilled = index < filledSegments[filled];
     const isCurrentSegment = index === filledSegments[filled] - 1;
 
-    if (filled === 'Weak' && isCurrentSegment) return '#ff4d4d'; // error
-    if (filled === 'Fair' && isCurrentSegment) return FEED_COLORS.token; // gold
-    if (filled === 'Good' && isCurrentSegment) return '#ff9500'; // orange
-    if (filled === 'Strong' && isCurrentSegment) return FEED_COLORS.item; // lime
+    if (filled === 'Weak' && isCurrentSegment) return COLORS.error; 
+    if (filled === 'Fair' && isCurrentSegment) return COLORS.token; 
+    if (filled === 'Good' && isCurrentSegment) return COLORS.warning; 
+    if (filled === 'Strong' && isCurrentSegment) return COLORS.item; 
 
-    if (!isFilled) return '#31313c'; // unfilled
+    if (!isFilled) return COLORS.surface2; // unfilled
 
     // Filled segments
     if (filled === 'Weak' || filled === 'Fair' || filled === 'Good' || filled === 'Strong') {
-      if (index === 0) return '#ff4d4d'; // weak always red
-      if (filled === 'Fair' && index === 1) return FEED_COLORS.token;
-      if (filled === 'Fair' && index > 1) return '#31313c';
+      if (index === 0) return COLORS.error; // weak always red
+      if (filled === 'Fair' && index === 1) return COLORS.token;
+      if (filled === 'Fair' && index > 1) return COLORS.surface2;
       if (index === 1 && (filled === 'Good' || filled === 'Strong'))
-        return FEED_COLORS.token;
-      if (filled === 'Good' && index === 2) return '#ff9500';
-      if (filled === 'Good' && index > 2) return '#31313c';
-      if (index === 2 && filled === 'Strong') return '#ff9500';
-      if (filled === 'Strong' && index === 3) return FEED_COLORS.item;
-      return '#31313c';
+        return COLORS.token;
+      if (filled === 'Good' && index === 2) return COLORS.warning;
+      if (filled === 'Good' && index > 2) return COLORS.surface2;
+      if (index === 2 && filled === 'Strong') return COLORS.warning;
+      if (filled === 'Strong' && index === 3) return COLORS.item;
+      return COLORS.surface2;
     }
 
-    return '#31313c';
+    return COLORS.surface2;
   };
 
   const getLabelColor = (label: 'Weak' | 'Fair' | 'Good' | 'Strong'): string => {
-    if (label === 'Weak' && filled === 'Weak') return '#ff4d4d';
-    if (label === 'Fair' && filled === 'Fair') return FEED_COLORS.token;
-    if (label === 'Good' && filled === 'Good') return '#ff9500';
-    if (label === 'Strong' && filled === 'Strong') return FEED_COLORS.item;
-    return '#8a8a9a';
+    if (label === 'Weak' && filled === 'Weak') return COLORS.error;
+    if (label === 'Fair' && filled === 'Fair') return COLORS.token;
+    if (label === 'Good' && filled === 'Good') return COLORS.warning;
+    if (label === 'Strong' && filled === 'Strong') return COLORS.item;
+    return COLORS.textSecondary;
   };
 
   const styles = StyleSheet.create({
@@ -77,10 +78,10 @@ const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({ f
     label: {
       flex: 1,
       fontSize: 12,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: '400',
       textAlign: 'center',
-      color: '#8a8a9a',
+      color: COLORS.textSecondary,
     },
   });
 

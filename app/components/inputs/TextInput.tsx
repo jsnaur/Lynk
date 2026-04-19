@@ -39,25 +39,25 @@ export default function TextInput({
   const [isSecure, setIsSecure] = useState(secureTextEntry);
 
   const getBackgroundColor = () => {
-    if (state === 'disabled') return '#1a1a1f';
-    return '#26262e';
+    if (state === 'disabled') return COLORS.bg;
+    return COLORS.surface;
   };
 
   const getBorderColor = () => {
-    if (state === 'disabled') return '#3a3a48';
+    if (state === 'disabled') return COLORS.border;
     if (state === 'success') return COLORS.item;
     if (state === 'error') return COLORS.error;
     if (isFocused) return COLORS.favor;
-    return '#3a3a48';
+    return COLORS.border;
   };
 
   const getTextColor = () => {
-    if (state === 'disabled') return '#8a8a9a';
-    return '#f0f0f5';
+    if (state === 'disabled') return COLORS.textSecondary;
+    return COLORS.textPrimary;
   };
 
   const getPlaceholderColor = () => {
-    return '#8a8a9a';
+    return COLORS.textSecondary;
   };
 
   return (
@@ -148,10 +148,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    color: '#f0f0f5',
+    color: COLORS.textPrimary,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: FONTS.body, // Assuming DMSansBold handles 600 or we let the font map handle it
+    fontFamily: FONTS.body, 
   },
   inputWrapper: {
     flexDirection: 'row',
