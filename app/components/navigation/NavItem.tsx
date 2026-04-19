@@ -1,43 +1,37 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
-type NavType = 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
+interface NavItemProps {
+  label: string;
+  iconName: keyof typeof MaterialCommunityIcons.glyphMap;
+  isActive: boolean;
+  onPress: () => void;
+}
 
-type NavItemProps = {
-  type?: NavType;
-  isActive?: boolean;
-  onPress?: () => void;
-};
-
-export default function NavItem({
-  type = 'Feed',
-  isActive = false,
-  onPress,
-}: NavItemProps) {
-  const iconMap: { [key in NavType]: string } = {
-    Feed: 'home',
-    Quests: 'list',
-    Post: 'add-circle',
-    Shop: 'bag',
-    Profile: 'person',
-  };
-
-  const textColor = isActive ? FEED_COLORS.favor : '#8a8a9a';
-  const iconName = iconMap[type];
+export default function NavItem({ label, iconName, isActive, onPress }: NavItemProps) {
+  const activeColor = COLORS.textPrimary; // Can be swapped to COLORS.favor if theme prefers tinted tabs
+  const inactiveColor = COLORS.textSecondary;
+  const color = isActive ? activeColor : inactiveColor;
 
   return (
-    <TouchableOpacity
-      style={styles.container}
+    <TouchableOpacity 
+      style={styles.container} 
       onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.iconContainer}>
-        <Ionicons name={iconName as any} size={24} color={textColor} />
+        <MaterialCommunityIcons 
+          name={isActive ? iconName : `${iconName}-outline` as any} 
+          size={26} 
+          color={color} 
+        />
+        {isActive && <View style={styles.activeDot} />}
       </View>
-      <Text style={[styles.label, { color: textColor }]}>
-        {type}
+      <Text style={[styles.label, { color, fontWeight: isActive ? '700' : '500' }]}>
+        {label}
       </Text>
     </TouchableOpacity>
   );
@@ -45,23 +39,27 @@ export default function NavItem({
 
 const styles = StyleSheet.create({
   container: {
-    width: 54,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    flex: 1,
+    paddingVertical: 8,
+    gap: 4,
   },
   iconContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 32,
+  },
+  activeDot: {
+    position: 'absolute',
+    bottom: -6,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.textPrimary,
   },
   label: {
     fontSize: 10,
-    fontWeight: '500',
-    fontFamily: 'DM_Sans-Medium',
-    textAlign: 'center',
+    fontFamily: FONTS.body,
   },
 });

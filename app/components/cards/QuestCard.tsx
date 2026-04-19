@@ -1,117 +1,62 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
-import EarnedChip from '../../components/chips/EarnedChip';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FeedCategory, FeedQuest } from '../../constants/categories';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
-type QuestCategory = 'Favor' | 'Study' | 'Item';
-
-type QuestCardProps = {
-  variant?: QuestCategory;
-  title?: string;
-  description?: string;
-  posterName?: string;
-  posterAvatarUrl?: string;
-  xpReward?: number;
-  tokenReward?: number;
-  timeAgo?: string;
+interface QuestCardProps {
+  quest: FeedQuest;
   onPress?: () => void;
+}
+
+const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
+  favor: { label: 'FAVOR', color: COLORS.favor },
+  study: { label: 'STUDY', color: COLORS.study },
+  item: { label: 'ITEM', color: COLORS.item },
 };
 
-export default function QuestCard({
-  variant = 'Favor',
-  title = 'Quest Title',
-  description = 'Quest preview text, lorem ipsum dolor sit amet.',
-  posterName = 'Poster Name',
-  posterAvatarUrl,
-  xpReward = 30,
-  tokenReward = 30,
-  timeAgo = '23m ago',
-  onPress,
-}: QuestCardProps) {
-  const getCategoryColor = () => {
-    switch (variant) {
-      case 'Favor':
-        return FEED_COLORS.favor;
-      case 'Study':
-        return FEED_COLORS.study;
-      case 'Item':
-        return FEED_COLORS.item;
-      default:
-        return FEED_COLORS.favor;
-    }
-  };
-
-  const categoryColor = getCategoryColor();
-  const badges = {
-    Favor: 'FAVOR',
-    Study: 'STUDY',
-    Item: 'ITEM',
-  };
+export default function QuestCard({ quest, onPress }: QuestCardProps) {
+  const categoryMeta = CATEGORY_META[quest.category] || CATEGORY_META.favor;
 
   return (
-    <TouchableOpacity
-      style={[styles.container, { borderColor: categoryColor }]}
-      onPress={onPress}
-      activeOpacity={0.9}
+    <TouchableOpacity 
+      style={styles.card} 
+      onPress={onPress} 
+      activeOpacity={0.8}
     >
-      {/* Category stripe */}
-      <View
-        style={[
-          styles.stripe,
-          { backgroundColor: categoryColor },
-        ]}
-      />
-
-      {/* Card body */}
+      <View style={[styles.stripe, { backgroundColor: categoryMeta.color }]} />
+      
       <View style={styles.body}>
-        {/* Header */}
         <View style={styles.headerRow}>
-          <View
-            style={[
-              styles.categoryBadge,
-              { backgroundColor: `${categoryColor}25` },
-            ]}
-          >
-            <View
-              style={[
-                styles.categoryDot,
-                { backgroundColor: categoryColor },
-              ]}
-            />
-            <Text style={[styles.badgeText, { color: categoryColor }]}>
-              {badges[variant]}
+          <View style={[styles.categoryBadge, { backgroundColor: withOpacity(categoryMeta.color, 0.15) }]}>
+            <View style={[styles.categoryDot, { backgroundColor: categoryMeta.color }]} />
+            <Text style={[styles.categoryLabel, { color: categoryMeta.color }]}>
+              {categoryMeta.label}
             </Text>
           </View>
-          <Text style={styles.timeAgo}>{timeAgo}</Text>
+          <Text style={styles.timeText}>{quest.ago}</Text>
         </View>
 
-        {/* Title */}
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
+        <Text style={styles.title} numberOfLines={2}>{quest.title}</Text>
+        <Text style={styles.preview} numberOfLines={3}>{quest.preview}</Text>
 
-        {/* Description */}
-        <Text style={styles.description} numberOfLines={2}>
-          {description}
-        </Text>
-
-        {/* Footer */}
         <View style={styles.footerRow}>
-          <View style={styles.posterChip}>
-            {posterAvatarUrl ? (
-              <Image
-                source={{ uri: posterAvatarUrl }}
-                style={styles.posterAvatar}
-              />
-            ) : (
-              <View style={styles.posterAvatarPlaceholder} />
-            )}
-            <Text style={styles.posterName}>{posterName}</Text>
+          <View style={styles.userWrap}>
+            <View style={styles.avatarPlaceholder} />
+            <Text style={styles.userName}>{quest.posterName}</Text>
           </View>
 
-          <View style={styles.bountyCluster}>
-            <EarnedChip type="Experience" value={xpReward} />
-            <EarnedChip type="Tokens" value={tokenReward} />
+          <View style={styles.rewardWrap}>
+            <View style={[styles.rewardPill, { backgroundColor: withOpacity(COLORS.xp, 0.15) }]}>
+              <MaterialCommunityIcons name="star-four-points" size={14} color={COLORS.xp} />
+              <Text style={[styles.rewardValue, { color: COLORS.xp }]}>{quest.xp}</Text>
+            </View>
+
+            <View style={[styles.rewardPill, { backgroundColor: withOpacity(COLORS.token, 0.15) }]}>
+              <MaterialCommunityIcons name="lightning-bolt-circle" size={14} color={COLORS.token} />
+              <Text style={[styles.rewardValue, { color: COLORS.token }]}>{quest.token}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -120,21 +65,26 @@ export default function QuestCard({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#26262e',
+  card: {
+    width: '100%',
     borderRadius: 16,
     borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
-    width: 326,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   stripe: {
     height: 4,
     width: '100%',
   },
   body: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 8,
+    padding: 16,
+    gap: 12,
   },
   headerRow: {
     flexDirection: 'row',
@@ -142,72 +92,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryBadge: {
-    flexDirection: 'row',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   categoryDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  badgeText: {
+  categoryLabel: {
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: 'DM_Sans-Medium',
+    fontFamily: FONTS.body,
   },
-  timeAgo: {
-    color: '#8a8a9a',
-    fontSize: 11,
-    fontWeight: '400',
-    fontFamily: 'DM_Sans-Regular',
+  timeText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.body,
   },
   title: {
-    color: '#f0f0f5',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'DM_Sans-SemiBold',
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.body,
   },
-  description: {
-    color: '#8a8a9a',
-    fontSize: 13,
-    fontWeight: '400',
-    fontFamily: 'DM_Sans-Regular',
-    lineHeight: 18,
+  preview: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.body,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 8,
+    marginTop: 4,
   },
-  posterChip: {
+  userWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  posterAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-  },
-  posterAvatarPlaceholder: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#3a3a48',
-  },
-  posterName: {
-    color: '#8a8a9a',
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'DM_Sans-Medium',
-  },
-  bountyCluster: {
-    flexDirection: 'row',
     gap: 8,
+  },
+  avatarPlaceholder: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface2,
+  },
+  userName: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.body,
+  },
+  rewardWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rewardPill: {
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rewardValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: FONTS.body,
   },
 });

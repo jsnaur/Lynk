@@ -1,80 +1,50 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { FeedCategory } from '../../constants/categories';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
-type ActiveQuestRowProps = {
-  category?: 'Favor' | 'Study' | 'Item' | 'Pending';
-  title?: string;
-  role?: string;
-  status?: string;
+interface ActiveQuestRowProps {
+  title: string;
+  category: FeedCategory;
+  timeLeft?: string;
   onPress?: () => void;
-  onResolve?: () => void;
-};
+}
 
-export default function ActiveQuestRow({
-  category = 'Favor',
-  title = 'Quest Title',
-  role = 'You...',
-  status = 'Status',
-  onPress,
-  onResolve,
-}: ActiveQuestRowProps) {
-  const isPending = category === 'Pending';
-  
+export default function ActiveQuestRow({ title, category, timeLeft, onPress }: ActiveQuestRowProps) {
   const getCategoryColor = () => {
     switch (category) {
-      case 'Favor':
-        return FEED_COLORS.favor;
-      case 'Study':
-        return FEED_COLORS.study;
-      case 'Item':
-        return FEED_COLORS.item;
-      case 'Pending':
-        return '#ffffff';
-      default:
-        return FEED_COLORS.favor;
+      case 'favor': return COLORS.favor;
+      case 'study': return COLORS.study;
+      case 'item': return COLORS.item;
+      default: return COLORS.favor;
     }
   };
 
-  const stripeColor = getCategoryColor();
+  const color = getCategoryColor();
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.stripe, { backgroundColor: stripeColor }]} />
-      
-      <View style={styles.contentContainer}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.meta}>{role}</Text>
-          <View style={styles.dot} />
-          <Text style={styles.meta}>{status}</Text>
-        </View>
-      </View>
-
-      {!isPending && (
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={16}
-          color="#8a8a9a"
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.iconWrap, { backgroundColor: withOpacity(color, 0.15) }]}>
+        <MaterialCommunityIcons 
+          name={category === 'study' ? 'book-open-variant' : category === 'item' ? 'gift' : 'heart'} 
+          size={20} 
+          color={color} 
         />
-      )}
-
-      {isPending && (
-        <TouchableOpacity
-          style={styles.resolveButton}
-          onPress={onResolve}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.resolveText}>Resolve</Text>
-        </TouchableOpacity>
-      )}
+      </View>
+      
+      <View style={styles.content}>
+        <Text style={styles.title} numberOfLines={1}>{title}</Text>
+        {timeLeft && (
+          <View style={styles.timeRow}>
+            <MaterialCommunityIcons name="clock-outline" size={12} color={COLORS.warning} />
+            <Text style={styles.timeText}>{timeLeft}</Text>
+          </View>
+        )}
+      </View>
+      
+      <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textSecondary} />
     </TouchableOpacity>
   );
 }
@@ -83,59 +53,38 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#26262e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#3a3a48',
-    paddingHorizontal: 14,
     paddingVertical: 12,
-    gap: 10,
-    width: 342,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: 12,
   },
-  stripe: {
-    width: 3,
-    height: '100%',
-    borderRadius: 2,
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  contentContainer: {
+  content: {
     flex: 1,
-    gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    gap: 2,
   },
   title: {
-    color: '#f0f0f5',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'DM_Sans-SemiBold',
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.body,
   },
-  metaRow: {
+  timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
-  meta: {
-    color: '#8a8a9a',
-    fontSize: 11,
-    fontWeight: '400',
-    fontFamily: 'DM_Sans-Regular',
-  },
-  dot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#8a8a9a',
-  },
-  resolveButton: {
-    backgroundColor: FEED_COLORS.item,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  resolveText: {
-    color: '#1a1a1f',
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'DM_Sans-SemiBold',
+  timeText: {
+    fontSize: 12,
+    color: COLORS.warning,
+    fontFamily: FONTS.body,
   },
 });
