@@ -10,7 +10,7 @@ import {
     PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 
 // Badge Assets
 const BADGE_ASSETS = {
@@ -104,19 +104,19 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
     const containerBg = isSelected
         ? 'rgba(0, 245, 255, 0.1)'
         : isDefault
-          ? FEED_COLORS.surface2
-          : FEED_COLORS.surface;
+          ? COLORS.surface2
+          : COLORS.surface;
 
     const borderColor = isSelected
-        ? FEED_COLORS.favor
-        : FEED_COLORS.border;
+        ? COLORS.favor
+        : COLORS.border;
 
     const borderWidth = isSelected ? 2 : 1;
     const labelColor = isSelected
-        ? FEED_COLORS.favor
+        ? COLORS.favor
         : isDisabled
-          ? FEED_COLORS.border
-          : FEED_COLORS.textSecondary;
+          ? COLORS.border
+          : COLORS.textSecondary;
 
     const badgeImage = getBadgeImage(badge.id);
 
@@ -140,7 +140,7 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
                 <Image source={badgeImage} style={styles.badgeImage} resizeMode="contain" />
                 {isSelected && (
                     <View style={styles.checkBadge}>
-                        <Ionicons name="checkmark" size={10} color={FEED_COLORS.bg} />
+                        <Ionicons name="checkmark" size={10} color={COLORS.bg} />
                     </View>
                 )}
             </View>
@@ -280,7 +280,7 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3 }: B
 
                 {selectedCount === maxBadges && (
                     <View style={styles.toast}>
-                        <Ionicons name="information-circle" size={14} color={FEED_COLORS.textSecondary} />
+                        <Ionicons name="information-circle" size={14} color={COLORS.textSecondary} />
                         <Text style={styles.toastText}>Deselect a badge to swap it</Text>
                     </View>
                 )}
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: '85%',
-        backgroundColor: FEED_COLORS.surface,
+        backgroundColor: COLORS.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         zIndex: 2,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     handleBar: {
         width: 36,
         height: 4,
-        backgroundColor: FEED_COLORS.border,
+        backgroundColor: COLORS.border,
         borderRadius: 2,
     },
     header: {
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     headerLeft: {
         flex: 1,
@@ -335,16 +335,16 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
         marginBottom: 2,
     },
     headerSubtitle: {
         fontSize: 12,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
     doneButton: {
-        backgroundColor: FEED_COLORS.favor,
+        backgroundColor: COLORS.favor,
         paddingHorizontal: 18,
         paddingVertical: 8,
         borderRadius: 20,
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     doneButtonText: {
         fontSize: 15,
         fontWeight: '600',
-        color: FEED_COLORS.bg,
+        color: COLORS.bg,
     },
     previewSection: {
         flexDirection: 'row',
@@ -361,9 +361,9 @@ const styles = StyleSheet.create({
         gap: 16,
         paddingHorizontal: 20,
         paddingVertical: 18,
-        backgroundColor: FEED_COLORS.bg,
+        backgroundColor: COLORS.bg,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     badgeSlot: {
         width: 90,
@@ -372,22 +372,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1.5,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
     },
     badgeSlotFilled: {
-        backgroundColor: FEED_COLORS.surface2,
-        borderColor: FEED_COLORS.favor,
+        backgroundColor: COLORS.surface2,
+        borderColor: COLORS.favor,
         borderWidth: 2,
     },
     badgeSlotEmpty: {
-        backgroundColor: FEED_COLORS.bg,
-        borderColor: FEED_COLORS.border,
+        backgroundColor: COLORS.bg,
+        borderColor: COLORS.border,
         borderStyle: 'dashed',
     },
     badgeSlotEmptyText: {
         fontSize: 16,
         fontWeight: '400',
-        color: FEED_COLORS.border,
+        color: COLORS.border,
     },
     selectedBadgeImage: {
         width: 56,
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: FEED_COLORS.favor,
+        backgroundColor: COLORS.favor,
     },
     slotDotInner: {
         flex: 1,
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 12,
         fontWeight: '600',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         letterSpacing: 1.5,
         textAlign: 'center',
         marginBottom: 16,
@@ -452,30 +452,30 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderRadius: 10,
-        backgroundColor: FEED_COLORS.favor,
+        backgroundColor: COLORS.favor,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: FEED_COLORS.bg,
+        borderColor: COLORS.bg,
     },
     badgeLabel: {
         fontSize: 10,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         textAlign: 'center',
         maxWidth: '100%',
     },
     badgeLabelSelected: {
         fontWeight: '500',
-        color: FEED_COLORS.favor,
+        color: COLORS.favor,
     },
     toast: {
         position: 'absolute',
         bottom: 20,
         alignSelf: 'center',
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
         borderRadius: 20,
         paddingHorizontal: 16,
         paddingVertical: 10,
@@ -486,6 +486,6 @@ const styles = StyleSheet.create({
     toastText: {
         fontSize: 13,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
 });

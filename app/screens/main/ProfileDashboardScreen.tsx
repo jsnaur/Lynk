@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState } from 'react';
 import BottomNav, { MainTab } from '../../components/BottomNav';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 
@@ -200,7 +200,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
                     >
-                        <Ionicons name="settings-outline" size={24} color={FEED_COLORS.textPrimary} style={styles.settingsIcon} />
+                        <Ionicons name="settings-outline" size={24} color={COLORS.textPrimary} style={styles.settingsIcon} />
                     </Pressable>
                 </View>
 
@@ -211,7 +211,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 <View style={styles.avatarFrame}>
                                     {profileLoading ? (
                                         <View style={styles.loadingAvatarIconWrap}>
-                                            <Ionicons name="person" size={42} color={FEED_COLORS.textPrimary} />
+                                            <Ionicons name="person" size={42} color={COLORS.textPrimary} />
                                         </View>
                                     ) : (
                                         <>
@@ -246,7 +246,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 onPress={() => setState({ ...state, badgeSelectorVisible: true })}
                             >
                                 <Text style={styles.setLinkText}>Set</Text>
-                                <Ionicons name="chevron-forward" size={14} color={FEED_COLORS.favor} />
+                                <Ionicons name="chevron-forward" size={14} color={COLORS.favor} />
                             </Pressable>
                         </View>
                         <View style={styles.badgeRow}>
@@ -274,7 +274,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
                         <View style={styles.progressTrack}>
                             <LinearGradient
-                                colors={[FEED_COLORS.xp, FEED_COLORS.favor]}
+                                colors={[COLORS.xp, COLORS.favor]}
                                 start={{ x: 0, y: 0.5 }}
                                 end={{ x: 1, y: 0.5 }}
                                 style={[styles.progressFill, { width: `${karmaProgress * 100}%` }]}
@@ -304,7 +304,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             <View style={styles.tokenRightCluster}>
                                 <Text style={styles.tokenValue}>{balance}</Text>
                                 <Text style={styles.tokenUnit}>TKN</Text>
-                                <Ionicons name="chevron-forward" size={16} color={FEED_COLORS.token} />
+                                <Ionicons name="chevron-forward" size={16} color={COLORS.token} />
                             </View>
                         </Pressable>
 
@@ -322,7 +322,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                     <Text style={styles.questsSubtitle}>3 active · 2 completed</Text>
                                 </View>
                             </View>
-                            <Ionicons name="chevron-forward" size={16} color={FEED_COLORS.border} />
+                            <Ionicons name="chevron-forward" size={16} color={COLORS.border} />
                         </Pressable>
                     </View>
                 </ScrollView>
@@ -394,7 +394,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 const styles = StyleSheet.create({
     root: {
         flex: 1,
-        backgroundColor: FEED_COLORS.bg,
+        backgroundColor: COLORS.bg,
     },
     safeArea: {
         flex: 1,
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
         paddingBottom: 12,
         height: 64,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
         flexDirection: 'row',
         alignItems: 'flex-end',
         justifyContent: 'space-between',
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 30,
         fontWeight: '700',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
         letterSpacing: 0.2,
     },
     settingsButton: {
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 20,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     identityRow: {
         flexDirection: 'row',
@@ -447,9 +447,9 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 20,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
         borderWidth: 2,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
         overflow: 'hidden',
         position: 'relative',
     },
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     nameText: {
         fontSize: 20,
         fontWeight: '700',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
     },
     verifiedBadge: {
         width: 18,
@@ -491,23 +491,23 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 13,
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
     bioText: {
         fontSize: 13,
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
         fontWeight: '500',
     },
     editProfileText: {
         fontSize: 12,
-        color: FEED_COLORS.favor,
+        color: COLORS.favor,
     },
     badgesBlock: {
         paddingHorizontal: 24,
         paddingVertical: 20,
         gap: 16,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     blockHeaderRow: {
         flexDirection: 'row',
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     blockTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
     },
     setLink: {
         flexDirection: 'row',
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     setLinkText: {
         fontSize: 14,
         fontWeight: '400',
-        color: FEED_COLORS.favor,
+        color: COLORS.favor,
     },
     badgeRow: {
         flexDirection: 'row',
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 104,
         borderRadius: 14,
-        backgroundColor: FEED_COLORS.surface,
+        backgroundColor: COLORS.surface,
         alignItems: 'center',
         justifyContent: 'center',
         marginHorizontal: 4,
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     badgeLabelText: {
         fontSize: 11,
         fontWeight: '600',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         textAlign: 'center',
     },
     reputationBlock: {
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     rankChipText: {
         fontSize: 12,
         fontWeight: '600',
-        color: FEED_COLORS.favor,
+        color: COLORS.favor,
     },
     karmaLabelRow: {
         flexDirection: 'row',
@@ -590,17 +590,17 @@ const styles = StyleSheet.create({
     karmaTitle: {
         fontSize: 13,
         fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
     },
     karmaValueText: {
         fontSize: 13,
         fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
     },
     progressTrack: {
         height: 10,
         borderRadius: 5,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
         overflow: 'hidden',
     },
     progressFill: {
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     levelRangeText: {
         fontSize: 8,
         fontWeight: '700',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         fontFamily: 'monospace',
     },
     tokenCard: {
@@ -623,8 +623,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
-        backgroundColor: FEED_COLORS.surface,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surface,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -641,11 +641,11 @@ const styles = StyleSheet.create({
     tokenTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
     },
     tokenSubtitle: {
         fontSize: 11,
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
     tokenRightCluster: {
         flexDirection: 'row',
@@ -655,19 +655,19 @@ const styles = StyleSheet.create({
     tokenValue: {
         fontSize: 22,
         fontWeight: '700',
-        color: FEED_COLORS.token,
+        color: COLORS.token,
     },
     tokenUnit: {
         fontSize: 13,
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
     questsShortcut: {
         height: 64,
         paddingHorizontal: 16,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
-        backgroundColor: FEED_COLORS.surface,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surface,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -684,10 +684,10 @@ const styles = StyleSheet.create({
     questsTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
     },
     questsSubtitle: {
         fontSize: 11,
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
 });

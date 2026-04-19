@@ -22,7 +22,7 @@ import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
 import { useTokenBalance } from '../../contexts/TokenContext';
-import { FEED_CATEGORY_BG, FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
 
@@ -34,19 +34,25 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 const { GUILD_BASE_XP, TOKEN_MIN, TOKEN_MAX } = APPRAISER_CONSTANTS;
 
+const CATEGORY_BG = {
+  favor: withOpacity(COLORS.favor, 0.15),
+  study: withOpacity(COLORS.study, 0.15),
+  item: withOpacity(COLORS.item, 0.15),
+} as const;
+
 type QuestCategory = 'Favor' | 'Study' | 'Item';
 
 const CATEGORIES: { key: QuestCategory; color: string; bg: string }[] = [
-  { key: 'Favor', color: FEED_COLORS.favor, bg: FEED_CATEGORY_BG.favor },
-  { key: 'Study', color: FEED_COLORS.study, bg: FEED_CATEGORY_BG.study },
-  { key: 'Item', color: FEED_COLORS.item, bg: FEED_CATEGORY_BG.item },
+  { key: 'Favor', color: COLORS.favor, bg: CATEGORY_BG.favor },
+  { key: 'Study', color: COLORS.study, bg: CATEGORY_BG.study },
+  { key: 'Item', color: COLORS.item, bg: CATEGORY_BG.item },
 ];
 
 function FieldError({ message, visible }: { message: string; visible: boolean }) {
   if (!visible) return null;
   return (
     <View style={styles.fieldErrorRow}>
-      <Ionicons name="alert-circle" size={14} color={FEED_COLORS.error} />
+      <Ionicons name="alert-circle" size={14} color={COLORS.error} />
       <Text style={styles.fieldErrorText}>{message}</Text>
     </View>
   );
@@ -305,13 +311,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                       onPress={() => setCategory(key)}
                       style={[
                         styles.categoryChip,
-                        { backgroundColor: FEED_COLORS.surface },
+                        { backgroundColor: COLORS.surface },
                         selected && { borderColor: color, backgroundColor: bg, borderWidth: 2 },
                         !selected && styles.categoryChipIdle,
                       ]}
                     >
                       <View style={[styles.categoryDot, { backgroundColor: color }]} />
-                      <Text style={[styles.categoryLabel, selected && { color: FEED_COLORS.textPrimary }]}>
+                      <Text style={[styles.categoryLabel, selected && { color: COLORS.textPrimary }]}>
                         {key}
                       </Text>
                     </Pressable>
@@ -334,7 +340,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <TextInput
                 style={styles.textInput}
                 placeholder="What do you need help with?"
-                placeholderTextColor={FEED_COLORS.textSecondary}
+                placeholderTextColor={COLORS.textSecondary}
                 value={title}
                 onChangeText={(t) => setTitle(t.slice(0, TITLE_MAX))}
                 maxLength={TITLE_MAX}
@@ -356,7 +362,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <TextInput
                 style={[styles.textInput, styles.textArea]}
                 placeholder="Details, timing, what to bring…"
-                placeholderTextColor={FEED_COLORS.textSecondary}
+                placeholderTextColor={COLORS.textSecondary}
                 value={description}
                 onChangeText={(t) => setDescription(t.slice(0, DESC_MAX))}
                 maxLength={DESC_MAX}
@@ -372,11 +378,11 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <View style={styles.requiredDot} />
               </View>
               <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={20} color={FEED_COLORS.textSecondary} />
+                <Ionicons name="location-outline" size={20} color={COLORS.textSecondary} />
                 <TextInput
                   style={styles.locationInput}
                   placeholder="Building, room, or landmark"
-                  placeholderTextColor={FEED_COLORS.textSecondary}
+                  placeholderTextColor={COLORS.textSecondary}
                   value={location}
                   onChangeText={setLocation}
                   autoCorrect
@@ -389,7 +395,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.appraiserCard}>
                 <View style={styles.appraiserHeader}>
                   <View style={styles.appraiserTitleRow}>
-                    <Ionicons name="sparkles-outline" size={18} color={FEED_COLORS.xp} />
+                    <Ionicons name="sparkles-outline" size={18} color={COLORS.xp} />
                     <Text style={styles.appraiserLabel}>GUILD APPRAISER</Text>
                   </View>
                   <View style={styles.appraiserBadge}>
@@ -406,7 +412,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                     <Text style={styles.appraiserStatLabel}>XP boost</Text>
                   </View>
                   <View style={styles.appraiserStat}>
-                    <Text style={[styles.appraiserStatValue, { color: FEED_COLORS.token }]}>
+                    <Text style={[styles.appraiserStatValue, { color: COLORS.token }]}>
                       {appraisal.tokenBounty}
                     </Text>
                     <Text style={styles.appraiserStatLabel}>Token bounty</Text>
@@ -475,7 +481,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             {submitAttempted && !isValid && (
               <View style={styles.summaryCard}>
                 <View style={styles.summaryHeader}>
-                  <Ionicons name="warning" size={18} color={FEED_COLORS.error} />
+                  <Ionicons name="warning" size={18} color={COLORS.error} />
                   <Text style={styles.summaryTitle}>Complete required fields</Text>
                 </View>
                 {validationIssues.map((msg) => (
@@ -498,14 +504,14 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: FEED_COLORS.bg,
+    backgroundColor: COLORS.bg,
   },
   flex: {
     flex: 1,
   },
   sheet: {
     flex: 1,
-    backgroundColor: FEED_COLORS.bg,
+    backgroundColor: COLORS.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
@@ -519,7 +525,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   navRow: {
     flexDirection: 'row',
@@ -528,7 +534,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
+    borderBottomColor: COLORS.border,
   },
   navBtn: {
     paddingVertical: 10,
@@ -541,13 +547,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   publishBtn: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: FEED_COLORS.surface2,
+    backgroundColor: COLORS.surface2,
     minWidth: 72,
     alignItems: 'center',
   },
@@ -555,11 +561,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.xp,
+    color: COLORS.xp,
   },
   cancelText: {
     fontSize: 16,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   pressed: {
@@ -600,17 +606,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
   },
   requiredDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: FEED_COLORS.error,
+    backgroundColor: COLORS.error,
   },
   counter: {
     fontSize: 12,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   categoryRow: {
@@ -628,7 +634,7 @@ const styles = StyleSheet.create({
   },
   categoryChipIdle: {
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
+    borderColor: COLORS.border,
   },
   categoryDot: {
     width: 8,
@@ -639,18 +645,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
   },
   textInput: {
     minHeight: 52,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontFamily: 'DMSans-Regular',
   },
   textArea: {
@@ -663,8 +669,8 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 52,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     borderRadius: 14,
     paddingHorizontal: 14,
   },
@@ -672,7 +678,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 15,
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontFamily: 'DMSans-Regular',
   },
   fieldErrorRow: {
@@ -683,7 +689,7 @@ const styles = StyleSheet.create({
   },
   fieldErrorText: {
     fontSize: 12,
-    color: FEED_COLORS.error,
+    color: COLORS.error,
     fontFamily: 'DMSans-Regular',
     flex: 1,
   },
@@ -696,16 +702,16 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   dividerLabel: {
     fontSize: 8,
     fontFamily: 'PressStart2P-Regular',
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
   },
   hint: {
     fontSize: 12,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
     textAlign: 'center',
     marginBottom: 8,
@@ -718,8 +724,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     marginTop: 8,
   },
   rewardLeft: {
@@ -737,11 +743,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   rewardSub: {
     fontSize: 11,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   stepper: {
@@ -761,7 +767,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'SpaceMono-Bold',
     fontWeight: '700',
-    color: FEED_COLORS.token,
+    color: COLORS.token,
   },
   summaryCard: {
     marginTop: 8,
@@ -782,7 +788,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   summaryLine: {
     flexDirection: 'row',
@@ -794,11 +800,11 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: FEED_COLORS.error,
+    backgroundColor: COLORS.error,
   },
   summaryText: {
     fontSize: 13,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   appraiserCard: {
@@ -823,33 +829,33 @@ const styles = StyleSheet.create({
   appraiserLabel: {
     fontSize: 8,
     fontFamily: 'PressStart2P-Regular',
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   appraiserBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: FEED_COLORS.surface,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
+    borderColor: COLORS.border,
   },
   appraiserBadgeText: {
     fontSize: 11,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   appraiserHeadline: {
     fontSize: 15,
     lineHeight: 20,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   appraiserCopy: {
     fontSize: 12,
     lineHeight: 17,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   appraiserStatsRow: {
@@ -861,9 +867,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 14,
-    backgroundColor: FEED_COLORS.surface,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
+    borderColor: COLORS.border,
     alignItems: 'center',
     gap: 2,
   },
@@ -871,13 +877,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.xp,
+    color: COLORS.xp,
     textAlign: 'center',
   },
   appraiserStatLabel: {
     fontSize: 10,
     fontFamily: 'DMSans-Regular',
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
 });

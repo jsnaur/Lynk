@@ -10,7 +10,7 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 
 const MAJORS = [
     'Computer Engineering',
@@ -130,7 +130,7 @@ export default function EditProfileModal({
                     <TextInput
                         style={styles.textInput}
                         placeholder="Enter your display name"
-                        placeholderTextColor={FEED_COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textSecondary}
                         value={displayName}
                         onChangeText={(text) =>
                             setDisplayName(text.slice(0, 30))
@@ -149,7 +149,7 @@ export default function EditProfileModal({
                     <TextInput
                         style={[styles.textInput, styles.bioInput]}
                         placeholder="Tell your campus a little about yourself..."
-                        placeholderTextColor={FEED_COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textSecondary}
                         value={bio}
                         onChangeText={(text) => setBio(text.slice(0, 100))}
                         maxLength={100}
@@ -178,7 +178,7 @@ export default function EditProfileModal({
                                     : 'chevron-down'
                             }
                             size={16}
-                            color={FEED_COLORS.textSecondary}
+                            color={COLORS.textSecondary}
                         />
                     </Pressable>
                     {showMajorDropdown && (
@@ -226,7 +226,7 @@ export default function EditProfileModal({
                                     : 'chevron-down'
                             }
                             size={16}
-                            color={FEED_COLORS.textSecondary}
+                            color={COLORS.textSecondary}
                         />
                     </Pressable>
                     {showYearDropdown && (
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         left: 0,
-        backgroundColor: FEED_COLORS.surface,
+        backgroundColor: COLORS.surface,
         zIndex: 1000,
     },
     modalHandle: {
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     handleBar: {
         width: 36,
         height: 4,
-        backgroundColor: FEED_COLORS.border,
+        backgroundColor: COLORS.border,
         borderRadius: 2,
     },
     header: {
@@ -287,20 +287,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     cancelButton: {
         fontSize: 16,
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         fontWeight: '400',
     },
     headerTitle: {
         fontSize: 17,
         fontWeight: '700',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
     },
     saveButton: {
-        backgroundColor: FEED_COLORS.favor,
+        backgroundColor: COLORS.favor,
         paddingHorizontal: 18,
         paddingVertical: 8,
         borderRadius: 20,
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     saveButtonText: {
         fontSize: 15,
         fontWeight: '600',
-        color: FEED_COLORS.bg,
+        color: COLORS.bg,
     },
     formContainer: {
         flex: 1,
@@ -329,23 +329,23 @@ const styles = StyleSheet.create({
     fieldLabel: {
         fontSize: 13,
         fontWeight: '600',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         letterSpacing: 1.5,
     },
     fieldCounter: {
         fontSize: 11,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
     textInput: {
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
         borderRadius: 14,
         paddingVertical: 12,
         paddingHorizontal: 16,
         fontSize: 15,
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
         minHeight: 52,
     },
     bioInput: {
@@ -355,14 +355,14 @@ const styles = StyleSheet.create({
     helperText: {
         fontSize: 11,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         marginTop: 6,
         marginLeft: 10,
     },
     dropdownButton: {
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
         borderRadius: 14,
         minHeight: 52,
         paddingVertical: 12,
@@ -374,13 +374,13 @@ const styles = StyleSheet.create({
     dropdownText: {
         fontSize: 15,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
         flex: 1,
     },
     dropdownMenu: {
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
         borderRadius: 14,
         marginTop: 8,
         maxHeight: 200,
@@ -389,15 +389,15 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     dropdownItemText: {
         fontSize: 14,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
     selectedItem: {
-        color: FEED_COLORS.favor,
+        color: COLORS.favor,
         fontWeight: '600',
     },
     nudgeCard: {
@@ -411,9 +411,9 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     nudgeAvatarContainer: {
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
         borderRadius: 10,
         width: 40,
         height: 40,
@@ -426,13 +426,13 @@ const styles = StyleSheet.create({
     nudgeTitle: {
         fontSize: 13,
         fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
         marginBottom: 2,
     },
     nudgeDescription: {
         fontSize: 12,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
     },
     shopLink: {
         flexDirection: 'row',
@@ -442,6 +442,6 @@ const styles = StyleSheet.create({
     shopLinkText: {
         fontSize: 12,
         fontWeight: '600',
-        color: FEED_COLORS.favor,
+        color: COLORS.favor,
     },
 });
