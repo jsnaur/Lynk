@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
     View,
     Text,
@@ -7,7 +7,8 @@ import {
     ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 export type NotificationType =
     | 'Quest_Accepted'
@@ -35,20 +36,20 @@ const getNotificationIcon = (
 ): { name: string; color: string } => {
     switch (type) {
         case 'Token_Earned':
-            return { name: 'cash', color: '#FFD700' };
+            return { name: 'cash', color: COLORS.token };
         case 'XP_Milestone':
-            return { name: 'trending-up', color: '#C084FC' };
+            return { name: 'trending-up', color: COLORS.xp };
         case 'Quest_Completed':
-            return { name: 'flag', color: '#39FF14' };
+            return { name: 'flag', color: COLORS.item };
         case 'Rating_Received_Positive':
-            return { name: 'thumbs-up', color: '#00F5FF' };
+            return { name: 'thumbs-up', color: COLORS.favor };
         case 'Rating_Received_Negative':
-            return { name: 'thumbs-down', color: '#FF2D78' };
+            return { name: 'thumbs-down', color: COLORS.study };
         case 'New_Comment':
-            return { name: 'chatbubble', color: '#00F5FF' };
+            return { name: 'chatbubble', color: COLORS.favor };
         case 'Quest_Accepted':
         default:
-            return { name: 'checkmark-circle', color: '#00F5FF' };
+            return { name: 'checkmark-circle', color: COLORS.favor };
     }
 };
 
@@ -60,14 +61,18 @@ const getBackgroundColor = (
 
     switch (type) {
         case 'Token_Earned':
-            return 'rgba(255, 215, 0, 0.12)';
+            return withOpacity(COLORS.token, 0.12);
         case 'XP_Milestone':
-            return 'rgba(192, 132, 252, 0.12)';
+            return withOpacity(COLORS.xp, 0.12);
         case 'Quest_Completed':
-            return 'rgba(57, 255, 20, 0.12)';
+            return withOpacity(COLORS.item, 0.12);
+        case 'Rating_Received_Negative':
+            return withOpacity(COLORS.study, 0.12);
         case 'Quest_Accepted':
+        case 'Rating_Received_Positive':
+        case 'New_Comment':
         default:
-            return 'rgba(0, 245, 255, 0.12)';
+            return withOpacity(COLORS.favor, 0.12);
     }
 };
 
@@ -140,7 +145,7 @@ export default function NotificationRow({
             ]}
         >
             {/* Icon Container */}
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: withOpacity(COLORS.bg, 0.2) }]}>
                 <Ionicons
                     name={icon.name as any}
                     size={20}
@@ -186,7 +191,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     iconContainer: {
         width: 40,
@@ -194,7 +199,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.2)',
     },
     contentBlock: {
         flex: 1,
@@ -203,23 +207,26 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 14,
         fontWeight: '600',
-        color: FEED_COLORS.textPrimary,
+        color: COLORS.textPrimary,
+        fontFamily: FONTS.body,
     },
     description: {
         fontSize: 13,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
+        fontFamily: FONTS.body,
     },
     timestamp: {
         fontSize: 11,
         fontWeight: '400',
-        color: FEED_COLORS.textSecondary,
+        color: COLORS.textSecondary,
+        fontFamily: FONTS.body,
     },
     unreadDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: FEED_COLORS.favor,
+        backgroundColor: COLORS.favor,
         marginLeft: 4,
     },
 });

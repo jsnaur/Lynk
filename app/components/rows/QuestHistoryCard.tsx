@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 import RatingReceivedIcon from '../icons/RatingReceivedIcon';
 
 type Category = 'Favor' | 'Study' | 'Item';
@@ -25,34 +26,32 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
   const getCategoryColor = (): string => {
     switch (category) {
       case 'Favor':
-        return FEED_COLORS.favor;
+        return COLORS.favor;
       case 'Study':
-        return FEED_COLORS.study;
+        return COLORS.study;
       case 'Item':
-        return FEED_COLORS.item;
+        return COLORS.item;
     }
-  };
-
-  const getEarnedColor = (type: 'xp' | 'token'): string => {
-    return type === 'xp' ? FEED_COLORS.xp : FEED_COLORS.token;
   };
 
   const styles = StyleSheet.create({
     container: {
       width: 342,
-      backgroundColor: '#26262e',
+      backgroundColor: COLORS.surface,
       borderRadius: 12,
       overflow: 'hidden',
       marginVertical: 6,
       marginHorizontal: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
     },
     topSection: {
       flexDirection: 'row',
       borderBottomWidth: 1,
-      borderBottomColor: '#3a3a48',
+      borderBottomColor: COLORS.border,
     },
     categoryStripe: {
-      width: 3,
+      width: 4,
       backgroundColor: getCategoryColor(),
     },
     titleContent: {
@@ -62,16 +61,16 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
     },
     title: {
       fontSize: 14,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: '600',
-      color: '#f0f0f5',
+      color: COLORS.textPrimary,
       marginBottom: 4,
     },
     role: {
       fontSize: 12,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: '400',
-      color: '#8a8a9a',
+      color: COLORS.textSecondary,
     },
     bottomSection: {
       flexDirection: 'row',
@@ -92,25 +91,23 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
       borderRadius: 6,
       alignItems: 'center',
       gap: 4,
-      backgroundColor: '#31313c',
     },
     xpChip: {
-      backgroundColor: `${FEED_COLORS.xp}26`, // 15% opacity
+      backgroundColor: withOpacity(COLORS.xp, 0.15),
     },
     tokenChip: {
-      backgroundColor: `${FEED_COLORS.token}26`, // 15% opacity
+      backgroundColor: withOpacity(COLORS.token, 0.15),
     },
     earnedValue: {
-      fontSize: 11,
-      fontFamily: 'Space Mono',
+      fontSize: 12,
+      fontFamily: FONTS.mono,
       fontWeight: '700',
-      color: '#f0f0f5',
     },
     earnedLabel: {
-      fontSize: 9,
-      fontFamily: 'DM Sans',
-      fontWeight: '500',
-      color: '#8a8a9a',
+      fontSize: 10,
+      fontFamily: FONTS.body,
+      fontWeight: '600',
+      color: COLORS.textSecondary,
     },
     ratingIcon: {
       marginLeft: 'auto',
@@ -137,7 +134,7 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
         <View style={styles.earnedContainer}>
           {/* XP Earned */}
           <View style={[styles.earnedChip, styles.xpChip]}>
-            <Text style={[styles.earnedValue, { color: FEED_COLORS.xp }]}>
+            <Text style={[styles.earnedValue, { color: COLORS.xp }]}>
               {xpEarned}
             </Text>
             <Text style={styles.earnedLabel}>XP</Text>
@@ -145,7 +142,7 @@ const QuestHistoryCard: React.FC<QuestHistoryCardProps> = ({
 
           {/* Token Earned */}
           <View style={[styles.earnedChip, styles.tokenChip]}>
-            <Text style={[styles.earnedValue, { color: FEED_COLORS.token }]}>
+            <Text style={[styles.earnedValue, { color: COLORS.token }]}>
               {tokenEarned}
             </Text>
             <Text style={styles.earnedLabel}>TK</Text>

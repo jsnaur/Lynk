@@ -1,18 +1,20 @@
 import React from 'react';
-import { Image, StyleSheet, ImageSourcePropType, StyleProp, ViewStyle, ImageStyle } from 'react-native';
+import { Image, StyleSheet, ImageSourcePropType, StyleProp, ImageStyle, Platform } from 'react-native';
 
 type ImageSpriteProps = {
   source: ImageSourcePropType;
   width?: number | string;
   height?: number | string;
   style?: StyleProp<ImageStyle>;
+  tintColor?: string;
 };
 
 export default function ImageSprite({ 
   source, 
   width = 45, 
   height = 45,
-  style 
+  style,
+  tintColor
 }: ImageSpriteProps) {
   return (
     <Image
@@ -20,12 +22,10 @@ export default function ImageSprite({
       style={[
         styles.image,
         { width: width as any, height: height as any },
+        tintColor ? { tintColor } : undefined,
         style
       ]}
       resizeMode="contain"
-      onLoad={(e) => {
-        // Log loaded dimensions for debugging if needed
-      }}
     />
   );
 }
@@ -33,7 +33,7 @@ export default function ImageSprite({
 const styles = StyleSheet.create({
   image: {
     alignSelf: 'center',
-    // Used primarily for web to keep sprites sharp. Ignored safely in native.
-    imageRendering: 'pixelated', 
-  } as any,
+    // Applies pixelated rendering cleanly on web platforms without TS errors
+    ...(Platform.OS === 'web' ? { imageRendering: 'pixelated' } : {}),
+  } as ImageStyle,
 });
