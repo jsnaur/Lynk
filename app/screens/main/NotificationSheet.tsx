@@ -12,7 +12,7 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 
 type Notification = {
@@ -206,7 +206,7 @@ export default function NotificationSheet({
                 <Ionicons
                     name={item.is_read ? 'notifications-outline' : 'notifications'}
                     size={20}
-                    color={!item.is_read ? FEED_COLORS.favor : FEED_COLORS.textSecondary}
+                    color={!item.is_read ? COLORS.favor : COLORS.textSecondary}
                 />
             </View>
             <View style={styles.textContainer}>
@@ -222,7 +222,7 @@ export default function NotificationSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Delete notification"
             >
-                <Ionicons name="trash-outline" size={18} color={FEED_COLORS.textSecondary} />
+                <Ionicons name="trash-outline" size={18} color={COLORS.textSecondary} />
             </Pressable>
         </Pressable>
     );
@@ -245,13 +245,13 @@ export default function NotificationSheet({
                                 <Text style={styles.clearText}>Clear</Text>
                             </Pressable>
                             <Pressable onPress={onClose} hitSlop={10}>
-                                <Ionicons name="close" size={22} color={FEED_COLORS.textSecondary} />
+                                <Ionicons name="close" size={22} color={COLORS.textSecondary} />
                             </Pressable>
                         </View>
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator style={{ padding: 20 }} color={FEED_COLORS.favor} />
+                        <ActivityIndicator style={{ padding: 20 }} color={COLORS.favor} />
                     ) : (
                         <FlatList
                             data={notifications}
@@ -294,16 +294,16 @@ const styles = StyleSheet.create({
         width: 0, height: 0,
         borderLeftWidth: 10, borderRightWidth: 10, borderBottomWidth: 10,
         borderLeftColor: 'transparent', borderRightColor: 'transparent',
-        borderBottomColor: FEED_COLORS.surface,
+        borderBottomColor: COLORS.surface,
         alignSelf: 'flex-end',
         marginRight: 8,
     },
     contentBox: {
-        backgroundColor: FEED_COLORS.surface,
+        backgroundColor: COLORS.surface,
         borderRadius: 16,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
+        borderColor: COLORS.border,
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -315,22 +315,22 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: FEED_COLORS.border,
+        borderBottomColor: COLORS.border,
     },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    clearButton: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 10, backgroundColor: FEED_COLORS.surface2 },
-    clearText: { color: FEED_COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
-    headerTitle: { fontSize: 16, fontWeight: 'bold', color: FEED_COLORS.textPrimary },
+    clearButton: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 10, backgroundColor: COLORS.surface2 },
+    clearText: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
+    headerTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
     listContent: { paddingBottom: 10 },
-    notificationItem: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, alignItems: 'center' },
+    notificationItem: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border, alignItems: 'center' },
     unreadItem: { backgroundColor: 'rgba(239, 68, 68, 0.03)' },
-    iconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: FEED_COLORS.surface2, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    iconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     textContainer: { flex: 1 },
-    notificationTitle: { fontSize: 14, fontWeight: '600', color: FEED_COLORS.textPrimary },
-    notificationDesc: { fontSize: 13, color: FEED_COLORS.textSecondary, marginTop: 2 },
-    timeText: { fontSize: 11, color: FEED_COLORS.textSecondary, marginTop: 4 },
-    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: FEED_COLORS.favor, alignSelf: 'center' },
+    notificationTitle: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
+    notificationDesc: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+    timeText: { fontSize: 11, color: COLORS.textSecondary, marginTop: 4 },
+    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.favor, alignSelf: 'center' },
     deleteButton: { marginLeft: 10, padding: 4, borderRadius: 10 },
     emptyState: { padding: 30, alignItems: 'center' },
-    emptyText: { color: FEED_COLORS.textSecondary },
+    emptyText: { color: COLORS.textSecondary },
 });

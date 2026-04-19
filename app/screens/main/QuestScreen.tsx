@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNav, { MainTab } from '../../components/BottomNav';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
 import { useTokenBalance } from '../../contexts/TokenContext';
@@ -75,7 +75,7 @@ function QuestCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { borderColor: item.isActionable ? 'rgba(57,255,20,0.38)' : FEED_COLORS.border, backgroundColor: item.cardTint },
+        { borderColor: item.isActionable ? 'rgba(57,255,20,0.38)' : COLORS.border, backgroundColor: item.cardTint },
         pressed && styles.cardPressed,
       ]}
     >
@@ -177,16 +177,16 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
 
         let role = '';
         let statusLabel = '';
-        let statusColor: string = FEED_COLORS.textSecondary;
+        let statusColor: string = COLORS.textSecondary;
         let isActionable = false;
         let historyTag: 'Posted' | 'Accepted' | undefined;
         let cardTint = 'rgba(255,255,255,0.02)';
 
         // Map Category Colors
-        let accent: string = FEED_COLORS.textSecondary;
-        if (q.category === 'favor') accent = FEED_COLORS.favor || '#00F5FF';
-        if (q.category === 'study') accent = FEED_COLORS.study || '#FF2D78';
-        if (q.category === 'item') accent = FEED_COLORS.item || '#39FF14';
+        let accent: string = COLORS.textSecondary;
+        if (q.category === 'favor') accent = COLORS.favor || '#00F5FF';
+        if (q.category === 'study') accent = COLORS.study || '#FF2D78';
+        if (q.category === 'item') accent = COLORS.item || '#39FF14';
 
         if (isResolved) {
           role = isPoster ? 'Requester' : 'Accepter';
@@ -214,11 +214,11 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           } else if (isAccepter) {
             role = 'You accepted';
             statusLabel = 'In progress';
-            statusColor = FEED_COLORS.xp || '#C084FC'; // Purple
+            statusColor = COLORS.xp || '#C084FC'; // Purple
           } else if (isPoster && q.accepted_by) {
             role = 'You posted';
             statusLabel = 'Pending resolution';
-            statusColor = FEED_COLORS.item || '#39FF14'; // Green
+            statusColor = COLORS.item || '#39FF14'; // Green
             cardTint = 'rgba(57,255,20,0.08)';
             isActionable = true;
           }
@@ -315,7 +315,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={FEED_COLORS.item}
+              tintColor={COLORS.item}
             />
           }
         >
@@ -411,7 +411,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
                     navigation?.navigate?.('QuestDetail', {
                       quest: {
                         id: quest.id,
-                        category: quest.accent === FEED_COLORS.favor ? 'favor' : quest.accent === FEED_COLORS.study ? 'study' : 'item',
+                        category: quest.accent === COLORS.favor ? 'favor' : quest.accent === COLORS.study ? 'study' : 'item',
                         title: quest.title,
                         preview: `${quest.role} · ${quest.status}`,
                         posterName: 'You',
@@ -455,7 +455,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: FEED_COLORS.bg,
+    backgroundColor: COLORS.bg,
   },
   safeArea: {
     flex: 1,
@@ -466,10 +466,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
+    borderBottomColor: COLORS.border,
   },
   title: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 30,
     lineHeight: 34,
     fontWeight: '700',
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: FEED_COLORS.surface,
+    backgroundColor: COLORS.surface,
     borderRadius: 14,
     padding: 4,
     gap: 4,
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     left: 4,
     height: 38,
     borderRadius: 10,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   segment: {
     flex: 1,
@@ -508,12 +508,12 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   segmentText: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
   segmentTextSelected: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   sectionHeaderRow: {
     marginTop: 34,
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -536,10 +536,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(57,255,20,0.18)',
     borderWidth: 1,
-    borderColor: FEED_COLORS.item,
+    borderColor: COLORS.item,
   },
   countText: {
-    color: FEED_COLORS.item,
+    color: COLORS.item,
     fontSize: 12,
     lineHeight: 12,
     fontWeight: '700',
@@ -563,19 +563,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.01)',
   },
   filterChipSelected: {
-    borderColor: FEED_COLORS.favor,
+    borderColor: COLORS.favor,
     backgroundColor: 'rgba(0,245,255,0.12)',
   },
   filterChipPressed: {
     opacity: 0.9,
   },
   filterChipText: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
   filterChipTextSelected: {
-    color: FEED_COLORS.favor,
+    color: COLORS.favor,
   },
   card: {
     minHeight: 80,
@@ -605,19 +605,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardTitle: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 16,
     lineHeight: 19,
     fontWeight: '700',
   },
   metaLine: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '500',
   },
   metaRole: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
   },
   metaSeparator: {
     color: 'rgba(138,138,154,0.65)',
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rewardPillText: {
-    color: FEED_COLORS.xp,
+    color: COLORS.xp,
     fontSize: 12,
     lineHeight: 14,
     fontWeight: '700',
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rewardPillTokenText: {
-    color: FEED_COLORS.token,
+    color: COLORS.token,
     fontSize: 12,
     lineHeight: 14,
     fontWeight: '700',
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
     minHeight: 28,
     paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: FEED_COLORS.item,
+    backgroundColor: COLORS.item,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   resolveText: {
-    color: FEED_COLORS.bg,
+    color: COLORS.bg,
     fontSize: 12,
     lineHeight: 14,
     fontWeight: '800',

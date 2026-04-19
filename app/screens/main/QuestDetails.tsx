@@ -30,8 +30,7 @@ import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg
 
 import CompactQuestCard from '../../components/cards/CompactQuestCard';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
-import { FEED_COLORS } from '../../constants/colors';
-import { FEED_CATEGORY_BG } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 
 // Map the avatars to an array so we can select them by index
@@ -72,9 +71,9 @@ type ProfilePreview = {
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
-  favor: FEED_COLORS.favor,
-  study: FEED_COLORS.study,
-  item: FEED_COLORS.item,
+  favor: COLORS.favor,
+  study: COLORS.study,
+  item: COLORS.item,
 };
 
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
@@ -341,7 +340,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           <Text style={styles.headerTitle}>Quest Details</Text>
           <Pressable style={styles.iconButton} onPress={() => setLiked((current) => !current)}>
             <ShareIcon width={22} height={22} />
-            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? FEED_COLORS.heart : FEED_COLORS.textSecondary} />
+            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? COLORS.heart : COLORS.textSecondary} />
           </Pressable>
         </View>
 
@@ -402,9 +401,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           {!shouldShowCompactCard && (
             <>
               {isPoster ? (
-                <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Your Quest</Text></View>
+                <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}><Text style={styles.acceptText}>Your Quest</Text></View>
               ) : isTakenBySomeoneElse ? (
-                <View style={[styles.acceptButton, { backgroundColor: FEED_COLORS.textSecondary }]}><Text style={styles.acceptText}>Already Accepted</Text></View>
+                <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}><Text style={styles.acceptText}>Already Accepted</Text></View>
               ) : (
                 <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={toggleAccept} disabled={loading}>
                   <Text style={styles.acceptText}>{actionText}</Text>
@@ -456,11 +455,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             value={message}
             onChangeText={setMessage}
             placeholder="Add a comment..."
-            placeholderTextColor={FEED_COLORS.textSecondary}
+            placeholderTextColor={COLORS.textSecondary}
             style={styles.input}
           />
           <Pressable style={styles.sendButton} onPress={onSubmitComment}>
-            <Ionicons name="send" size={16} color={FEED_COLORS.bg} />
+            <Ionicons name="send" size={16} color={COLORS.bg} />
           </Pressable>
         </View>
 
@@ -473,12 +472,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
             <Pressable style={styles.actionBubble} onPress={() => {}}>
               <Pressable style={styles.actionRow} onPress={onViewProfile}>
-                <Ionicons name="person-circle-outline" size={18} color={FEED_COLORS.favor} />
+                <Ionicons name="person-circle-outline" size={18} color={COLORS.favor} />
                 <Text style={styles.actionText}>View Profile</Text>
               </Pressable>
               <View style={styles.actionDivider} />
               <View style={styles.actionRowDisabled}>
-                <Ionicons name="flag-outline" size={18} color={FEED_COLORS.textSecondary} />
+                <Ionicons name="flag-outline" size={18} color={COLORS.textSecondary} />
                 <Text style={styles.actionTextDisabled}>Report (Soon)</Text>
               </View>
             </Pressable>
@@ -496,7 +495,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               <View style={styles.previewHeader}>
                 <Text style={styles.previewTitle}>Profile</Text>
                 <Pressable onPress={closeProfilePreview} hitSlop={10}>
-                  <Ionicons name="close" size={20} color={FEED_COLORS.textSecondary} />
+                  <Ionicons name="close" size={20} color={COLORS.textSecondary} />
                 </Pressable>
               </View>
 
@@ -530,7 +529,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     height: '92%',
-    backgroundColor: FEED_COLORS.bg,
+    backgroundColor: COLORS.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
@@ -538,7 +537,7 @@ const styles = StyleSheet.create({
   header: {
     height: 64,
     borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
+    borderBottomColor: COLORS.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -551,12 +550,12 @@ const styles = StyleSheet.create({
     minWidth: 72,
   },
   backText: {
-    color: FEED_COLORS.favor,
+    color: COLORS.favor,
     fontSize: 14,
     fontWeight: '600',
   },
   headerTitle: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -567,8 +566,8 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     padding: 14,
     gap: 12,
   },
@@ -596,22 +595,22 @@ const styles = StyleSheet.create({
   },
   statusPill: {
     borderRadius: 999,
-    backgroundColor: FEED_CATEGORY_BG.item,
+    backgroundColor: withOpacity(COLORS.item, 0.15),
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   statusText: {
-    color: FEED_COLORS.item,
+    color: COLORS.item,
     fontSize: 12,
     fontWeight: '600',
   },
   title: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 21,
     fontWeight: '700',
   },
   preview: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     lineHeight: 21,
     fontSize: 14,
   },
@@ -621,12 +620,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   poster: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   time: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 11,
   },
   locationChip: {
@@ -635,14 +634,14 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   locationText: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 11,
   },
   rewardBox: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -657,18 +656,18 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 72,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   rewardValue: {
-    color: FEED_COLORS.xp,
+    color: COLORS.xp,
     fontSize: 20,
     fontWeight: '700',
   },
   tokenValue: {
-    color: FEED_COLORS.token,
+    color: COLORS.token,
   },
   rewardLabel: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 11,
     letterSpacing: 0.6,
   },
@@ -679,10 +678,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: FEED_COLORS.favor,
+    backgroundColor: COLORS.favor,
   },
   acceptText: {
-    color: FEED_COLORS.bg,
+    color: COLORS.bg,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -695,18 +694,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   commentsTitle: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   countChip: {
-    backgroundColor: FEED_COLORS.surface,
+    backgroundColor: COLORS.surface,
     borderRadius: 999,
     paddingVertical: 2,
     paddingHorizontal: 8,
   },
   countText: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -715,8 +714,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     padding: 10,
     gap: 10,
     flexDirection: 'row',
@@ -726,7 +725,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: FEED_COLORS.surface2 || '#ececec',
+    backgroundColor: COLORS.surface2 || '#ececec',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -735,22 +734,22 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   commentAuthor: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   commentTime: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 11,
   },
   commentText: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 13,
   },
   inputBar: {
     borderTopWidth: 1,
-    borderTopColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 14,
@@ -763,16 +762,16 @@ const styles = StyleSheet.create({
     minHeight: 42,
     borderRadius: 21,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 14,
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   sendButton: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: FEED_COLORS.favor,
+    backgroundColor: COLORS.favor,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -788,8 +787,8 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
   },
   actionRow: {
@@ -807,18 +806,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   actionText: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   actionTextDisabled: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontWeight: '500',
   },
   actionDivider: {
     height: 1,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   previewBackdrop: {
     flex: 1,
@@ -832,21 +831,21 @@ const styles = StyleSheet.create({
     maxWidth: 360,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.bg,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg,
     overflow: 'hidden',
   },
   previewHeader: {
     height: 54,
     borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
+    borderBottomColor: COLORS.border,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   previewTitle: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 17,
     fontWeight: '700',
   },
@@ -861,8 +860,8 @@ const styles = StyleSheet.create({
     height: 84,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface2 || FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface2 || COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -873,16 +872,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   previewName: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 20,
     fontWeight: '700',
   },
   previewSubtitle: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 13,
   },
   previewBio: {
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 13,
     lineHeight: 18,
   },

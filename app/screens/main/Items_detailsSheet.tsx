@@ -5,7 +5,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 
 export type ShopSheetItem = {
   id: string;
@@ -61,7 +61,7 @@ export default function ItemsDetailsSheet({
           </View>
 
           <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons name="close" size={26} color={FEED_COLORS.textSecondary} />
+            <Ionicons name="close" size={26} color={COLORS.textSecondary} />
           </Pressable>
 
           <View style={styles.hero}>
@@ -96,7 +96,7 @@ export default function ItemsDetailsSheet({
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{owned ? 'Status' : 'Price'}</Text>
               {owned ? (
-                <Text style={[styles.statValue, { color: equipped ? FEED_COLORS.favor : FEED_COLORS.item }]}>
+                <Text style={[styles.statValue, { color: equipped ? COLORS.favor : COLORS.item }]}>
                   {equipped ? 'Equipped' : 'Owned'}
                 </Text>
               ) : (
@@ -110,7 +110,7 @@ export default function ItemsDetailsSheet({
 
           {!owned && !canAfford && (
             <View style={styles.warnBanner}>
-              <Ionicons name="warning-outline" size={18} color={FEED_COLORS.warning} />
+              <Ionicons name="warning-outline" size={18} color={COLORS.warning} />
               <Text style={styles.warnText}>Not enough tokens. Complete quests to earn more.</Text>
             </View>
           )}
@@ -181,8 +181,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 8,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.bg,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg,
     zIndex: 2,
     elevation: 12,
   },
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   closeBtn: {
     position: 'absolute',
@@ -216,39 +216,39 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 28,
-    backgroundColor: FEED_COLORS.surface2,
+    backgroundColor: COLORS.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
+    borderColor: COLORS.border,
   },
   badge: {
     marginTop: 12,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: FEED_COLORS.surface,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
+    borderColor: COLORS.border,
   },
   badgeText: {
     fontSize: 11,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     textTransform: 'capitalize',
   },
   title: {
     fontSize: 22,
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Regular',
     textAlign: 'center',
     lineHeight: 20,
@@ -260,8 +260,8 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     marginBottom: 16,
     overflow: 'hidden',
   },
@@ -274,11 +274,11 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   statLabel: {
     fontSize: 11,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Medium',
     fontWeight: '500',
   },
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'SpaceMono-Bold',
     fontWeight: '700',
-    color: FEED_COLORS.token,
+    color: COLORS.token,
   },
   warnBanner: {
     flexDirection: 'row',
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   warnText: {
     flex: 1,
     fontSize: 13,
-    color: FEED_COLORS.warning,
+    color: COLORS.warning,
     fontFamily: 'DMSans-Regular',
   },
   actions: {
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryBtn: {
-    backgroundColor: FEED_COLORS.favor,
+    backgroundColor: COLORS.favor,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'DMSans-Bold',
     fontWeight: '700',
-    color: FEED_COLORS.bg,
+    color: COLORS.bg,
   },
   secondaryBtn: {
     paddingVertical: 14,
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: 15,
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans-Medium',
     fontWeight: '500',
   },

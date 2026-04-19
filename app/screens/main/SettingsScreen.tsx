@@ -15,7 +15,7 @@ import {
 import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 
 
 // ============================================================================
@@ -164,7 +164,7 @@ const SettingsToggleRow: React.FC<SettingsToggleRowProps> = ({
       style={styles.toggleSwitch}
       value={value}
       onValueChange={onToggle}
-      trackColor={{ false: '#3A3A48', true: FEED_COLORS.favor }}
+      trackColor={{ false: '#3A3A48', true: COLORS.favor }}
       thumbColor="#FFFFFF"
     />
   </View>
@@ -291,7 +291,7 @@ export default function SettingsScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="chevron-left" size={16} color={FEED_COLORS.favor} />
+          <MaterialCommunityIcons name="chevron-left" size={16} color={COLORS.favor} />
           <Text style={styles.backLabel}>Profile</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Settings</Text>
@@ -305,14 +305,14 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingsNavRow
             icon="lock"
             iconBgColor="rgba(0, 245, 255, 0.15)"
-            iconColor={FEED_COLORS.favor}
+            iconColor={COLORS.favor}
             title="Change Password"
             onPress={() => navigation.navigate('PasswordRecovery')}
           />
           <SettingsNavRow
             icon="shield-check"
             iconBgColor="rgba(57, 255, 20, 0.12)"
-            iconColor={FEED_COLORS.item}
+            iconColor={COLORS.item}
             title="Verified Email"
             subtitle="your@university.edu"
             rightContent="lock"
@@ -326,7 +326,7 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingsToggleRow
             icon="bell"
             iconBgColor="rgba(255, 215, 0, 0.12)"
-            iconColor={FEED_COLORS.xp}
+            iconColor={COLORS.xp}
             title="Push Notifications"
             subtitle="Allow LYNK to send notifications"
             value={pushNotificationsEnabled}
@@ -378,7 +378,7 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingsToggleRow
             icon="eye"
             iconBgColor="rgba(138, 138, 154, 0.12)"
-            iconColor={FEED_COLORS.textSecondary}
+            iconColor={COLORS.textSecondary}
             title="Profile Visibility"
             subtitle={profileVisibilityEnabled ? "Visible to all verified students" : "Limited visibility"}
             value={profileVisibilityEnabled}
@@ -387,7 +387,7 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingsToggleRow
             icon="circle"
             iconBgColor="rgba(138, 138, 154, 0.12)"
-            iconColor={FEED_COLORS.textSecondary}
+            iconColor={COLORS.textSecondary}
             title="Show Online Status"
             subtitle="Let others see when you're active"
             value={onlineStatusEnabled}
@@ -401,7 +401,7 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingsNavRow
             icon="weather-night"
             iconBgColor="rgba(192, 132, 252, 0.12)"
-            iconColor={FEED_COLORS.token}
+            iconColor={COLORS.token}
             title="Appearance"
             rightContent="value"
             rightValue={appearanceValue}
@@ -414,7 +414,7 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingsNavRow
             icon="office-building"
             iconBgColor="rgba(57, 255, 20, 0.12)"
-            iconColor={FEED_COLORS.item}
+            iconColor={COLORS.item}
             title="Campus"
             subtitle="State University"
             rightContent="lock"
@@ -428,21 +428,21 @@ export default function SettingsScreen({ navigation }: any) {
           <SettingsNavRow
             icon="message-text-outline"
             iconBgColor="rgba(0, 245, 255, 0.1)"
-            iconColor={FEED_COLORS.favor}
+            iconColor={COLORS.favor}
             title="Send Feedback"
             onPress={handleSendFeedback}
           />
           <SettingsNavRow
             icon="alert"
             iconBgColor="rgba(255, 215, 0, 0.1)"
-            iconColor={FEED_COLORS.xp}
+            iconColor={COLORS.xp}
             title="Report a Bug"
             onPress={handleReportBug}
           />
           <SettingsNavRow
             icon="information"
             iconBgColor="rgba(138, 138, 154, 0.12)"
-            iconColor={FEED_COLORS.textSecondary}
+            iconColor={COLORS.textSecondary}
             title="About LYNK"
             rightContent="value"
             rightValue="v1.0.0"
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
   backLabel: {
     fontSize: 16,
     fontWeight: '400',
-    color: FEED_COLORS.favor,
+    color: COLORS.favor,
     fontFamily: 'DM_Sans-Regular',
   },
 
