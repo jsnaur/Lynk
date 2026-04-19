@@ -3,7 +3,7 @@ import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from "react-
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
-import { FEED_COLORS } from "../../constants/colors";
+import { COLORS } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS } from "../../constants/accessories";
 
@@ -94,7 +94,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
               if (errorMessage) setErrorMessage("");
             }}
             placeholder="Display Name (visible to campus)"
-            placeholderTextColor={FEED_COLORS.textSecondary}
+            placeholderTextColor={COLORS.textSecondary}
             style={[styles.textInput, localStyles.textInputColorOverride]}
             autoCapitalize="words"
           />
@@ -122,7 +122,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
             >
               {selectedMajor || "Select your major..."}
             </Text>
-            <Ionicons name={majorOpen ? "chevron-up" : "chevron-down"} size={16} color={FEED_COLORS.textSecondary} />
+            <Ionicons name={majorOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
           </Pressable>
 
           {majorOpen && (
@@ -172,7 +172,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
             >
               {graduationYear || "Graduation Year"}
             </Text>
-            <Ionicons name={yearOpen ? "chevron-up" : "chevron-down"} size={16} color={FEED_COLORS.textSecondary} />
+            <Ionicons name={yearOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
           </Pressable>
 
           {yearOpen && (

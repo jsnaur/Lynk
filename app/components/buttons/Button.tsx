@@ -1,7 +1,8 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type ButtonVariant = 'primary' | 'secondary' | 'success' | 'error' | 'text';
 type ButtonSize = 'small' | 'medium' | 'large';
@@ -31,17 +32,17 @@ export default function Button({
     if (disabled) return '#3a3a48';
     switch (variant) {
       case 'primary':
-        return FEED_COLORS.favor;
+        return COLORS.favor;
       case 'secondary':
         return '#26262e';
       case 'success':
-        return '#39FF14';
+        return COLORS.item;
       case 'error':
-        return '#FF4d4d';
+        return COLORS.error;
       case 'text':
         return 'transparent';
       default:
-        return FEED_COLORS.favor;
+        return COLORS.favor;
     }
   };
 
@@ -142,6 +143,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontWeight: '600',
-    fontFamily: 'DM_Sans-SemiBold',
+    fontFamily: FONTS.body, // Default button text maps to body (DMSans)
   },
 });

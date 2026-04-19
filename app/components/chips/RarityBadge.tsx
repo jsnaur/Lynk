@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type RarityTier = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 
@@ -14,13 +15,13 @@ const RarityBadge: React.FC<RarityBadgeProps> = ({ tier }) => {
       case 'Common':
         return 'rgba(138, 138, 154, 0.2)';
       case 'Uncommon':
-        return `${FEED_COLORS.item}26`; // lime 15% opacity
+        return withOpacity(COLORS.item, 0.15); 
       case 'Rare':
-        return `${FEED_COLORS.favor}26`; // cyan 15% opacity
+        return withOpacity(COLORS.favor, 0.15); 
       case 'Epic':
-        return `${FEED_COLORS.xp}26`; // purple 15% opacity
+        return withOpacity(COLORS.xp, 0.15); 
       case 'Legendary':
-        return `${FEED_COLORS.token}26`; // gold 15% opacity
+        return withOpacity(COLORS.token, 0.15); 
     }
   };
 
@@ -29,13 +30,13 @@ const RarityBadge: React.FC<RarityBadgeProps> = ({ tier }) => {
       case 'Common':
         return '#8a8a9a';
       case 'Uncommon':
-        return FEED_COLORS.item;
+        return COLORS.item;
       case 'Rare':
-        return FEED_COLORS.favor;
+        return COLORS.favor;
       case 'Epic':
-        return FEED_COLORS.xp;
+        return COLORS.xp;
       case 'Legendary':
-        return FEED_COLORS.token;
+        return COLORS.token;
     }
   };
 
@@ -52,7 +53,7 @@ const RarityBadge: React.FC<RarityBadgeProps> = ({ tier }) => {
     },
     text: {
       fontSize: 6,
-      fontFamily: 'Press Start 2P',
+      fontFamily: FONTS.display, // Game layer: Press Start 2P
       fontWeight: '400',
       color: getTextColor(),
       textAlign: 'center',

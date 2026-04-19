@@ -7,7 +7,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type InputState = 'default' | 'focus' | 'success' | 'error' | 'disabled';
 
@@ -44,9 +45,9 @@ export default function TextInput({
 
   const getBorderColor = () => {
     if (state === 'disabled') return '#3a3a48';
-    if (state === 'success') return FEED_COLORS.item;
-    if (state === 'error') return '#FF4d4d';
-    if (isFocused) return FEED_COLORS.favor;
+    if (state === 'success') return COLORS.item;
+    if (state === 'error') return COLORS.error;
+    if (isFocused) return COLORS.favor;
     return '#3a3a48';
   };
 
@@ -119,7 +120,7 @@ export default function TextInput({
           <MaterialCommunityIcons
             name="check-circle"
             size={20}
-            color={FEED_COLORS.item}
+            color={COLORS.item}
             style={styles.icon}
           />
         )}
@@ -128,7 +129,7 @@ export default function TextInput({
           <MaterialCommunityIcons
             name="alert-circle"
             size={20}
-            color="#FF4d4d"
+            color={COLORS.error}
             style={styles.icon}
           />
         )}
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
     color: '#f0f0f5',
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'DM_Sans-SemiBold',
+    fontFamily: FONTS.body, // Assuming DMSansBold handles 600 or we let the font map handle it
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '400',
-    fontFamily: 'DM_Sans-Regular',
+    fontFamily: FONTS.body,
   },
   icon: {
     marginLeft: 12,
@@ -175,8 +176,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   errorText: {
-    color: '#FF4d4d',
+    color: COLORS.error,
     fontSize: 12,
-    fontFamily: 'DM_Sans-Regular',
+    fontFamily: FONTS.body,
   },
 });
