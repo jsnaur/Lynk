@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
-import { FEED_CATEGORY_BG, FEED_COLORS, FEED_PILL_BG } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 // Local Avatars
 import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
@@ -26,14 +27,13 @@ type PostCardProps = {
 };
 
 const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
-	favor: { label: 'FAVOR', color: FEED_COLORS.favor },
-	study: { label: 'STUDY', color: FEED_COLORS.study },
-	item: { label: 'ITEM', color: FEED_COLORS.item },
+	favor: { label: 'FAVOR', color: COLORS.favor },
+	study: { label: 'STUDY', color: COLORS.study },
+	item: { label: 'ITEM', color: COLORS.item },
 };
 
 export default function PostCard({ quest, onPress }: PostCardProps) {
 	const categoryMeta = CATEGORY_META[quest.category];
-	const categoryBg = FEED_CATEGORY_BG[quest.category];
 
 	const PosterAvatar = quest.posterAvatarIndex !== undefined && quest.posterAvatarIndex !== null 
         ? avatarAssets[quest.posterAvatarIndex] 
@@ -45,7 +45,7 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
 
 			<View style={styles.body}>
 				<View style={styles.headerRow}>
-					<View style={[styles.categoryBadge, { backgroundColor: categoryBg }]}>
+					<View style={[styles.categoryBadge, { backgroundColor: withOpacity(categoryMeta.color, 0.15) }]}>
 						<View style={[styles.categoryDot, { backgroundColor: categoryMeta.color }]} />
 						<Text style={[styles.categoryLabel, { color: categoryMeta.color }]}>
 							{categoryMeta.label}
@@ -66,14 +66,14 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
 					</View>
 
 					<View style={styles.rewardWrap}>
-						<View style={[styles.rewardPill, { backgroundColor: FEED_PILL_BG.xp }]}>
-							<MaterialCommunityIcons name="star-four-points" size={14} color={FEED_COLORS.xp} />
-							<Text style={[styles.rewardValue, { color: FEED_COLORS.xp }]}>{quest.xp}</Text>
+						<View style={[styles.rewardPill, { backgroundColor: withOpacity(COLORS.xp, 0.15) }]}>
+							<MaterialCommunityIcons name="star-four-points" size={14} color={COLORS.xp} />
+							<Text style={[styles.rewardValue, { color: COLORS.xp }]}>{quest.xp}</Text>
 						</View>
 
-						<View style={[styles.rewardPill, { backgroundColor: FEED_PILL_BG.token }]}>
-							<MaterialCommunityIcons name="lightning-bolt-circle" size={14} color={FEED_COLORS.token} />
-							<Text style={[styles.rewardValue, { color: FEED_COLORS.token }]}>{quest.token}</Text>
+						<View style={[styles.rewardPill, { backgroundColor: withOpacity(COLORS.token, 0.15) }]}>
+							<MaterialCommunityIcons name="lightning-bolt-circle" size={14} color={COLORS.token} />
+							<Text style={[styles.rewardValue, { color: COLORS.token }]}>{quest.token}</Text>
 						</View>
 					</View>
 				</View>
@@ -87,8 +87,8 @@ const styles = StyleSheet.create({
 		width: '100%',
 		borderRadius: 16,
 		borderWidth: 1,
-		borderColor: FEED_COLORS.border,
-		backgroundColor: FEED_COLORS.surface,
+		borderColor: COLORS.border,
+		backgroundColor: COLORS.surface,
 		overflow: 'hidden',
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 4 },
@@ -127,20 +127,24 @@ const styles = StyleSheet.create({
 	categoryLabel: {
 		fontSize: 11,
 		fontWeight: '500',
+		fontFamily: FONTS.body,
 	},
 	ago: {
 		fontSize: 11,
-		color: FEED_COLORS.textSecondary,
+		color: COLORS.textSecondary,
+		fontFamily: FONTS.body,
 	},
 	title: {
 		fontSize: 16,
 		fontWeight: '600',
-		color: FEED_COLORS.textPrimary,
+		color: COLORS.textPrimary,
+		fontFamily: FONTS.body,
 	},
 	preview: {
 		fontSize: 13,
 		lineHeight: 19,
-		color: FEED_COLORS.textSecondary,
+		color: COLORS.textSecondary,
+		fontFamily: FONTS.body,
 	},
 	footerRow: {
 		marginTop: 8,
@@ -155,7 +159,8 @@ const styles = StyleSheet.create({
 	},
 	posterName: {
 		fontSize: 12,
-		color: FEED_COLORS.textSecondary,
+		color: COLORS.textSecondary,
+		fontFamily: FONTS.body,
 	},
 	rewardWrap: {
 		flexDirection: 'row',
@@ -173,5 +178,6 @@ const styles = StyleSheet.create({
 	rewardValue: {
 		fontSize: 11,
 		fontWeight: '700',
+		fontFamily: FONTS.body,
 	},
 });
