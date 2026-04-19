@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 interface ShopFilterPillProps {
   label: string;
@@ -20,29 +21,30 @@ const ShopFilterPill: React.FC<ShopFilterPillProps> = ({ label, state, onPress }
     }
     onPress?.(newState);
   };
+
   const styles = StyleSheet.create({
     pill: {
       paddingHorizontal: 16,
       paddingVertical: 7,
       borderRadius: 20,
-      borderWidth: state ? 1.5 : 1,
-      backgroundColor: state ? `${FEED_COLORS.token}26` : '#26262e', // 15% opacity for active
-      borderColor: state ? FEED_COLORS.token : '#3a3a48',
+      borderWidth: displayState ? 1.5 : 1,
+      backgroundColor: displayState ? withOpacity(COLORS.token, 0.15) : COLORS.surface,
+      borderColor: displayState ? COLORS.token : COLORS.border,
       justifyContent: 'center',
       alignItems: 'center',
     },
     labelActive: {
       fontSize: 13,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: '600',
-      color: FEED_COLORS.token,
+      color: COLORS.token,
       textAlign: 'center',
     },
     labelInactive: {
       fontSize: 13,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: '500',
-      color: '#8a8a9a',
+      color: COLORS.textSecondary,
       textAlign: 'center',
     },
   });

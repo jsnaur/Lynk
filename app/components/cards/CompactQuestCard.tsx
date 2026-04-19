@@ -4,14 +4,13 @@ import {
   StyleSheet,
   Text,
   View,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
-import { FEED_COLORS, FEED_CATEGORY_BG } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 interface CompactQuestCardProps {
   quest: FeedQuest & { 
@@ -29,9 +28,9 @@ interface CompactQuestCardProps {
 }
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
-  favor: FEED_COLORS.favor,
-  study: FEED_COLORS.study,
-  item: FEED_COLORS.item,
+  favor: COLORS.favor,
+  study: COLORS.study,
+  item: COLORS.item,
 };
 
 export default function CompactQuestCard({
@@ -55,7 +54,7 @@ export default function CompactQuestCard({
         onPress={onToggle}
       >
         <View style={styles.headerLeft}>
-          <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}26` }]}>
+          <View style={[styles.categoryBadge, { backgroundColor: withOpacity(categoryColor, 0.15) }]}>
             <View style={[styles.dot, { backgroundColor: categoryColor }]} />
             <Text style={[styles.categoryText, { color: categoryColor }]}>
               {category.toUpperCase()}
@@ -67,13 +66,13 @@ export default function CompactQuestCard({
         </View>
 
         <View style={styles.headerRight}>
-          <View style={styles.statusPill}>
+          <View style={[styles.statusPill, { backgroundColor: withOpacity(COLORS.item, 0.15) }]}>
             <Text style={styles.statusText}>{statusLabel}</Text>
           </View>
           <Ionicons
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={20}
-            color={FEED_COLORS.textSecondary}
+            color={COLORS.textSecondary}
           />
         </View>
       </Pressable>
@@ -112,8 +111,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
   },
   header: {
@@ -125,7 +124,7 @@ const styles = StyleSheet.create({
   },
   headerExpanded: {
     borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
+    borderBottomColor: COLORS.border,
   },
   headerLeft: {
     flex: 1,
@@ -154,23 +153,25 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: FONTS.body,
   },
   title: {
     flex: 1,
-    color: FEED_COLORS.textPrimary,
+    color: COLORS.textPrimary,
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: FONTS.body,
   },
   statusPill: {
     borderRadius: 999,
-    backgroundColor: FEED_CATEGORY_BG.item,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   statusText: {
-    color: FEED_COLORS.item,
+    color: COLORS.item,
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: FONTS.body,
   },
   expandedContent: {
     paddingHorizontal: 14,
@@ -178,15 +179,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   description: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 13,
     lineHeight: 19,
+    fontFamily: FONTS.body,
   },
   rewardBox: {
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.bg,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -201,19 +203,21 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 60,
-    backgroundColor: FEED_COLORS.border,
+    backgroundColor: COLORS.border,
   },
   rewardValue: {
-    color: FEED_COLORS.xp,
+    color: COLORS.xp,
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: FONTS.body,
   },
   tokenValue: {
-    color: FEED_COLORS.token,
+    color: COLORS.token,
   },
   rewardLabel: {
-    color: FEED_COLORS.textSecondary,
+    color: COLORS.textSecondary,
     fontSize: 10,
     letterSpacing: 0.5,
+    fontFamily: FONTS.body,
   },
 });

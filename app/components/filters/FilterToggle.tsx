@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type FilterToggleProps = {
   label: string;
@@ -22,20 +23,20 @@ export default function FilterToggle({ label, selected, onPress }: FilterToggleP
   };
 
 
-  let backgroundColor = '#26262e';
-  let borderColor = '#3a3a48';
-  let textColor = '#8a8a9a';
+  let backgroundColor: string = COLORS.surface;
+  let borderColor: string = COLORS.border;
+  let textColor: string = COLORS.textSecondary;
   let borderWidth = 1;
 
   if (isSelected) {
     const labelToColor: { [key: string]: string } = {
-      'Favor': FEED_COLORS.favor,
-      'Study': FEED_COLORS.study,
-      'Item': FEED_COLORS.item,
+      'Favor': COLORS.favor,
+      'Study': COLORS.study,
+      'Item': COLORS.item,
     };
-    const selectedColor = labelToColor[label] || FEED_COLORS.favor;
+    const selectedColor = labelToColor[label] || COLORS.favor;
     
-    backgroundColor = `${selectedColor}20`;
+    backgroundColor = withOpacity(selectedColor, 0.2);
     borderColor = selectedColor;
     textColor = selectedColor;
     borderWidth = 1.5;
@@ -73,6 +74,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'DM_Sans-Medium',
+    fontFamily: FONTS.body,
   },
 });

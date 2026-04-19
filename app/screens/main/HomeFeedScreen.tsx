@@ -19,7 +19,7 @@ import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categorie
 import { supabase } from '../../lib/supabase';
 import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
 import NotificationSheet from './NotificationSheet';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 
 type HomeFeedScreenProps = {
@@ -28,9 +28,9 @@ type HomeFeedScreenProps = {
 };
 
 const FILTER_ACTIVE_COLORS: Record<FeedCategory, string> = {
-    favor: FEED_COLORS.favor,
-    study: FEED_COLORS.study,
-    item: FEED_COLORS.item,
+    favor: COLORS.favor,
+    study: COLORS.study,
+    item: COLORS.item,
 };
 
 function withAlpha(hexColor: string, alpha: number) {
@@ -261,7 +261,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     >
                         <View style={styles.avatarChip}>
                             {initialLoading ? (
-                                <Ionicons name="person" size={22} color={FEED_COLORS.textPrimary} />
+                                <Ionicons name="person" size={22} color={COLORS.textPrimary} />
                             ) : (
                                 <View style={{ width: 32, height: 32, position: 'relative' }}>
                                     {ALL_SLOTS_Z_ORDER.map(slot => {
@@ -289,7 +289,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
                         accessibilityRole="button"
                     >
-                        <Ionicons name="notifications-outline" size={26} color={FEED_COLORS.textPrimary} />
+                        <Ionicons name="notifications-outline" size={26} color={COLORS.textPrimary} />
                         
                         {unreadNotifCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -343,8 +343,8 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         <RefreshControl 
                             refreshing={refreshing} 
                             onRefresh={onRefresh} 
-                            tintColor={FEED_COLORS.favor} 
-                            colors={[FEED_COLORS.favor]}  
+                            tintColor={COLORS.favor} 
+                            colors={[COLORS.favor]}  
                         />
                     }
                 >
@@ -450,20 +450,20 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 }
 
 const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: FEED_COLORS.bg },
+    root: { flex: 1, backgroundColor: COLORS.bg },
     safeArea: { flex: 1 },
-    header: { borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, height: 76, position: 'relative', paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-    avatarChip: { width: 36, height: 36, borderRadius: 18, backgroundColor: FEED_COLORS.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    header: { borderBottomWidth: 1, borderBottomColor: COLORS.border, height: 76, position: 'relative', paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+    avatarChip: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     profileButton: { borderRadius: 24, position: 'relative', zIndex: 3, elevation: 3 },
-    logo: { color: FEED_COLORS.textPrimary, fontSize: 30, letterSpacing: 4, lineHeight: 32, position: 'absolute', left: 0, right: 0, bottom: 12, textAlign: 'center' },
-    filterBar: { borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-    filterChip: { flex: 1, minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: FEED_COLORS.border, backgroundColor: FEED_COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-    filterChipText: { fontSize: 13, color: FEED_COLORS.textSecondary, fontWeight: '500' },
+    logo: { color: COLORS.textPrimary, fontSize: 30, letterSpacing: 4, lineHeight: 32, position: 'absolute', left: 0, right: 0, bottom: 12, textAlign: 'center' },
+    filterBar: { borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    filterChip: { flex: 1, minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+    filterChipText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
     feedContent: { padding: 16, gap: 12, paddingBottom: 112 },
     emptyStateContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64 },
-    emptyStateTitle: { fontSize: 18, fontWeight: '600', color: FEED_COLORS.textPrimary, marginBottom: 8 },
-    emptyStateSubtitle: { fontSize: 14, color: FEED_COLORS.textSecondary, textAlign: 'center' },
+    emptyStateTitle: { fontSize: 18, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8 },
+    emptyStateSubtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
     notificationWrapper: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-    notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: '#EF4444', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: FEED_COLORS.bg, paddingHorizontal: 4, zIndex: 2 },
+    notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: '#EF4444', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.bg, paddingHorizontal: 4, zIndex: 2 },
     notificationBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
 });

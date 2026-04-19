@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type Category = 'Favor' | 'Study' | 'Item';
 type ButtonState = 'Default' | 'Selected' | 'Error';
@@ -32,11 +33,11 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
   const getCategoryColor = (): string => {
     switch (category) {
       case 'Favor':
-        return FEED_COLORS.favor;
+        return COLORS.favor;
       case 'Study':
-        return FEED_COLORS.study;
+        return COLORS.study;
       case 'Item':
-        return FEED_COLORS.item;
+        return COLORS.item;
     }
   };
 
@@ -52,10 +53,10 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
   };
 
   const getIconColor = (): string => {
-    if (displayState === 'Default') return '#8a8a9a';
+    if (displayState === 'Default') return COLORS.textSecondary;
     if (displayState === 'Selected') return getCategoryColor();
-    if (displayState === 'Error') return '#ff4d4d';
-    return '#8a8a9a';
+    if (displayState === 'Error') return COLORS.error;
+    return COLORS.textSecondary;
   };
 
   const styles = StyleSheet.create({
@@ -68,27 +69,23 @@ const CategorySelectButton: React.FC<CategorySelectButtonProps> = ({
       gap: 4,
       backgroundColor:
         displayState === 'Default'
-          ? '#26262e'
+          ? COLORS.surface
           : displayState === 'Selected'
-          ? `${getCategoryColor()}26` // 15% opacity
-          : '#ff4d4d26', // error 15% opacity
+          ? withOpacity(getCategoryColor(), 0.15)
+          : withOpacity(COLORS.error, 0.15),
       borderWidth: displayState === 'Default' ? 0 : 2,
       borderColor:
-        displayState === 'Selected' ? getCategoryColor() : displayState === 'Error' ? '#ff4d4d' : 'transparent',
+        displayState === 'Selected' ? getCategoryColor() : displayState === 'Error' ? COLORS.error : 'transparent',
     },
     content: {
       alignItems: 'center',
       gap: 4,
     },
-    icon: {
-      width: 24,
-      height: 24,
-    },
     label: {
       fontSize: 11,
-      fontFamily: 'DM Sans',
+      fontFamily: FONTS.body,
       fontWeight: '500',
-      color: displayState === 'Default' ? '#8a8a9a' : getIconColor(),
+      color: displayState === 'Default' ? COLORS.textSecondary : getIconColor(),
       textAlign: 'center',
     },
   });

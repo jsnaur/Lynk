@@ -1,70 +1,58 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { View, Text, StyleSheet } from 'react-native';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
-type RarityTier = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+export type RarityLevel = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 
 interface RarityBadgeProps {
-  tier: RarityTier;
+  rarity: RarityLevel;
 }
 
-const RarityBadge: React.FC<RarityBadgeProps> = ({ tier }) => {
-  const getBackgroundColor = (): string => {
-    switch (tier) {
-      case 'Common':
-        return 'rgba(138, 138, 154, 0.2)';
-      case 'Uncommon':
-        return `${FEED_COLORS.item}26`; // lime 15% opacity
-      case 'Rare':
-        return `${FEED_COLORS.favor}26`; // cyan 15% opacity
-      case 'Epic':
-        return `${FEED_COLORS.xp}26`; // purple 15% opacity
-      case 'Legendary':
-        return `${FEED_COLORS.token}26`; // gold 15% opacity
+export default function RarityBadge({ rarity }: RarityBadgeProps) {
+  const getRarityColor = () => {
+    switch (rarity) {
+      case 'Common': return COLORS.textSecondary;
+      case 'Uncommon': return COLORS.item;
+      case 'Rare': return COLORS.favor;
+      case 'Epic': return COLORS.xp;
+      case 'Legendary': return COLORS.token;
+      default: return COLORS.textSecondary;
     }
   };
 
-  const getTextColor = (): string => {
-    switch (tier) {
-      case 'Common':
-        return '#8a8a9a';
-      case 'Uncommon':
-        return FEED_COLORS.item;
-      case 'Rare':
-        return FEED_COLORS.favor;
-      case 'Epic':
-        return FEED_COLORS.xp;
-      case 'Legendary':
-        return FEED_COLORS.token;
-    }
-  };
-
-  const styles = StyleSheet.create({
-    badge: {
-      backgroundColor: getBackgroundColor(),
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: 14,
-      minWidth: tier === 'Legendary' ? 70 : 'auto',
-    },
-    text: {
-      fontSize: 6,
-      fontFamily: 'Press Start 2P',
-      fontWeight: '400',
-      color: getTextColor(),
-      textAlign: 'center',
-      textTransform: 'uppercase',
-    },
-  });
+  const color = getRarityColor();
 
   return (
-    <View style={styles.badge}>
-      <Text style={styles.text}>{tier}</Text>
+    <View 
+      style={[
+        styles.container, 
+        { 
+          backgroundColor: withOpacity(color, 0.15), 
+          borderColor: color 
+        }
+      ]}
+    >
+      <Text style={[styles.text, { color }]}>{rarity}</Text>
     </View>
   );
-};
+}
 
-export default RarityBadge;
+const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    fontSize: 10,
+    fontFamily: FONTS.body,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+});

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
 
 type AvatarGridItemProps = {
   state?: 'Default' | 'Selected' | 'Locked';
@@ -23,13 +23,13 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
     onPress?.(newSelected);
   };
 
-  let borderColor = '#3a3a48';
-  let backgroundColor = '#26262e';
+  let borderColor: string = COLORS.border;
+  let backgroundColor: string = COLORS.surface;
   let borderWidth = 1;
 
   if (isSelected) {
-    backgroundColor = `${FEED_COLORS.favor}15`;
-    borderColor = FEED_COLORS.favor;
+    backgroundColor = withOpacity(COLORS.favor, 0.15);
+    borderColor = COLORS.favor;
     borderWidth = 2;
   }
 
@@ -55,7 +55,7 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
           <MaterialCommunityIcons
             name="check-circle"
             size={18}
-            color={FEED_COLORS.favor}
+            color={COLORS.favor}
           />
         </View>
       )}
@@ -65,7 +65,7 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
           <MaterialCommunityIcons
             name="lock"
             size={16}
-            color="#f0f0f5"
+            color={COLORS.textPrimary}
           />
         </View>
       )}
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#3a3a48',
+    backgroundColor: COLORS.border,
   },
   checkBadge: {
     position: 'absolute',

@@ -1,50 +1,52 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
-type StatusPillProps = {
-  status?: 'Open' | 'Accepted' | 'Completed' | 'Expired';
-};
+export type QuestStatus = 'Active' | 'Completed' | 'Failed' | 'Pending';
 
-export default function StatusPill({ status = 'Open' }: StatusPillProps) {
-  const getStatusColor = () => {
+interface StatusPillProps {
+  status: QuestStatus;
+}
+
+export default function StatusPill({ status }: StatusPillProps) {
+  const getStatusStyle = () => {
     switch (status) {
-      case 'Open':
-        return FEED_COLORS.favor;
-      case 'Accepted':
-        return FEED_COLORS.favor;
+      case 'Active':
+        return { color: COLORS.favor, bg: withOpacity(COLORS.favor, 0.15) };
       case 'Completed':
-        return '#39FF14';
-      case 'Expired':
-        return '#FF4d4d';
+        return { color: COLORS.xp, bg: withOpacity(COLORS.xp, 0.15) };
+      case 'Failed':
+        return { color: COLORS.error, bg: withOpacity(COLORS.error, 0.15) };
+      case 'Pending':
       default:
-        return FEED_COLORS.favor;
+        return { color: COLORS.textSecondary, bg: COLORS.surface2 };
     }
   };
 
-  const backgroundColor = `${getStatusColor()}20`;
-  const textColor = getStatusColor();
+  const { color, bg } = getStatusStyle();
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      <Text style={[styles.text, { color: textColor }]}>
-        {status}
-      </Text>
+    <View style={[styles.container, { backgroundColor: bg }]}>
+      <Text style={[styles.text, { color }]}>{status}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
     justifyContent: 'center',
     alignItems: 'center',
   },
   text: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'DM_Sans-Medium',
+    fontSize: 10,
+    fontFamily: FONTS.body,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });

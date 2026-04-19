@@ -1,58 +1,53 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import CategorySelectButton from '../buttons/CategorySelectButton';
 
-type SelectedCategory = 'Favor' | 'Study' | 'Item' | null;
+type Category = 'Favor' | 'Study' | 'Item';
 
 interface CategoryButtonRowProps {
-  selected?: SelectedCategory;
-  onCategorySelect?: (category: SelectedCategory) => void;
-  showError?: boolean;
+  onCategorySelect?: (category: Category | null) => void;
+  initialCategory?: Category | null;
 }
 
-const CategoryButtonRow: React.FC<CategoryButtonRowProps> = ({
-  selected = null,
-  onCategorySelect,
-  showError = false,
-}) => {
-  const [selectedCategory, setSelectedCategory] = useState<SelectedCategory>(selected);
+export default function CategoryButtonRow({ 
+  onCategorySelect, 
+  initialCategory = null 
+}: CategoryButtonRowProps) {
+  const [selected, setSelected] = useState<Category | null>(initialCategory);
 
-  const handleSelect = (category: SelectedCategory) => {
-    setSelectedCategory(category);
-    onCategorySelect?.(category);
+  const handleSelect = (category: Category, isSelected: boolean) => {
+    const newSelection = isSelected ? category : null;
+    setSelected(newSelection);
+    onCategorySelect?.(newSelection);
   };
-
-  const categories: Array<'Favor' | 'Study' | 'Item'> = ['Favor', 'Study', 'Item'];
-
-  const styles = StyleSheet.create({
-    container: {
-      flexDirection: 'row',
-      gap: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 12,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-  });
 
   return (
     <View style={styles.container}>
-      {categories.map((category) => (
-        <CategorySelectButton
-          key={category}
-          category={category}
-          state={
-            showError
-              ? 'Error'
-              : selectedCategory === category
-              ? 'Selected'
-              : 'Default'
-          }
-          onPress={() => handleSelect(category)}
-        />
-      ))}
+      <CategorySelectButton
+        category="Favor"
+        state={selected === 'Favor' ? 'Selected' : 'Default'}
+        onPress={handleSelect}
+      />
+      <CategorySelectButton
+        category="Study"
+        state={selected === 'Study' ? 'Selected' : 'Default'}
+        onPress={handleSelect}
+      />
+      <CategorySelectButton
+        category="Item"
+        state={selected === 'Item' ? 'Selected' : 'Default'}
+        onPress={handleSelect}
+      />
     </View>
   );
-};
+}
 
-export default CategoryButtonRow;
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    width: '100%',
+  },
+});

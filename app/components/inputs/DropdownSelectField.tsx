@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type DropdownSelectFieldProps = {
   placeholder?: string;
@@ -29,15 +30,15 @@ export default function DropdownSelectField({
   };
 
   const getColor = () => {
-    if (displayState === 'Selected') return FEED_COLORS.favor;
-    if (displayState === 'Active') return '#f0f0f5';
-    return '#8a8a9a';
+    if (displayState === 'Selected') return COLORS.favor;
+    if (displayState === 'Active') return COLORS.textPrimary;
+    return COLORS.textSecondary;
   };
 
   const getBorderColor = () => {
-    if (displayState === 'Active') return '#f0f0f5';
-    if (displayState === 'Selected') return FEED_COLORS.favor;
-    return '#3a3a48';
+    if (displayState === 'Active') return COLORS.textPrimary;
+    if (displayState === 'Selected') return COLORS.favor;
+    return COLORS.border;
   };
 
   const displayText = displayState === 'Selected' ? selectedValue : placeholder;
@@ -67,7 +68,7 @@ export default function DropdownSelectField({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#26262e',
+    backgroundColor: COLORS.surface,
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 16,
@@ -82,6 +83,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '400',
-    fontFamily: 'DM_Sans-Regular',
+    fontFamily: FONTS.body,
   },
 });

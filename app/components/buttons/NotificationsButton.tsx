@@ -1,6 +1,8 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 type NotificationsButtonProps = {
   count?: number;
@@ -17,7 +19,7 @@ export default function NotificationsButton({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Ionicons name="notifications" size={24} color="#f0f0f5" />
+      <Ionicons name="notifications" size={24} color={COLORS.textPrimary} />
       
       {count > 0 && (
         <View style={styles.badge}>
@@ -43,20 +45,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -5,
     right: -5,
-    backgroundColor: '#FF4d4d',
+    backgroundColor: COLORS.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#26262e',
+    borderColor: COLORS.surface,
   },
   badgeText: {
-    color: '#f0f0f5',
+    color: COLORS.textPrimary,
     fontSize: 10,
     fontWeight: '700',
-    fontFamily: 'DM_Sans-SemiBold',
+    fontFamily: FONTS.body,
     textAlign: 'center',
   },
 });

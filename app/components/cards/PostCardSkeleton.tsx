@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
-import { FEED_COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/colors';
 
 export default function PostCardSkeleton() {
     const pulse = useRef(new Animated.Value(0.45)).current;
@@ -65,14 +65,14 @@ const styles = StyleSheet.create({
         width: '100%',
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: FEED_COLORS.border,
-        backgroundColor: FEED_COLORS.surface,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surface,
         overflow: 'hidden',
     },
     stripe: {
         height: 4,
         width: '100%',
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     body: {
         paddingHorizontal: 16,
@@ -89,31 +89,31 @@ const styles = StyleSheet.create({
         width: 66,
         height: 20,
         borderRadius: 6,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     time: {
         width: 36,
         height: 12,
         borderRadius: 6,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     title: {
         width: '70%',
         height: 18,
         borderRadius: 8,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     previewWide: {
         width: '100%',
         height: 14,
         borderRadius: 7,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     previewShort: {
         width: '84%',
         height: 14,
         borderRadius: 7,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     footerRow: {
         marginTop: 6,
@@ -130,13 +130,13 @@ const styles = StyleSheet.create({
         width: 22,
         height: 22,
         borderRadius: 11,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     posterName: {
         width: 64,
         height: 12,
         borderRadius: 6,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
     rewardWrap: {
         flexDirection: 'row',
@@ -147,6 +147,6 @@ const styles = StyleSheet.create({
         width: 42,
         height: 20,
         borderRadius: 10,
-        backgroundColor: FEED_COLORS.surface2,
+        backgroundColor: COLORS.surface2,
     },
 });
