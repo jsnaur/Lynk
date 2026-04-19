@@ -34,10 +34,11 @@ const SLOT_TO_CATEGORY: { [key: string]: ShopCategory } = {
   'RightHand': 'accessories',
   'BackAccessory': 'accessories',
   'Background': 'backgrounds',
-  'Body': 'all', // Bodies are not sold
   'Eyes': 'face',
   'Mouth': 'face',
+  // 'Body' intentionally excluded so it's not mapped to a shop category
 };
+
 const GRID_GAP = 10;
 const H_PADDING = 16;
 
@@ -51,6 +52,8 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
   const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
+  
+  // Later you will sync this state from the profile's `equipped_accessories` JSONB column
   const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
 
   const columnWidth = useMemo(() => {
@@ -60,8 +63,8 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
   const visibleItems = useMemo(
     () => {
-      // Filter out items that don't have a category (Body, Eyes, Mouth)
-      const sellableItems = ACCESSORY_ITEMS.filter((item) => item.slot in SLOT_TO_CATEGORY);
+      // Specifically filter out Body items explicitly, and anything not mapped in SLOT_TO_CATEGORY
+      const sellableItems = ACCESSORY_ITEMS.filter((item) => item.slot !== 'Body' && item.slot in SLOT_TO_CATEGORY);
       
       if (filter === 'all') {
         return sellableItems;
@@ -120,7 +123,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
           <View style={styles.previewTextBlock}>
             <Text style={styles.previewTitle}>Your Avatar</Text>
             <Text style={styles.previewEquipped}>
-              Equipped: {Object.keys(appliedAccessories).length > 0 ? 'Pixel Shades' : 'None'}
+              Manage inventory via Customize
             </Text>
           </View>
 
@@ -179,7 +182,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
                   ]}
                 >
                   <View style={styles.cardPreview}>
-                    {item.Sprite && React.createElement(item.Sprite, { width: 52, height: 52 })}
+                    {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64 })}
                     {owned && (
                       <View style={styles.ownedCorner}>
                         <Ionicons name="checkmark-circle" size={18} color={FEED_COLORS.item} />
@@ -230,7 +233,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
             void completePurchase(detailItem);
           }}
           onEquip={() => {
-            // Equipment happens in profile customization screen
+            // Equipment handling managed elsewhere
           }}
         />
       )}
@@ -239,230 +242,40 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: FEED_COLORS.bg,
-  },
-  safe: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  title: {
-    fontSize: 22,
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
-    color: FEED_COLORS.textPrimary,
-  },
-  balanceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.45)',
-    backgroundColor: FEED_PILL_BG.token,
-  },
-  balanceText: {
-    fontSize: 15,
-    fontFamily: 'SpaceMono-Bold',
-    fontWeight: '700',
-    color: FEED_COLORS.token,
-  },
-  previewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
-  },
-  avatarContainer: {
-    width: 64,
-    height: 64,
-    backgroundColor: FEED_COLORS.surface2,
-    borderRadius: 14,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    borderWidth: 1.5,
-    borderColor: FEED_COLORS.border,
-  },
-  layerAbsolute: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-  },
-  customizeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface2,
-  },
-  customizeButtonText: {
-    fontSize: 13,
-    fontFamily: 'DMSans-Medium',
-    fontWeight: '500',
-    color: FEED_COLORS.textPrimary,
-  },
-  previewTextBlock: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  previewTitle: {
-    fontSize: 14,
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '600',
-    color: FEED_COLORS.textPrimary,
-  },
-  previewEquipped: {
-    fontSize: 12,
-    fontFamily: 'DMSans-Regular',
-    fontWeight: '400',
-    color: FEED_COLORS.textSecondary,
-  },
-  filterRow: {
-    borderBottomWidth: 1,
-    borderBottomColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.bg,
-  },
-  filterScroll: {
-    flexGrow: 0,
-  },
-  filterScrollContent: {
-    paddingLeft: H_PADDING,
-    paddingRight: H_PADDING + 8,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
-    flexShrink: 0,
-  },
-  filterPillGap: {
-    marginRight: 8,
-  },
-  filterPillActive: {
-    borderColor: FEED_COLORS.favor,
-    backgroundColor: 'rgba(0, 245, 255, 0.12)',
-  },
-  filterLabel: {
-    fontSize: 13,
-    fontFamily: 'DMSans-Medium',
-    fontWeight: '500',
-    color: FEED_COLORS.textSecondary,
-  },
-  filterLabelActive: {
-    color: FEED_COLORS.favor,
-    fontWeight: '600',
-  },
-  gridScroll: {
-    flex: 1,
-  },
-  gridContent: {
-    paddingHorizontal: H_PADDING,
-    paddingTop: 16,
-    paddingBottom: 112,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    letterSpacing: 1.5,
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '600',
-    color: FEED_COLORS.textSecondary,
-    marginBottom: 12,
-    alignSelf: 'flex-start',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GRID_GAP,
-  },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: FEED_COLORS.border,
-    backgroundColor: FEED_COLORS.surface,
-    overflow: 'hidden',
-  },
-  cardPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.98 }],
-  },
-  cardPreview: {
-    height: 96,
-    backgroundColor: FEED_COLORS.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  ownedCorner: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-  },
-  cardInfo: {
-    padding: 10,
-    gap: 6,
-    alignItems: 'center',
-  },
-  itemName: {
-    fontSize: 11,
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '600',
-    color: FEED_COLORS.textPrimary,
-    textAlign: 'center',
-    minHeight: 28,
-  },
-  costRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  priceText: {
-    fontSize: 12,
-    fontFamily: 'SpaceMono-Bold',
-    fontWeight: '700',
-    color: FEED_COLORS.token,
-  },
-  ownedLabel: {
-    fontSize: 11,
-    fontFamily: 'SpaceMono-Bold',
-    fontWeight: '700',
-    color: FEED_COLORS.item,
-    textAlign: 'center',
-  },
+  root: { flex: 1, backgroundColor: FEED_COLORS.bg },
+  safe: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  title: { fontSize: 22, fontFamily: 'DMSans-Bold', fontWeight: '700', color: FEED_COLORS.textPrimary },
+  balanceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.45)', backgroundColor: FEED_PILL_BG.token },
+  balanceText: { fontSize: 15, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: FEED_COLORS.token },
+  previewCard: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, backgroundColor: FEED_COLORS.surface },
+  avatarContainer: { width: 64, height: 64, backgroundColor: FEED_COLORS.surface2, borderRadius: 14, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', position: 'relative', borderWidth: 1.5, borderColor: FEED_COLORS.border },
+  layerAbsolute: { position: 'absolute', width: '100%', height: '100%' },
+  customizeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: FEED_COLORS.border, backgroundColor: FEED_COLORS.surface2 },
+  customizeButtonText: { fontSize: 13, fontFamily: 'DMSans-Medium', fontWeight: '500', color: FEED_COLORS.textPrimary },
+  previewTextBlock: { flex: 1, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 2 },
+  previewTitle: { fontSize: 14, fontFamily: 'DMSans-Bold', fontWeight: '600', color: FEED_COLORS.textPrimary },
+  previewEquipped: { fontSize: 12, fontFamily: 'DMSans-Regular', fontWeight: '400', color: FEED_COLORS.textSecondary },
+  filterRow: { borderBottomWidth: 1, borderBottomColor: FEED_COLORS.border, backgroundColor: FEED_COLORS.bg },
+  filterScroll: { flexGrow: 0 },
+  filterScrollContent: { paddingLeft: H_PADDING, paddingRight: H_PADDING + 8, paddingVertical: 12, flexDirection: 'row', alignItems: 'center' },
+  filterPill: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: FEED_COLORS.border, backgroundColor: FEED_COLORS.surface, flexShrink: 0 },
+  filterPillGap: { marginRight: 8 },
+  filterPillActive: { borderColor: FEED_COLORS.favor, backgroundColor: 'rgba(0, 245, 255, 0.12)' },
+  filterLabel: { fontSize: 13, fontFamily: 'DMSans-Medium', fontWeight: '500', color: FEED_COLORS.textSecondary },
+  filterLabelActive: { color: FEED_COLORS.favor, fontWeight: '600' },
+  gridScroll: { flex: 1 },
+  gridContent: { paddingHorizontal: H_PADDING, paddingTop: 16, paddingBottom: 112 },
+  sectionLabel: { fontSize: 11, letterSpacing: 1.5, fontFamily: 'DMSans-Bold', fontWeight: '600', color: FEED_COLORS.textSecondary, marginBottom: 12, alignSelf: 'flex-start' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
+  card: { borderRadius: 16, borderWidth: 1, borderColor: FEED_COLORS.border, backgroundColor: FEED_COLORS.surface, overflow: 'hidden' },
+  cardPressed: { opacity: 0.92, transform: [{ scale: 0.98 }] },
+  cardPreview: { height: 96, backgroundColor: FEED_COLORS.surface2, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  ownedCorner: { position: 'absolute', top: 6, right: 6 },
+  cardInfo: { padding: 10, gap: 6, alignItems: 'center' },
+  itemName: { fontSize: 11, fontFamily: 'DMSans-Bold', fontWeight: '600', color: FEED_COLORS.textPrimary, textAlign: 'center', minHeight: 28 },
+  costRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  priceText: { fontSize: 12, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: FEED_COLORS.token },
+  ownedLabel: { fontSize: 11, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: FEED_COLORS.item, textAlign: 'center' },
 });
