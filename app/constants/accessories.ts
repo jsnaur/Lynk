@@ -199,21 +199,21 @@ export const ACCESSORY_ITEMS: AccessoryItem[] = [
   { id: 'top-maria-f', name: 'Maria Top', price: 200, slot: 'Top', gender: 'Fem', rarity: 'Epic', Sprite: createSpr(CLOTH_Top_Maria_Epic_F) },
 
   // --- HAIR MASC ---
-  { id: 'hairb-flat-m', name: 'Flat Base', price: 0, slot: 'HairBase', gender: 'Masc', rarity: 'Common', Sprite: createSpr(HAIR_Base_Flat_Common_M) },
-  { id: 'hairb-mullet-m', name: 'Mullet Base', price: 50, slot: 'HairBase', gender: 'Masc', rarity: 'Uncommon', Sprite: createSpr(HAIR_Base_Mullet_Uncommon_M) },
+  { id: 'hairb-flat-m', name: 'Flat Base', price: 0, slot: 'HairBase', gender: 'Masc', rarity: 'Common', isSetup: true, Sprite: createSpr(HAIR_Base_Flat_Common_M) },
+  { id: 'hairb-mullet-m', name: 'Mullet Base', price: 50, slot: 'HairBase', gender: 'Masc', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Base_Mullet_Uncommon_M) },
   { id: 'hairb-spikey-m', name: 'Spikey Base', price: 50, slot: 'HairBase', gender: 'Masc', rarity: 'Uncommon', Sprite: createSpr(HAIR_Base_Spikey_Uncommon_M) },
   
-  { id: 'hairf-chill-m', name: 'Chill Fringe', price: 0, slot: 'HairFringe', gender: 'Masc', rarity: 'Common', Sprite: createSpr(HAIR_Fringe_Chill_Common_M) },
-  { id: 'hairf-mac-m', name: 'Mac Fringe', price: 50, slot: 'HairFringe', gender: 'Masc', rarity: 'Uncommon', Sprite: createSpr(HAIR_Fringe_Mac_Uncommon_M) },
+  { id: 'hairf-chill-m', name: 'Chill Fringe', price: 0, slot: 'HairFringe', gender: 'Masc', rarity: 'Common', isSetup: true, Sprite: createSpr(HAIR_Fringe_Chill_Common_M) },
+  { id: 'hairf-mac-m', name: 'Mac Fringe', price: 50, slot: 'HairFringe', gender: 'Masc', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Fringe_Mac_Uncommon_M) },
   { id: 'hairf-emo-m', name: 'Emo Fringe', price: 200, slot: 'HairFringe', gender: 'Masc', rarity: 'Epic', Sprite: createSpr(HAIR_Fringe_Emo_Epic_M) },
 
   // --- HAIR FEM ---
-  { id: 'hairb-calm-f', name: 'Calm Base', price: 50, slot: 'HairBase', gender: 'Fem', rarity: 'Uncommon', Sprite: createSpr(HAIR_Base_Calm_Uncommon_F) },
-  { id: 'hairb-pigtails-f', name: 'Pigtails', price: 50, slot: 'HairBase', gender: 'Fem', rarity: 'Uncommon', Sprite: createSpr(HAIR_Base_Pigtails_Uncommon_F) },
+  { id: 'hairb-calm-f', name: 'Calm Base', price: 50, slot: 'HairBase', gender: 'Fem', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Base_Calm_Uncommon_F) },
+  { id: 'hairb-pigtails-f', name: 'Pigtails', price: 50, slot: 'HairBase', gender: 'Fem', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Base_Pigtails_Uncommon_F) },
   { id: 'hairb-flow-f', name: 'Flowing Base', price: 150, slot: 'HairBase', gender: 'Fem', rarity: 'Rare', Sprite: createSpr(HAIR_Base_Flow_Rare_F) },
 
-  { id: 'hairf-mid-f', name: 'Mid Part', price: 50, slot: 'HairFringe', gender: 'Fem', rarity: 'Uncommon', Sprite: createSpr(HAIR_Fringe_MidPart_Uncommon_F) },
-  { id: 'hairf-natural-f', name: 'Natural Fringe', price: 150, slot: 'HairFringe', gender: 'Fem', rarity: 'Rare', Sprite: createSpr(HAIR_Fringe_Natural_Rare_F) },
+  { id: 'hairf-mid-f', name: 'Mid Part', price: 50, slot: 'HairFringe', gender: 'Fem', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Fringe_MidPart_Uncommon_F) },
+  { id: 'hairf-natural-f', name: 'Natural Fringe', price: 150, slot: 'HairFringe', gender: 'Fem', rarity: 'Rare', isSetup: true, Sprite: createSpr(HAIR_Fringe_Natural_Rare_F) },
   { id: 'hairf-retro-f', name: 'Retro Fringe', price: 150, slot: 'HairFringe', gender: 'Fem', rarity: 'Rare', Sprite: createSpr(HAIR_Fringe_Retro_Rare_F) },
 
   // --- SHARED ACCESSORIES / BGS ---
