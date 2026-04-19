@@ -10,7 +10,7 @@ export interface NearbyQuest {
   token_bounty: number;
   bonus_xp: number;         
   poster_name: string;      
-  avatar_index: number;     
+  equipped_accessories: Record<string, string>; // Replaced avatar_index
   created_at: string;
   distance_km: number;
 }
@@ -89,7 +89,7 @@ export async function getPersonalizedFeed(
           generationConfig: {
             temperature: 0.1, 
             responseMimeType: "application/json",
-            // Forces the model to only output the array natively (No conversational filler = massive speed boost)
+            // Forces the model to only output the array natively
             responseSchema: {
               type: "ARRAY",
               items: { type: "STRING" }
