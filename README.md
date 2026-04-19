@@ -108,7 +108,7 @@ We are the creators behind LYNK. Click on our profiles below to see more of our 
 <img src="https://github.com/markuu-exe.png" width="100px;" alt="markuu-exe" style="border-radius: 50%;"/><br />
 <sub><b>markuu-exe</b></sub>
 </a><br />
-<sub>Fullstack Developer | Designer | </sub>
+<sub>Fullstack Developer | Designer</sub>
 </td>
 </tr>
 </table>
