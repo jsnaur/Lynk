@@ -1,47 +1,53 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import HistoryFilterPill from './HistoryFilterPill';
 
-type FilterState = 'None' | 'All' | 'Posted' | 'Accepted';
+const FILTERS = ['All', 'Completed', 'Failed', 'Given', 'Received'];
 
 interface HistoryFilterRowProps {
-  onFilterChange?: (filter: FilterState) => void;
-  initialFilter?: FilterState;
+  onFilterSelect?: (filter: string) => void;
+  initialFilter?: string;
 }
 
-const HistoryFilterRow: React.FC<HistoryFilterRowProps> = ({
-  onFilterChange,
-  initialFilter = 'None',
-}) => {
-  const [activeFilter, setActiveFilter] = useState<FilterState>(initialFilter);
+export default function HistoryFilterRow({ 
+  onFilterSelect,
+  initialFilter = 'All' 
+}: HistoryFilterRowProps) {
+  const [activeFilter, setActiveFilter] = useState(initialFilter);
 
-  const handleFilterPress = (filter: FilterState) => {
+  const handleSelect = (filter: string) => {
     setActiveFilter(filter);
-    onFilterChange?.(filter);
+    onFilterSelect?.(filter);
   };
-
-  const filters: FilterState[] = ['All', 'Posted', 'Accepted'];
-
-  const styles = StyleSheet.create({
-    container: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-    },
-  });
 
   return (
     <View style={styles.container}>
-      {filters.map((filter) => (
-        <HistoryFilterPill
-          key={filter}
-          label={filter}
-          state={activeFilter === filter}
-        />
-      ))}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {FILTERS.map((filter) => (
+          <HistoryFilterPill
+            key={filter}
+            label={filter}
+            selected={activeFilter === filter}
+            onPress={() => handleSelect(filter)}
+          />
+        ))}
+      </ScrollView>
     </View>
   );
-};
+}
 
-export default HistoryFilterRow;
+const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+  },
+  scrollContent: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+});
