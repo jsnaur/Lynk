@@ -14,7 +14,7 @@ import {
   BASE_TRAIT_SLOTS, 
   WEARABLE_SLOTS 
 } from '../../constants/accessories';
-import { COLORS } from '../../constants/colors';
+import { COLORS, withOpacity } from '../../constants/colors';
 
 type UI_CATEGORY = 'Base' | 'Wearables';
 
@@ -43,51 +43,51 @@ export default function CustomizeScreen({
   const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>(
     initialAppliedAccessories ?? {}
   );
+  const [savedAccessories, setSavedAccessories] = useState<Partial<Record<AvatarSlot, string>>>(
+    initialAppliedAccessories ?? {}
+  );
   const [isSaving, setIsSaving] = useState(false);
 
-  // Save to DB when user navigates back
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', async (e: any) => {
-      // Check if there are any changes to save
-      if (Object.keys(appliedAccessories).length === 0) {
-        return; // No changes, allow navigation
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(savedAccessories) !== JSON.stringify(appliedAccessories),
+    [appliedAccessories, savedAccessories],
+  );
+
+  const saveChanges = async () => {
+    if (isSaving) return;
+
+    try {
+      setIsSaving(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        Alert.alert('Error', 'You need to be signed in to save changes.');
+        return;
       }
 
-      e.preventDefault(); // Prevent navigation while saving
+      const { error } = await supabase
+        .from('profiles')
+        .update({ equipped_accessories: appliedAccessories })
+        .eq('id', user.id);
 
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          // No user, allow navigation
-          navigation.dispatch(e.data.action);
-          return;
-        }
-
-        // Target the `equipped_accessories` JSONB column on the `profiles` table
-        const { error } = await supabase
-          .from('profiles')
-          .update({ equipped_accessories: appliedAccessories })
-          .eq('id', user.id);
-
-        if (error) {
-          console.error('Failed to save avatar:', error);
-          Alert.alert('Error', 'Failed to save your avatar. Please try again.');
-          return; // Don't allow navigation if save failed
-        }
-
-        // Save succeeded, now allow navigation
-        navigation.dispatch(e.data.action);
-      } catch (err) {
-        console.error('Error saving avatar:', err);
-        Alert.alert('Error', 'An error occurred while saving.');
+      if (error) {
+        console.error('Failed to save avatar:', error);
+        Alert.alert('Error', 'Failed to save your avatar. Please try again.');
+        return;
       }
-    });
 
-    return unsubscribe;
-  }, [appliedAccessories, navigation]);
+      setSavedAccessories(appliedAccessories);
+      navigation.goBack();
+    } catch (err) {
+      console.error('Error saving avatar:', err);
+      Alert.alert('Error', 'An error occurred while saving.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -109,7 +109,9 @@ export default function CustomizeScreen({
       if (error || !data || !isMounted) return;
 
       if (data.equipped_accessories) {
-        setAppliedAccessories(data.equipped_accessories as Partial<Record<AvatarSlot, string>>);
+        const nextAccessories = data.equipped_accessories as Partial<Record<AvatarSlot, string>>;
+        setAppliedAccessories(nextAccessories);
+        setSavedAccessories(nextAccessories);
       }
     };
 
@@ -186,7 +188,17 @@ export default function CustomizeScreen({
             <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
           </Pressable>
           <Text style={styles.title}>Customize</Text>
-          <View style={styles.headerSpacer} />
+          <Pressable
+            onPress={saveChanges}
+            disabled={!hasUnsavedChanges || isSaving}
+            style={({ pressed }) => [
+              styles.saveButton,
+              (!hasUnsavedChanges || isSaving) && styles.saveButtonDisabled,
+              pressed && hasUnsavedChanges && !isSaving && { opacity: 0.9 },
+            ]}
+          >
+            <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
+          </Pressable>
         </View>
 
         <View style={styles.previewCard}>
@@ -333,7 +345,19 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 12 },
   backButton: { padding: 8, marginLeft: -8 },
-  headerSpacer: { flex: 1 },
+  saveButton: {
+    minWidth: 92,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.favor,
+    backgroundColor: withOpacity(COLORS.favor, 0.14),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: { borderColor: COLORS.border, backgroundColor: COLORS.surface2, opacity: 0.65 },
+  saveButtonText: { fontSize: 13, fontFamily: 'DMSans-Bold', fontWeight: '700', color: COLORS.favor },
   title: { flex: 1, fontSize: 18, fontFamily: 'DMSans-Bold', fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
   previewCard: { marginHorizontal: 16, marginTop: 14, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 16 },
   avatarContainer: { width: 140, height: 140, backgroundColor: COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, position: 'relative', overflow: 'hidden' },

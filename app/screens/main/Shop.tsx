@@ -81,6 +81,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
   useEffect(() => {
     let mounted = true;
+    let profileChannel: ReturnType<typeof supabase.channel> | null = null;
 
     const fetchProfileAccessories = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -99,12 +100,43 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       }
 
       setAppliedAccessories(normalizeAccessories(data?.equipped_accessories));
+
+      if (!profileChannel) {
+        profileChannel = supabase
+          .channel(`profiles:equipped_accessories=eq.${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${user.id}`,
+            },
+            async () => {
+              const { data: refreshedData } = await supabase
+                .from('profiles')
+                .select('equipped_accessories')
+                .eq('id', user.id)
+                .single();
+
+              if (!mounted) {
+                return;
+              }
+
+              setAppliedAccessories(normalizeAccessories(refreshedData?.equipped_accessories));
+            },
+          )
+          .subscribe();
+      }
     };
 
     void fetchProfileAccessories();
 
     return () => {
       mounted = false;
+      if (profileChannel) {
+        supabase.removeChannel(profileChannel);
+      }
     };
   }, []);
 
