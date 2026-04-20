@@ -3,23 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { COLORS, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
-
-// Local Avatars
-import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
-import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
-import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
-import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
-import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
-import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
-
-const avatarAssets = [
-    Avatar1,
-    Avatar2,
-    Avatar3,
-    Avatar4,
-    Avatar5,
-    Avatar6
-];
+import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 
 type PostCardProps = {
 	quest: FeedQuest;
@@ -32,12 +16,34 @@ const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
 	item: { label: 'ITEM', color: COLORS.item },
 };
 
+function getAccessoryById(accessoryId?: string | null) {
+	if (!accessoryId) return undefined;
+	return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
+}
+
+const DEFAULT_POSTER_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
+	Body: 'body-masc-a',
+	HairBase: 'hairb-flat-m',
+	HairFringe: 'hairf-chill-m',
+	Eyes: 'eyes-default',
+	Mouth: 'mouth-neutral',
+	Top: 'top-cit-m',
+	Bottom: 'bot-cit-m',
+};
+
+function hasPosterAccessories(
+	value: FeedQuest['posterAccessories'],
+): value is Partial<Record<AvatarSlot, string>> {
+	return value != null && typeof value === 'object' && Object.keys(value).length > 0;
+}
+
 export default function PostCard({ quest, onPress }: PostCardProps) {
 	const categoryMeta = CATEGORY_META[quest.category];
-
-	const PosterAvatar = quest.posterAvatarIndex !== undefined && quest.posterAvatarIndex !== null 
-        ? avatarAssets[quest.posterAvatarIndex] 
-        : avatarAssets[0];
+	
+	// Use provided accessories, otherwise a fixed temporary placeholder avatar.
+	const posterAccessories = hasPosterAccessories(quest.posterAccessories)
+		? quest.posterAccessories
+		: DEFAULT_POSTER_ACCESSORIES;
 
 	return (
 		<Pressable style={styles.card} onPress={onPress}>
@@ -61,7 +67,20 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
 
 				<View style={styles.footerRow}>
 					<View style={styles.posterWrap}>
-						<PosterAvatar width={22} height={22} />
+						<View style={styles.avatarContainer}>
+							{ALL_SLOTS_Z_ORDER.map(slot => {
+								const accId = posterAccessories[slot];
+								if (!accId) return null;
+								const item = getAccessoryById(accId);
+								if (!item) return null;
+								const Sprite = item.Sprite;
+								return (
+									<View key={slot} style={styles.avatarLayer} pointerEvents="none">
+										<Sprite width="100%" height="100%" />
+									</View>
+								);
+							})}
+						</View>
 						<Text style={styles.posterName}>{quest.posterName}</Text>
 					</View>
 
@@ -156,6 +175,18 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 6,
+	},
+	avatarContainer: {
+		width: 24,
+		height: 24,
+		position: 'relative',
+		overflow: 'hidden',
+		borderRadius: 12,
+		backgroundColor: COLORS.surface2,
+	},
+	avatarLayer: {
+		...StyleSheet.absoluteFillObject,
+		transform: [{ scale: 1.3 }, { translateY: 2 }],
 	},
 	posterName: {
 		fontSize: 12,

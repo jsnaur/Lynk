@@ -50,6 +50,11 @@ function withAlpha(hexColor: string, alpha: number) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function getAccessoryById(accessoryId?: string | null) {
+    if (!accessoryId) return undefined;
+    return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
+}
+
 function timeAgo(dateString: string) {
     const date = new Date(dateString);
     const now = new Date();
@@ -263,15 +268,15 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                             {initialLoading ? (
                                 <Ionicons name="person" size={22} color={COLORS.textPrimary} />
                             ) : (
-                                <View style={{ width: 32, height: 32, position: 'relative' }}>
+                                <View style={styles.avatarPreview}>
                                     {ALL_SLOTS_Z_ORDER.map(slot => {
                                         const accId = currentUserAccessories[slot];
                                         if (!accId) return null;
-                                        const item = ACCESSORY_ITEMS.find(i => i.id === accId);
+                                        const item = getAccessoryById(accId);
                                         if (!item) return null;
                                         const Sprite = item.Sprite;
                                         return (
-                                            <View key={slot} style={StyleSheet.absoluteFill} pointerEvents="none">
+                                            <View key={slot} style={styles.avatarLayer} pointerEvents="none">
                                                 <Sprite width="100%" height="100%" />
                                             </View>
                                         );
@@ -454,6 +459,8 @@ const styles = StyleSheet.create({
     safeArea: { flex: 1 },
     header: { borderBottomWidth: 1, borderBottomColor: COLORS.border, height: 76, position: 'relative', paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
     avatarChip: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    avatarPreview: { width: 32, height: 32, borderRadius: 16, position: 'relative', overflow: 'hidden' },
+    avatarLayer: { ...StyleSheet.absoluteFillObject, transform: [{ scale: 2 }, { translateY: 1 }] },
     profileButton: { borderRadius: 24, position: 'relative', zIndex: 3, elevation: 3 },
     logo: { color: COLORS.textPrimary, fontSize: 30, letterSpacing: 4, lineHeight: 32, position: 'absolute', left: 0, right: 0, bottom: 12, textAlign: 'center' },
     filterBar: { borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
@@ -464,6 +471,6 @@ const styles = StyleSheet.create({
     emptyStateTitle: { fontSize: 18, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8 },
     emptyStateSubtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
     notificationWrapper: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-    notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: '#EF4444', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.bg, paddingHorizontal: 4, zIndex: 2 },
-    notificationBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
+    notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: COLORS.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.bg, paddingHorizontal: 4, zIndex: 2 },
+    notificationBadgeText: { color: COLORS.textPrimary, fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
 });
