@@ -54,7 +54,7 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
         <View style={styles.checkBadge}>
           <MaterialCommunityIcons
             name="check-circle"
-            size={18}
+            size={12}
             color={COLORS.favor}
           />
         </View>
@@ -64,7 +64,7 @@ export default function AvatarGridItem({ state: externalState = 'Default', onPre
         <View style={styles.lockOverlay}>
           <MaterialCommunityIcons
             name="lock"
-            size={16}
+            size={12}
             color={COLORS.textPrimary}
           />
         </View>

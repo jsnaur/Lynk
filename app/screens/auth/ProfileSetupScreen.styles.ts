@@ -34,7 +34,7 @@ export const styles = StyleSheet.create({
 		paddingVertical: 0,
 		paddingHorizontal: 16,
 		borderRadius: 14,
-		width: 326,
+		width: "100%",
 		borderWidth: 1,
 		borderColor: "#3a3a48",
 		borderStyle: "solid",
@@ -156,13 +156,13 @@ export const styles = StyleSheet.create({
 	},
 	dropdownSelectField: {
 		gap: 10,
-		flex: 1,
 		flexDirection: 'row',
-		alignItems: 'center'
+		alignItems: 'center',
+		flex: 1
 	},
 	dropdownWrapper: {
-		width: 326,
-		alignSelf: "center",
+		width: "100%",
+		alignSelf: "stretch",
 		position: "relative",
 		overflow: "visible"
 	},
@@ -174,7 +174,9 @@ export const styles = StyleSheet.create({
 		color: "#f0f0f5",
 		fontSize: 15,
 		textAlign: "left",
-		fontFamily: "DMSans-Regular"
+		fontFamily: "DMSans-Regular",
+		minHeight: 16,
+		paddingVertical: 12
 	},
 	placeholderText: {
 		color: "#8a8a9a"
@@ -200,7 +202,7 @@ export const styles = StyleSheet.create({
 		overflow: "hidden",
 		zIndex: 120,
 		elevation: 8,
-		width: 326
+		width: "100%"
 	},
 	majorDropdownScroll: {
 		maxHeight: 280
@@ -258,7 +260,7 @@ export const styles = StyleSheet.create({
 		overflow: "hidden",
 		zIndex: 120,
 		elevation: 8,
-		width: 326
+		width: "100%"
 	},
 	yearDropdownScroll: {
 		maxHeight: 280

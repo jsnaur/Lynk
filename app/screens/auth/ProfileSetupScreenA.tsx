@@ -41,6 +41,7 @@ const BODY_OPTIONS = ACCESSORY_ITEMS.filter((item) => item.slot === "Body");
 const defaultSelectedId = BODY_OPTIONS[0]?.id || "";
 
 type Props = NativeStackScreenProps<any, "ProfileSetup">;
+type DropdownState = "inactive" | "active" | "selected";
 
 const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
   const [selectedBodyId, setSelectedBodyId] = useState<string>(defaultSelectedId);
@@ -57,15 +58,14 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
     return displayName.trim() !== "" && !containsInappropriateContent(displayName);
   }, [displayName]);
 
-  // Check if major is selected
-  const isMajorValid = useMemo(() => {
-    return selectedMajor !== "";
-  }, [selectedMajor]);
+  const getDropdownState = useCallback((isOpen: boolean, value: string): DropdownState => {
+    if (isOpen) return "active";
+    if (value) return "selected";
+    return "inactive";
+  }, []);
 
-  // Check if graduation year is selected
-  const isGraduationYearValid = useMemo(() => {
-    return graduationYear !== "";
-  }, [graduationYear]);
+  const majorState = useMemo(() => getDropdownState(majorOpen, selectedMajor), [getDropdownState, majorOpen, selectedMajor]);
+  const yearState = useMemo(() => getDropdownState(yearOpen, graduationYear), [getDropdownState, yearOpen, graduationYear]);
 
   const SelectedAvatarBody = useMemo(() => {
     return BODY_OPTIONS.find((f) => f.id === selectedBodyId)?.Sprite;
@@ -156,7 +156,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
             onChangeText={(text) => {
               setDisplayName(text);
               if (text.trim() && containsInappropriateContent(text)) {
-                setDisplayNameError("This may contain sensitive text. Please choose different words.");
+                setDisplayNameError("This contains sensitive text. Invalid display name.");
               } else {
                 setDisplayNameError("");
               }
@@ -185,18 +185,21 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
             style={({ pressed }) => [
               styles.dropdownSelectField,
               styles.fieldLayout,
+              majorState === "inactive" && localStyles.dropdownStateInactive,
+              majorState === "active" && localStyles.dropdownStateActive,
+              majorState === "selected" && localStyles.dropdownStateSelected,
               majorOpen && styles.majorSelectFieldOpen,
               pressed && styles.dropdownPressed,
-              isMajorValid ? localStyles.fieldLayoutSuccess : {},
             ]}
           >
             <Text
               style={[
                 styles.dropdownValue,
-                selectedMajor ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
+                majorState === "selected" ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
               ]}
+              numberOfLines={1}
             >
-              {selectedMajor || "Select your major..."}
+              {majorState === "selected" ? selectedMajor : "Select your major..."}
             </Text>
             <Ionicons name={majorOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
           </Pressable>
@@ -236,18 +239,21 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
             style={({ pressed }) => [
               styles.dropdownSelectField,
               styles.fieldLayout,
+              yearState === "inactive" && localStyles.dropdownStateInactive,
+              yearState === "active" && localStyles.dropdownStateActive,
+              yearState === "selected" && localStyles.dropdownStateSelected,
               yearOpen && styles.yearSelectFieldOpen,
               pressed && styles.dropdownPressed,
-              isGraduationYearValid ? localStyles.fieldLayoutSuccess : {},
             ]}
           >
             <Text
               style={[
                 styles.dropdownValue,
-                graduationYear ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
+                yearState === "selected" ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
               ]}
+              numberOfLines={1}
             >
-              {graduationYear || "Select graduation year..."}
+              {yearState === "selected" ? graduationYear : "Select graduation year..."}
             </Text>
             <Ionicons name={yearOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
           </Pressable>
@@ -359,8 +365,11 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
 
 const localStyles = StyleSheet.create({
   textInputColorOverride: { color: COLORS.textPrimary },
-  dropdownTextActive: { color: COLORS.textPrimary },
+  dropdownTextSelected: { color: COLORS.textPrimary },
   dropdownTextPlaceholder: { color: COLORS.textSecondary },
+  dropdownStateInactive: { borderColor: COLORS.border, backgroundColor: COLORS.surface },
+  dropdownStateActive: { borderColor: COLORS.border, backgroundColor: COLORS.surface },
+  dropdownStateSelected: { borderColor: COLORS.item, backgroundColor: COLORS.surface },
   selectedAvatarContainer: {
     width: 96, height: 96, borderRadius: 20, backgroundColor: COLORS.surface,
     borderWidth: 2, borderColor: COLORS.border, overflow: 'hidden',
@@ -392,7 +401,8 @@ const localStyles = StyleSheet.create({
   fieldLayoutSuccess: { borderColor: COLORS.item, borderWidth: 2 },
   errorMessageContainer: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginHorizontal: 24, marginTop: 4, marginBottom: 10
+    marginHorizontal: 24, marginTop: 4, marginBottom: 14,
+    height: 20
   },
   errorMessageText: { color: COLORS.error, fontSize: 12, fontWeight: '500' }
 });
