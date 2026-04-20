@@ -119,8 +119,9 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
   }, [navigation, selectedBodyId, displayName, selectedMajor, graduationYear, selectedBody]);
 
   return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={localStyles.topLockedSection}>
       <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
         <View style={styles.progressBarTrack}>
           <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
@@ -133,6 +134,9 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
           </Text>
         </View>
       </View>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
       <View style={[styles.utilityInfoForm, styles.utilityInfoFormFlexBox]}>
         <Text style={[styles.fieldGroupLabel, styles.hintTitleTypo]}>YOUR INFO</Text>
@@ -350,7 +354,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
       </ScrollView>
 
       {/* Ensured the SafeAreaView natively stretches content and wraps the button perfectly */}
-      <SafeAreaView style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, alignSelf: 'stretch' }}>
+      <SafeAreaView edges={["bottom"]} style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, alignSelf: 'stretch' }}>
         <Button
           label="Continue →"
           onPress={handleContinue}
@@ -360,10 +364,17 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
         />
       </SafeAreaView>
     </View>
+    </SafeAreaView>
   );
 };
 
 const localStyles = StyleSheet.create({
+  topLockedSection: {
+    backgroundColor: COLORS.bg,
+    zIndex: 20,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
   textInputColorOverride: { color: COLORS.textPrimary },
   dropdownTrigger: {
     minHeight: 52,

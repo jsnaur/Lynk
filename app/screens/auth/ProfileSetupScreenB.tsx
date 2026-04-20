@@ -83,7 +83,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
     return [selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId].filter(Boolean).length;
   }, [selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
 
-  const progressWidth = useMemo<DimensionValue>(() => `${(selectedCount / 6) * 100}%`, [selectedCount]);
+  const progressWidth = useMemo<DimensionValue>(() => `${50 + ((selectedCount / 6) * 50)}%`, [selectedCount]);
 
   // Current applied layers for live preview
   const activeLayers = useMemo(() => {
@@ -155,9 +155,10 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
   }, [displayName, selectedMajor, graduationYear, selectedBodyId, hasSelectedAllOptions, activeLayers, navigation]);
 
   return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} stickyHeaderIndices={[1]}>
-        <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
+      <View style={localStyles.topLockedSection}>
+        <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox, localStyles.stickyProgressHeader]}>
           <View style={styles.progressBarTrack}>
             <View style={[styles.progressBarFill, { width: progressWidth }]} />
           </View>
@@ -198,11 +199,15 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
                 />
               </View>
               <Text style={[styles.hintBody, styles.hintBodyTypo]}>
-                Some clothes and hair are{"\n"}lockedto a specific gender.
+                Some clothes and hair are{"\n"}locked to a specific gender.
               </Text>
             </View>
           </View>
         </View>
+
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
         <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
           {categoryGroups.map((group) => (
@@ -248,7 +253,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
         ) : null}
       </ScrollView>
 
-      <SafeAreaView style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}>
+      <SafeAreaView edges={["bottom"]} style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}>
         <View style={localStyles.footerButtonRow}>
           <Button
             label="← Back"
@@ -265,22 +270,37 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
         </View>
       </SafeAreaView>
     </View>
+    </SafeAreaView>
   );
 };
 
 const localStyles = StyleSheet.create({
+  topLockedSection: {
+    backgroundColor: COLORS.bg,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  stickyProgressHeader: {
+    backgroundColor: COLORS.bg,
+    zIndex: 30,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
   stickyPreviewBlock: {
     backgroundColor: COLORS.bg,
     paddingTop: 6,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    zIndex: 20,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   selectedAvatarContainer: {
     width: 96, height: 96, borderRadius: 20, backgroundColor: COLORS.surface,
     borderWidth: 2, borderColor: COLORS.border, overflow: 'hidden', position: 'relative',
   },
-  categorySection: { width: '100%', paddingHorizontal: 24, marginTop: 20 },
+  categorySection: { width: '100%', marginTop: 20 },
   categoryHeader: { justifyContent: 'space-between', alignItems: 'center' },
   categoryRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 12, width: '100%' },
   customOption: {

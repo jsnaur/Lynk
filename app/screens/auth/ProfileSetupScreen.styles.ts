@@ -88,7 +88,7 @@ export const styles = StyleSheet.create({
 		backgroundColor: COLORS.bg
 	},
 	setupProgressHeader: {
-		paddingTop: 32,
+		paddingTop: 20,
 		paddingBottom: 20
 	},
 	progressBarTrack: {
