@@ -1,95 +1,328 @@
-import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { COLORS, withOpacity } from '../../constants/colors';
+import { FONTS } from '../../constants/fonts';
 
 import ThumbUpIcon from '../../../assets/QuestScreenAssets/ThumbUp.svg';
 import ThumbDownIcon from '../../../assets/QuestScreenAssets/Thumb_down_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestScreenAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestScreenAssets/Token_Pixel_Icon.svg';
 
-type Rating = 'positive' | 'negative' | null;
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type ParticipantRating = 'positive' | 'negative' | null;
+type ParticipantOutcome = 'completed' | 'failed' | null;
+
+type Participant = {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+};
+
+type ParticipantEval = {
+  outcome: ParticipantOutcome;
+  rating: ParticipantRating;
+};
+
+type ResolutionPayload = {
+  user_id: string;
+  status: 'completed' | 'failed';
+  rating: 'positive' | 'negative';
+};
 
 export type QuestResolutionSheetModalProps = {
   visible?: boolean;
   onClose?: () => void;
   questId: string;
   questTitle: string;
-  acceptorName: string;
   tokenReward: number;
   xpReward: number;
   onComplete?: () => void;
 };
+
+// ─── ParticipantRow ───────────────────────────────────────────────────────────
+
+type ParticipantRowProps = {
+  participant: Participant;
+  evalState: ParticipantEval;
+  onChange: (userId: string, patch: Partial<ParticipantEval>) => void;
+  disabled: boolean;
+  index: number;
+};
+
+const ParticipantRow = ({
+  participant,
+  evalState,
+  onChange,
+  disabled,
+  index,
+}: ParticipantRowProps) => {
+  const { outcome, rating } = evalState;
+  const isComplete = outcome !== null && rating !== null;
+
+  return (
+    <View style={rowStyles.container}>
+      {/* Index + Name */}
+      <View style={rowStyles.header}>
+        <View style={rowStyles.indexBadge}>
+          <Text style={rowStyles.indexText}>{index + 1}</Text>
+        </View>
+        <Text style={rowStyles.name} numberOfLines={1}>
+          {participant.display_name}
+        </Text>
+        {isComplete && (
+          <View
+            style={[
+              rowStyles.doneTag,
+              outcome === 'completed' ? rowStyles.doneTagSuccess : rowStyles.doneTagFail,
+            ]}
+          >
+            <Text
+              style={[
+                rowStyles.doneTagText,
+                outcome === 'completed' ? rowStyles.doneTagTextSuccess : rowStyles.doneTagTextFail,
+              ]}
+            >
+              {outcome === 'completed' ? 'Done' : 'Failed'}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Outcome row */}
+      <View style={rowStyles.controlRow}>
+        <Text style={rowStyles.controlLabel}>Outcome</Text>
+        <View style={rowStyles.controlButtons}>
+          <Pressable
+            onPress={() => onChange(participant.user_id, { outcome: 'completed' })}
+            disabled={disabled}
+            style={({ pressed }) => [
+              rowStyles.outcomeBtn,
+              outcome === 'completed' && rowStyles.outcomeBtnSuccess,
+              pressed && !disabled && rowStyles.pressed,
+            ]}
+          >
+            <Text
+              style={[
+                rowStyles.outcomeBtnText,
+                outcome === 'completed' && rowStyles.outcomeBtnTextSuccess,
+              ]}
+            >
+              ✓ Completed
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onChange(participant.user_id, { outcome: 'failed' })}
+            disabled={disabled}
+            style={({ pressed }) => [
+              rowStyles.outcomeBtn,
+              outcome === 'failed' && rowStyles.outcomeBtnFail,
+              pressed && !disabled && rowStyles.pressed,
+            ]}
+          >
+            <Text
+              style={[
+                rowStyles.outcomeBtnText,
+                outcome === 'failed' && rowStyles.outcomeBtnTextFail,
+              ]}
+            >
+              ✗ No-show
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Rating row */}
+      <View style={rowStyles.controlRow}>
+        <Text style={rowStyles.controlLabel}>Rating</Text>
+        <View style={rowStyles.controlButtons}>
+          <Pressable
+            onPress={() => onChange(participant.user_id, { rating: 'positive' })}
+            disabled={disabled}
+            style={({ pressed }) => [
+              rowStyles.ratingBtn,
+              rating === 'positive' && rowStyles.ratingBtnPositive,
+              pressed && !disabled && rowStyles.pressed,
+            ]}
+          >
+            <ThumbUpIcon width={16} height={16} />
+            <Text
+              style={[
+                rowStyles.ratingBtnText,
+                rating === 'positive' ? rowStyles.ratingTextPositive : rowStyles.ratingTextIdle,
+              ]}
+            >
+              Positive
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onChange(participant.user_id, { rating: 'negative' })}
+            disabled={disabled}
+            style={({ pressed }) => [
+              rowStyles.ratingBtn,
+              rating === 'negative' && rowStyles.ratingBtnNegative,
+              pressed && !disabled && rowStyles.pressed,
+            ]}
+          >
+            <ThumbDownIcon width={16} height={16} />
+            <Text
+              style={[
+                rowStyles.ratingBtnText,
+                rating === 'negative' ? rowStyles.ratingTextNegative : rowStyles.ratingTextIdle,
+              ]}
+            >
+              Negative
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={rowStyles.divider} />
+    </View>
+  );
+};
+
+// ─── QuestResolutionSheetModal ────────────────────────────────────────────────
 
 const QuestResolutionSheetModal = ({
   visible = true,
   onClose,
   questId,
   questTitle,
-  acceptorName,
   tokenReward,
   xpReward,
   onComplete,
 }: QuestResolutionSheetModalProps) => {
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [rating, setRating] = useState<Rating>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [evals, setEvals] = useState<Record<string, ParticipantEval>>({});
+  const [isFetching, setIsFetching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const { refreshBalance } = useTokenBalance();
 
-  const canSubmit = isCompleted && rating !== null;
-  const shouldShowRating = isCompleted;
-  const shouldShowRewards = rating !== null;
+  // ── Fetch participants on mount ──────────────────────────────────────────
+  useEffect(() => {
+    if (!visible || !questId) return;
+
+    const fetchParticipants = async () => {
+      setIsFetching(true);
+      try {
+        const { data, error } = await supabase
+          .from('quest_participants')
+          .select('user_id, profiles(display_name, avatar_url)')
+          .eq('quest_id', questId)
+          .eq('status', 'accepted');
+
+        if (error) throw error;
+
+        const mapped: Participant[] = (data ?? []).map((row: any) => ({
+          user_id: row.user_id,
+          display_name: row.profiles?.display_name ?? 'Unknown',
+          avatar_url: row.profiles?.avatar_url ?? null,
+        }));
+
+        setParticipants(mapped);
+        // Seed eval state for each participant
+        const seed: Record<string, ParticipantEval> = {};
+        mapped.forEach((p) => {
+          seed[p.user_id] = { outcome: null, rating: null };
+        });
+        setEvals(seed);
+      } catch (err: any) {
+        console.error('Failed to fetch participants:', err);
+        Alert.alert('Error', 'Could not load participants. Please try again.');
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchParticipants();
+  }, [visible, questId]);
+
+  // ── Eval helpers ─────────────────────────────────────────────────────────
+  const handleChange = useCallback(
+    (userId: string, patch: Partial<ParticipantEval>) => {
+      setEvals((prev) => ({
+        ...prev,
+        [userId]: { ...prev[userId], ...patch },
+      }));
+    },
+    [],
+  );
+
+  // ── Derived state ─────────────────────────────────────────────────────────
+  const evaluatedCount = useMemo(
+    () =>
+      Object.values(evals).filter((e) => e.outcome !== null && e.rating !== null).length,
+    [evals],
+  );
+
+  const allEvaluated = useMemo(
+    () => participants.length > 0 && evaluatedCount === participants.length,
+    [participants.length, evaluatedCount],
+  );
 
   const submitLabel = useMemo(() => {
     if (isSubmitting) return 'Resolving...';
-    if (isSubmitted) return 'Completed!';
-    if (!canSubmit) return 'Complete + Rate to Submit';
+    if (isSubmitted) return 'Quest Resolved!';
+    if (!allEvaluated)
+      return `Evaluate all (${evaluatedCount}/${participants.length})`;
     return 'Submit & Finish';
-  }, [canSubmit, isSubmitted, isSubmitting]);
+  }, [isSubmitting, isSubmitted, allEvaluated, evaluatedCount, participants.length]);
 
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!canSubmit || isSubmitting) {
-      return;
-    }
+    if (!allEvaluated || isSubmitting) return;
+
+    const resolutions: ResolutionPayload[] = participants.map((p) => ({
+      user_id: p.user_id,
+      status: evals[p.user_id].outcome as 'completed' | 'failed',
+      rating: evals[p.user_id].rating as 'positive' | 'negative',
+    }));
 
     setIsSubmitting(true);
-
     try {
-      const { error } = await supabase.rpc('resolve_quest', {
+      const { error } = await supabase.rpc('resolve_group_quest', {
         p_quest_id: questId,
-        p_rating: rating,
+        p_resolutions: resolutions,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      await refreshBalance(); // Refresh local balance in case the user resolved their own quest
+      await refreshBalance();
       setIsSubmitted(true);
       onComplete?.();
-      
-      // Auto-close after a short delay so the user sees the success state
+
       setTimeout(() => {
         onClose?.();
-      }, 1000);
-    } catch (error: any) {
-      console.error('Failed to resolve quest:', error);
-      Alert.alert('Error', error.message || 'Failed to resolve the quest. Please try again.');
+      }, 1200);
+    } catch (err: any) {
+      console.error('Failed to resolve group quest:', err);
+      Alert.alert('Error', err.message || 'Failed to resolve the quest. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    if (!isSubmitting) {
-      onClose?.();
-    }
+    if (!isSubmitting) onClose?.();
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Modal
       visible={visible}
@@ -102,103 +335,57 @@ const QuestResolutionSheetModal = ({
         <Pressable style={styles.backdrop} onPress={handleClose} accessibilityLabel="Dismiss" />
 
         <View style={styles.screen}>
+          {/* Handle */}
           <Pressable style={styles.handleWrap} onPress={handleClose}>
             <View style={styles.handleBar} />
           </Pressable>
 
+          {/* Header */}
           <View style={styles.headerBlock}>
-            <Text style={styles.title}>Complete This Quest?</Text>
+            <Text style={styles.title}>Resolve Quest</Text>
             <Text style={styles.questTitle}>"{questTitle}"</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Pressable
-              onPress={() => {
-                if (!isCompleted) {
-                  setIsCompleted(true);
-                }
-              }}
-              disabled={isCompleted || isSubmitting}
-              style={({ pressed }) => [
-                styles.completeButton,
-                isCompleted && styles.completeButtonDone,
-                isCompleted && styles.completeButtonLocked,
-                !isCompleted && pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.completeButtonText}>
-                {isCompleted ? 'Marked as Completed' : 'Mark as Completed'}
-              </Text>
-            </Pressable>
-          </View>
-
-          {shouldShowRating && (
-            <>
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerLabel}>now, rate your experience</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.ratingPrompt}>
-                  How was <Text style={styles.posterName}>{acceptorName}</Text> as a quest partner?
+            {participants.length > 0 && (
+              <View style={styles.progressPill}>
+                <Text style={styles.progressText}>
+                  {evaluatedCount}/{participants.length} evaluated
                 </Text>
-
-                <View style={styles.ratingRow}>
-                  <Pressable
-                    onPress={() => setRating('positive')}
-                    disabled={isSubmitting}
-                    style={({ pressed }) => [
-                      styles.ratingButton,
-                      styles.positiveButton,
-                      rating === 'positive' && styles.positiveButtonActive,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThumbUpIcon width={24} height={24} />
-                    <Text
-                      style={[
-                        styles.ratingButtonLabel,
-                        rating === 'positive' ? styles.positiveText : styles.idleText,
-                      ]}
-                    >
-                      Positive
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => setRating('negative')}
-                    disabled={isSubmitting}
-                    style={({ pressed }) => [
-                      styles.ratingButton,
-                      styles.negativeButton,
-                      rating === 'negative' && styles.negativeButtonActive,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThumbDownIcon width={24} height={24} />
-                    <Text
-                      style={[
-                        styles.ratingButtonLabel,
-                        rating === 'negative' ? styles.negativeText : styles.idleText,
-                      ]}
-                    >
-                      Negative
-                    </Text>
-                  </Pressable>
-                </View>
               </View>
-            </>
-          )}
+            )}
+          </View>
 
-          {shouldShowRewards && (
-            <>
-              <View style={styles.section}>
+          {/* Body */}
+          {isFetching ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator color={COLORS.favor} size="small" />
+              <Text style={styles.loadingText}>Loading participants…</Text>
+            </View>
+          ) : participants.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyText}>No accepted participants found.</Text>
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.scrollArea}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {participants.map((p, i) => (
+                <ParticipantRow
+                  key={p.user_id}
+                  participant={p}
+                  evalState={evals[p.user_id] ?? { outcome: null, rating: null }}
+                  onChange={handleChange}
+                  disabled={isSubmitting || isSubmitted}
+                  index={i}
+                />
+              ))}
+
+              {/* Reward preview — visible once all are evaluated */}
+              {allEvaluated && (
                 <LinearGradient
                   style={styles.rewardCard}
                   locations={[0, 1]}
-                  colors={['rgba(255, 215, 0, 0.10)', 'rgba(192, 132, 252, 0.10)']}
+                  colors={[withOpacity(COLORS.token, 0.10), withOpacity(COLORS.xp, 0.10)]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
@@ -206,7 +393,6 @@ const QuestResolutionSheetModal = ({
                     <XpPixelIcon width={32} height={32} />
                     <TokenPixelIcon width={32} height={32} />
                   </View>
-
                   <View style={styles.rewardTextWrap}>
                     <View style={styles.rewardTopRow}>
                       <Text style={styles.rewardXpText}>+{xpReward} XP</Text>
@@ -215,32 +401,191 @@ const QuestResolutionSheetModal = ({
                     <Text style={styles.rewardSubtext}>Karma updated. Quest archived.</Text>
                   </View>
                 </LinearGradient>
-              </View>
+              )}
 
-              <View style={styles.footer}>
-                <Pressable
-                  onPress={handleSubmit}
-                  disabled={!canSubmit || isSubmitted || isSubmitting}
-                  style={({ pressed }) => [
-                    styles.submitButton,
-                    (!canSubmit || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
-                    canSubmit && !isSubmitted && pressed && styles.pressed,
-                  ]}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="#1a1a1f" />
-                  ) : (
-                    <Text style={styles.submitLabel}>{submitLabel}</Text>
-                  )}
-                </Pressable>
-              </View>
-            </>
+              {/* Spacer for footer */}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          )}
+
+          {/* Footer submit button */}
+          {!isFetching && participants.length > 0 && (
+            <View style={styles.footer}>
+              <Pressable
+                onPress={handleSubmit}
+                disabled={!allEvaluated || isSubmitted || isSubmitting}
+                style={({ pressed }) => [
+                  styles.submitButton,
+                  (!allEvaluated || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
+                  allEvaluated && !isSubmitted && pressed && styles.pressed,
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color={COLORS.bg} />
+                ) : (
+                  <Text style={styles.submitLabel}>{submitLabel}</Text>
+                )}
+              </Pressable>
+            </View>
           )}
         </View>
       </View>
     </Modal>
   );
 };
+
+// ─── ParticipantRow Styles ────────────────────────────────────────────────────
+
+const rowStyles = StyleSheet.create({
+  container: {
+    marginBottom: 4,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  indexBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  indexText: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontFamily: `${FONTS.mono}-Bold`,
+    fontWeight: '700',
+  },
+  name: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    fontFamily: `${FONTS.body}-SemiBold`,
+    fontWeight: '600',
+  },
+  doneTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  doneTagSuccess: {
+    backgroundColor: withOpacity(COLORS.item, 0.14),
+  },
+  doneTagFail: {
+    backgroundColor: withOpacity(COLORS.error, 0.14),
+  },
+  doneTagText: {
+    fontSize: 11,
+    fontFamily: `${FONTS.body}-Medium`,
+    fontWeight: '500',
+  },
+  doneTagTextSuccess: {
+    color: COLORS.item,
+  },
+  doneTagTextFail: {
+    color: COLORS.error,
+  },
+  controlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  controlLabel: {
+    width: 56,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontFamily: `${FONTS.body}-Regular`,
+  },
+  controlButtons: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  outcomeBtn: {
+    flex: 1,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outcomeBtnSuccess: {
+    backgroundColor: withOpacity(COLORS.item, 0.12),
+    borderColor: COLORS.item,
+    borderWidth: 2,
+  },
+  outcomeBtnFail: {
+    backgroundColor: withOpacity(COLORS.error, 0.12),
+    borderColor: COLORS.error,
+    borderWidth: 2,
+  },
+  outcomeBtnText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontFamily: `${FONTS.body}-Medium`,
+    fontWeight: '500',
+  },
+  outcomeBtnTextSuccess: {
+    color: COLORS.item,
+  },
+  outcomeBtnTextFail: {
+    color: COLORS.error,
+  },
+  ratingBtn: {
+    flex: 1,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface2,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+  },
+  ratingBtnPositive: {
+    backgroundColor: withOpacity(COLORS.item, 0.12),
+    borderColor: COLORS.item,
+    borderWidth: 2,
+  },
+  ratingBtnNegative: {
+    backgroundColor: withOpacity(COLORS.error, 0.12),
+    borderColor: COLORS.error,
+    borderWidth: 2,
+  },
+  ratingBtnText: {
+    fontSize: 12,
+    fontFamily: `${FONTS.body}-Medium`,
+    fontWeight: '500',
+  },
+  ratingTextIdle: {
+    color: COLORS.textSecondary,
+  },
+  ratingTextPositive: {
+    color: COLORS.item,
+  },
+  ratingTextNegative: {
+    color: '#ff8d8d',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 14,
+  },
+  pressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }],
+  },
+});
+
+// ─── Main Styles ──────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   modalRoot: {
@@ -253,12 +598,12 @@ const styles = StyleSheet.create({
   },
   screen: {
     minHeight: '78%',
-    maxHeight: '88%',
+    maxHeight: '92%',
     width: '100%',
-    backgroundColor: '#26262e',
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: 24,
+    paddingBottom: 0,
   },
   handleWrap: {
     alignItems: 'center',
@@ -269,133 +614,82 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#3a3a48',
+    backgroundColor: COLORS.border,
   },
   headerBlock: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 16,
     alignItems: 'center',
     gap: 4,
   },
   title: {
     fontSize: 20,
-    color: '#f0f0f5',
-    fontFamily: 'DMSans-Bold',
+    color: COLORS.textPrimary,
+    fontFamily: `${FONTS.body}-Bold`,
     fontWeight: '700',
     textAlign: 'center',
   },
   questTitle: {
-    fontSize: 14,
-    color: '#f0f0f5',
-    fontFamily: 'DMSans-Regular',
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontFamily: `${FONTS.body}-Regular`,
     textAlign: 'center',
   },
-  section: {
-    paddingHorizontal: 24,
-    paddingBottom: 18,
-  },
-  completeButton: {
-    minHeight: 52,
-    borderRadius: 16,
-    backgroundColor: '#39ff14',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  completeButtonDone: {
-    backgroundColor: '#6f7280',
-  },
-  completeButtonLocked: {
-    opacity: 0.9,
-  },
-  completeButtonText: {
-    color: '#1a1a1f',
-    fontSize: 16,
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#3a3a48',
-  },
-  dividerLabel: {
-    fontSize: 12,
-    color: '#8a8a9a',
-    fontFamily: 'DMSans-Regular',
-    textAlign: 'center',
-  },
-  ratingPrompt: {
-    color: '#8a8a9a',
-    fontSize: 14,
-    textAlign: 'center',
-    fontFamily: 'DMSans-Regular',
-    marginBottom: 12,
-  },
-  posterName: {
-    color: '#f0f0f5',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  ratingButton: {
-    flex: 1,
-    minHeight: 64,
-    borderRadius: 16,
+  progressPill: {
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: withOpacity(COLORS.favor, 0.10),
     borderWidth: 1,
+    borderColor: withOpacity(COLORS.favor, 0.30),
+  },
+  progressText: {
+    fontSize: 12,
+    color: COLORS.favor,
+    fontFamily: `${FONTS.mono}-Regular`,
+  },
+  loadingWrap: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
+    gap: 12,
+    paddingBottom: 40,
   },
-  positiveButton: {
-    backgroundColor: '#31313c',
-    borderColor: '#3a3a48',
+  loadingText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontFamily: `${FONTS.body}-Regular`,
   },
-  positiveButtonActive: {
-    backgroundColor: 'rgba(57, 255, 20, 0.12)',
-    borderColor: '#39ff14',
-    borderWidth: 2,
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 40,
   },
-  negativeButton: {
-    backgroundColor: '#31313c',
-    borderColor: '#3a3a48',
+  emptyText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontFamily: `${FONTS.body}-Regular`,
   },
-  negativeButtonActive: {
-    backgroundColor: 'rgba(255, 92, 92, 0.12)',
-    borderColor: '#ff5c5c',
-    borderWidth: 2,
+  scrollArea: {
+    flex: 1,
   },
-  ratingButtonLabel: {
-    fontSize: 12,
-    fontFamily: 'DMSans-Medium',
-    fontWeight: '500',
-  },
-  idleText: {
-    color: '#8a8a9a',
-  },
-  positiveText: {
-    color: '#39ff14',
-  },
-  negativeText: {
-    color: '#ff8d8d',
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 4,
   },
   rewardCard: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#ffd700',
+    borderColor: COLORS.token,
     paddingHorizontal: 14,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 8,
   },
   rewardIcons: {
     flexDirection: 'row',
@@ -413,41 +707,48 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rewardXpText: {
-    color: '#c084fc',
+    color: COLORS.xp,
     fontSize: 15,
-    fontFamily: 'SpaceMono-Bold',
+    fontFamily: `${FONTS.mono}-Bold`,
     fontWeight: '700',
   },
   rewardTokenText: {
-    color: '#ffd700',
+    color: COLORS.token,
     fontSize: 15,
-    fontFamily: 'SpaceMono-Bold',
+    fontFamily: `${FONTS.mono}-Bold`,
     fontWeight: '700',
   },
   rewardSubtext: {
-    color: '#8a8a9a',
+    color: COLORS.textSecondary,
     fontSize: 12,
-    fontFamily: 'DMSans-Regular',
+    fontFamily: `${FONTS.body}-Regular`,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    marginTop: 'auto',
+    paddingTop: 12,
+    paddingBottom: 28,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
   submitButton: {
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#00f5ff',
+    backgroundColor: COLORS.favor,
     justifyContent: 'center',
     alignItems: 'center',
   },
   submitButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   submitLabel: {
-    color: '#1a1a1f',
+    color: COLORS.bg,
     fontSize: 16,
-    fontFamily: 'DMSans-Bold',
+    fontFamily: `${FONTS.body}-Bold`,
     fontWeight: '700',
   },
   pressed: {
