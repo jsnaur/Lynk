@@ -12,17 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState } from 'react';
 import BottomNav, { MainTab } from '../../components/BottomNav';
+import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
-
-// Local Avatars
-import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
-import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
-import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
-import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
-import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
-import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
 
 // Profile Assets - SVGs
 import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
@@ -51,14 +44,72 @@ type ProfileState = {
     editProfileVisible?: boolean;
 };
 
-const avatarAssets = [
-    Avatar1,
-    Avatar2,
-    Avatar3,
-    Avatar4,
-    Avatar5,
-    Avatar6
-];
+const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
+    Body: 'body-masc-a',
+    HairBase: 'hairb-flat-m',
+    HairFringe: 'hairf-chill-m',
+    Eyes: 'eyes-default',
+    Mouth: 'mouth-neutral',
+    Top: 'top-cit-m',
+    Bottom: 'bot-cit-m',
+};
+
+function getAccessoryById(accessoryId?: string | null) {
+    if (!accessoryId) return undefined;
+    return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
+}
+
+function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string>> {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Partial<Record<AvatarSlot, string>>;
+    }
+    return DEFAULT_AVATAR_ACCESSORIES;
+}
+
+function LayeredAvatar({
+    accessories,
+    size,
+    scale = 1.45,
+    translateY = 3,
+}: {
+    accessories?: Partial<Record<AvatarSlot, string>>;
+    size: number;
+    scale?: number;
+    translateY?: number;
+}) {
+    const safeAccessories = normalizeAccessories(accessories);
+
+    return (
+        <View
+            style={{
+                width: size,
+                height: size,
+                borderRadius: size / 2,
+                overflow: 'hidden',
+                backgroundColor: COLORS.surface2,
+                position: 'relative',
+            }}
+        >
+            {ALL_SLOTS_Z_ORDER.map((slot) => {
+                const accessoryId = safeAccessories[slot];
+                if (!accessoryId) return null;
+                const accessory = getAccessoryById(accessoryId);
+                if (!accessory) return null;
+                const Sprite = accessory.Sprite;
+
+                return (
+                    <View
+                        key={slot}
+                        pointerEvents="none"
+                        style={{ ...StyleSheet.absoluteFillObject, transform: [{ scale }, { translateY }] }}
+                    >
+                        <Sprite width="100%" height="100%" />
+                    </View>
+                );
+            })}
+        </View>
+    );
+}
 
 // XP Thresholds
 const XP_THRESHOLDS = [
@@ -179,9 +230,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const xpInLevel = levelData.xpInCurrentLevel;
     const xpForNextLevel = levelData.xpNeededForNextLevel;
 
-    const SelectedAvatar = profile?.avatar_index !== undefined && profile.avatar_index !== null 
-        ? avatarAssets[profile.avatar_index] 
-        : avatarAssets[0];
+    const profileAccessories = normalizeAccessories(profile?.equipped_accessories);
 
     const gradYearDisplay = profile?.graduation_year || profile?.graduationYear || '2027';
     const shortYear = gradYearDisplay.slice(-2);
@@ -214,10 +263,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                             <Ionicons name="person" size={42} color={COLORS.textPrimary} />
                                         </View>
                                     ) : (
-                                        <>
-                                            <SelectedAvatar width={72} height={72} style={styles.avatarSvg} />
-                                            <Image source={ASSETS.accessory} style={styles.avatarLayer} />
-                                        </>
+                                        <LayeredAvatar accessories={profileAccessories} size={72} scale={1.5} translateY={4} />
                                     )}
                                 </View>
                             </View>
@@ -452,18 +498,6 @@ const styles = StyleSheet.create({
         borderColor: COLORS.border,
         overflow: 'hidden',
         position: 'relative',
-    },
-    avatarSvg: {
-        position: 'absolute',
-        top: 14,
-        left: 14,
-    },
-    avatarLayer: {
-        position: 'absolute',
-        left: 14,
-        top: 14,
-        width: 72,
-        height: 72,
     },
     loadingAvatarIconWrap: {
         flex: 1,
