@@ -51,7 +51,7 @@ type QuestDetailsProps = {
   route?: { params?: QuestDetailParams };
 };
 
-type ParticipantStatus = 'pending' | 'accepted' | 'rejected' | 'dropped';
+type ParticipantStatus = 'applied' | 'accepted' | 'rejected' | 'dropped';
 
 type QuestParticipant = {
   id: string;
@@ -275,7 +275,7 @@ function ApplicantCTA({
     );
   }
 
-  if (myStatus === 'pending') {
+  if (myStatus === 'applied') {
     return (
       <View style={styles.ctaContainer}>
         {slotRow}
@@ -375,7 +375,7 @@ function PosterPanel({
   onStartQuest,
 }: PosterPanelProps) {
   const accepted = participants.filter((p) => p.status === 'accepted');
-  const pending = participants.filter((p) => p.status === 'pending');
+  const applied = participants.filter((p) => p.status === 'applied');
   const isGroup = maxParticipants > 1;
   const isFull = accepted.length >= maxParticipants;
   
@@ -423,16 +423,16 @@ function PosterPanel({
         </View>
       )}
 
-      {!isAutoAccept && pending.length > 0 && (
+      {!isAutoAccept && applied.length > 0 && (
         <View style={styles.posterSection}>
           <Text style={styles.posterSectionLabel}>
             <Ionicons name="hourglass" size={11} color={COLORS.token} /> PENDING REVIEW
           </Text>
-          {pending.map((p) => (
+          {applied.map((p) => (
             <ParticipantRow
               key={p.id}
               participant={p}
-              variant="pending"
+              variant="applied"
               isLoading={loadingIds.has(p.id)}
               isFull={isFull}
               onAccept={() => onAcceptParticipant(p.id)}
@@ -442,7 +442,7 @@ function PosterPanel({
         </View>
       )}
 
-      {accepted.length === 0 && pending.length === 0 && (
+      {accepted.length === 0 && applied.length === 0 && (
         <View style={styles.posterEmptyState}>
           <Ionicons name="people-outline" size={28} color={COLORS.border} />
           <Text style={styles.posterEmptyText}>
@@ -494,7 +494,7 @@ function PosterPanel({
 
 type ParticipantRowProps = {
   participant: QuestParticipant;
-  variant: 'accepted' | 'pending';
+  variant: 'accepted' | 'applied';
   isLoading: boolean;
   isFull?: boolean;
   onAccept?: () => void;
@@ -519,7 +519,7 @@ function ParticipantRow({
 
       {isLoading ? (
         <ActivityIndicator size="small" color={COLORS.xp} style={{ marginLeft: 4 }} />
-      ) : variant === 'pending' ? (
+      ) : variant === 'applied' ? (
         <View style={styles.participantActions}>
           <Pressable
             style={({ pressed }) => [
