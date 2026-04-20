@@ -1,5 +1,5 @@
 import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, type DimensionValue } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -59,12 +59,12 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
   const topOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Top' && i.isSetup && (i.gender === gender || i.gender === 'Shared')).slice(0, 2), [gender]);
   const bottomOptions = useMemo(() => ACCESSORY_ITEMS.filter(i => i.slot === 'Bottom' && i.isSetup && (i.gender === gender || i.gender === 'Shared')).slice(0, 2), [gender]);
 
-  const [selectedHairBaseId, setSelectedHairBaseId] = useState<string>(hairBaseOptions[0]?.id || "");
-  const [selectedHairFringeId, setSelectedHairFringeId] = useState<string>(hairFringeOptions[0]?.id || "");
-  const [selectedEyeId, setSelectedEyeId] = useState<string>(eyesOptions[0]?.id || "");
-  const [selectedMouthId, setSelectedMouthId] = useState<string>(mouthOptions[0]?.id || "");
-  const [selectedTopId, setSelectedTopId] = useState<string>(topOptions[0]?.id || "");
-  const [selectedBottomId, setSelectedBottomId] = useState<string>(bottomOptions[0]?.id || "");
+  const [selectedHairBaseId, setSelectedHairBaseId] = useState<string>("");
+  const [selectedHairFringeId, setSelectedHairFringeId] = useState<string>("");
+  const [selectedEyeId, setSelectedEyeId] = useState<string>("");
+  const [selectedMouthId, setSelectedMouthId] = useState<string>("");
+  const [selectedTopId, setSelectedTopId] = useState<string>("");
+  const [selectedBottomId, setSelectedBottomId] = useState<string>("");
 
   const categoryGroups = useMemo(() => [
     { label: "HAIR BASE", options: hairBaseOptions, activeId: selectedHairBaseId, setter: setSelectedHairBaseId },
@@ -75,17 +75,28 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
     { label: "BOTTOM", options: bottomOptions, activeId: selectedBottomId, setter: setSelectedBottomId },
   ], [hairBaseOptions, hairFringeOptions, eyesOptions, mouthOptions, topOptions, bottomOptions, selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
 
+  const hasSelectedAllOptions = useMemo(() => {
+    return [selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId].every(Boolean);
+  }, [selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
+
+  const selectedCount = useMemo(() => {
+    return [selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId].filter(Boolean).length;
+  }, [selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
+
+  const progressWidth = useMemo<DimensionValue>(() => `${(selectedCount / 6) * 100}%`, [selectedCount]);
+
   // Current applied layers for live preview
   const activeLayers = useMemo(() => {
-    const layers: Partial<Record<AvatarSlot, string>> = {
-      Body: selectedBodyId,
-      HairBase: selectedHairBaseId,
-      HairFringe: selectedHairFringeId,
-      Eyes: selectedEyeId,
-      Mouth: selectedMouthId,
-      Top: selectedTopId,
-      Bottom: selectedBottomId,
-    };
+    const layers: Partial<Record<AvatarSlot, string>> = {};
+
+    if (selectedBodyId) layers.Body = selectedBodyId;
+    if (selectedHairBaseId) layers.HairBase = selectedHairBaseId;
+    if (selectedHairFringeId) layers.HairFringe = selectedHairFringeId;
+    if (selectedEyeId) layers.Eyes = selectedEyeId;
+    if (selectedMouthId) layers.Mouth = selectedMouthId;
+    if (selectedTopId) layers.Top = selectedTopId;
+    if (selectedBottomId) layers.Bottom = selectedBottomId;
+
     return layers;
   }, [selectedBodyId, selectedHairBaseId, selectedHairFringeId, selectedEyeId, selectedMouthId, selectedTopId, selectedBottomId]);
 
@@ -103,6 +114,11 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
 
     if (containsInappropriateContent(displayName)) {
       setErrorMessage("Display name contains inappropriate text. Please use a different name.");
+      return;
+    }
+
+    if (!hasSelectedAllOptions) {
+      setErrorMessage("Please choose one item in each category.");
       return;
     }
 
@@ -136,14 +152,14 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
       console.error(err);
       setErrorMessage("An unexpected error occurred.");
     }
-  }, [displayName, selectedMajor, graduationYear, selectedBodyId, activeLayers, navigation]);
+  }, [displayName, selectedMajor, graduationYear, selectedBodyId, hasSelectedAllOptions, activeLayers, navigation]);
 
   return (
     <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} stickyHeaderIndices={[1]}>
         <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
           <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: '100%' }]} />
+            <View style={[styles.progressBarFill, { width: progressWidth }]} />
           </View>
           <View style={[styles.headerTextBlock, styles.textCommon]}>
             <Text style={styles.stepLabel}>Step 2 of 2</Text>
@@ -154,7 +170,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
+        <View style={localStyles.stickyPreviewBlock}>
           <View style={[styles.avatarPreviewRow, styles.setupCtaBarFlexBox]}>
             <View style={[styles.selectedAvatarFrameIcon, localStyles.selectedAvatarContainer]}>
               {ALL_SLOTS_Z_ORDER.map((slot) => {
@@ -182,11 +198,13 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
                 />
               </View>
               <Text style={[styles.hintBody, styles.hintBodyTypo]}>
-                Represents you on the quest board.{"\n"}Unlock more in the Shop.
+                Some clothes and hair are{"\n"}lockedto a specific gender.
               </Text>
             </View>
           </View>
+        </View>
 
+        <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
           {categoryGroups.map((group) => (
             <View key={group.label} style={localStyles.categorySection}>
               <View style={[styles.setupCtaBarFlexBox, localStyles.categoryHeader]}>
@@ -231,26 +249,40 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
       </ScrollView>
 
       <SafeAreaView style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}>
-        <Button
-          label="Continue →"
-          onPress={handleContinue}
-          variant="Primary"
-          style={localStyles.continueButton}
-        />
+        <View style={localStyles.footerButtonRow}>
+          <Button
+            label="← Back"
+            onPress={() => navigation.goBack()}
+            variant="Outline"
+              style={localStyles.footerButton}
+          />
+          <Button
+            label="Continue →"
+            onPress={handleContinue}
+            variant="Primary"
+            style={localStyles.footerButton}
+          />
+        </View>
       </SafeAreaView>
     </View>
   );
 };
 
 const localStyles = StyleSheet.create({
-  progressBarFillLarge: { width: '100%' },
+  stickyPreviewBlock: {
+    backgroundColor: COLORS.bg,
+    paddingTop: 6,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
   selectedAvatarContainer: {
     width: 96, height: 96, borderRadius: 20, backgroundColor: COLORS.surface,
     borderWidth: 2, borderColor: COLORS.border, overflow: 'hidden', position: 'relative',
   },
   categorySection: { width: '100%', paddingHorizontal: 24, marginTop: 20 },
   categoryHeader: { justifyContent: 'space-between', alignItems: 'center' },
-  categoryRow: { flexDirection: 'row', justifyContent: 'flex-start', gap: 16, marginTop: 12, width: '100%' },
+  categoryRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 12, width: '100%' },
   customOption: {
     width: 72, height: 72, borderRadius: 16, backgroundColor: COLORS.surface2,
     borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', position: 'relative',
@@ -261,9 +293,15 @@ const localStyles = StyleSheet.create({
     borderRadius: 9, backgroundColor: COLORS.favor, alignItems: 'center',
     justifyContent: 'center', borderWidth: 2, borderColor: COLORS.surface,
   },
-  continueButton: { 
+  footerButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  footerButton: {
     height: 52, 
-    alignSelf: 'stretch' 
+    flex: 1,
   },
   errorContainer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 59, 48, 0.1)',
