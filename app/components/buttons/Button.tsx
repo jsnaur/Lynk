@@ -87,8 +87,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   label: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: FONTS.body,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });

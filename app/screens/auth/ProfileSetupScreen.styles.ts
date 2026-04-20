@@ -155,7 +155,10 @@ export const styles = StyleSheet.create({
 		fontFamily: "DMSans-Regular"
 	},
 	dropdownSelectField: {
-		gap: 10
+		gap: 10,
+		flex: 1,
+		flexDirection: 'row',
+		alignItems: 'center'
 	},
 	dropdownWrapper: {
 		width: 326,
@@ -352,7 +355,7 @@ export const styles = StyleSheet.create({
 	},
 	setupCtaBar: {
 		paddingTop: 16,
-		paddingBottom: 48,
+		paddingBottom: 16,
 		paddingHorizontal: 24
 	},
 	ctaButton: {

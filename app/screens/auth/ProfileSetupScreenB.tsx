@@ -1,18 +1,54 @@
 import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
+import { COLORS } from "../../constants/colors";
+import { FONTS } from "../../constants/fonts";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from "../../constants/accessories";
+import Button from "../../components/buttons/Button";
 
 import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
+
+// Inappropriate content filter
+const INAPPROPRIATE_WORDS = [
+  "damn", "hell", "crap", "piss", "shit", "fuck", "bitch", "ass", "dick", "cock",
+  "pussy", "whore", "slut", "nigga", "nigger", "faggot", "retard", "idiot",
+];
+
+const containsInappropriateContent = (text: string): boolean => {
+  const lowerText = text.toLowerCase();
+  return INAPPROPRIATE_WORDS.some((word) => lowerText.includes(word));
+};
 
 type Props = NativeStackScreenProps<any, "ProfileSetupB">;
 
 const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
   const { displayName, selectedMajor, graduationYear, selectedBodyId, gender } = route.params ?? {};
   const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // Get selected body for avatar name display
+  const BODY_OPTIONS = useMemo(() => ACCESSORY_ITEMS.filter((item) => item.slot === "Body"), []);
+  const selectedBody = useMemo(() => {
+    return BODY_OPTIONS.find((b) => b.id === selectedBodyId);
+  }, [selectedBodyId, BODY_OPTIONS]);
+
+  // Generate avatar title with gender and tone
+  const avatarTitle = useMemo(() => {
+    if (!selectedBody) return "Your Avatar";
+    const genderLabel = selectedBody.gender === "Masc" ? "Masculine" : "Feminine";
+    const toneMatch = selectedBody.name.match(/Tone (\w)/);
+    const tone = toneMatch ? toneMatch[1] : "A";
+    return `${genderLabel} ${tone}`;
+  }, [selectedBody]);
+
+  // Get icon color based on body gender
+  const genderIconColor = useMemo(() => {
+    if (!selectedBody) return COLORS.favor;
+    return selectedBody.gender === "Masc" ? COLORS.study : COLORS.item;
+  }, [selectedBody]);
 
   // Filter items flagged as "setup" and match the selected gender or "Shared"
   // Limited to 2 options to enforce simplicity
@@ -59,14 +95,14 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
     }
   }, [displayName, selectedMajor, graduationYear, selectedBodyId, navigation]);
 
-  const handleLogout = useCallback(async () => {
-    setErrorMessage("");
-    await supabase.auth.signOut();
-  }, []);
-
   const handleContinue = useCallback(async () => {
     if (!displayName || !selectedMajor || !graduationYear || !selectedBodyId) {
       setErrorMessage("Please complete the profile flow.");
+      return;
+    }
+
+    if (containsInappropriateContent(displayName)) {
+      setErrorMessage("Display name contains inappropriate text. Please use a different name.");
       return;
     }
 
@@ -107,7 +143,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
         <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
           <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, localStyles.progressBarFillLarge]} />
+            <View style={[styles.progressBarFill, { width: '100%' }]} />
           </View>
           <View style={[styles.headerTextBlock, styles.textCommon]}>
             <Text style={styles.stepLabel}>Step 2 of 2</Text>
@@ -137,7 +173,14 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View style={styles.textCommon}>
-              <Text style={[styles.hintTitle, styles.hintTitleTypo]}>Your Avatar</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[styles.hintTitle, styles.hintTitleTypo]}>{avatarTitle}</Text>
+                <Ionicons 
+                  name={selectedBody?.gender === "Masc" ? "male" : "female"} 
+                  size={16} 
+                  color={genderIconColor} 
+                />
+              </View>
               <Text style={[styles.hintBody, styles.hintBodyTypo]}>
                 Represents you on the quest board.{"\n"}Unlock more in the Shop.
               </Text>
@@ -148,7 +191,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
             <View key={group.label} style={localStyles.categorySection}>
               <View style={[styles.setupCtaBarFlexBox, localStyles.categoryHeader]}>
                 <View style={styles.dividerLineL} />
-                <Text style={styles.dividerLabel}>{group.label}</Text>
+                <Text style={[styles.dividerLabel, { fontFamily: FONTS.display }]}>{group.label}</Text>
                 <View style={styles.dividerLineL} />
               </View>
               <View style={localStyles.categoryRow}>
@@ -187,55 +230,46 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
         ) : null}
       </ScrollView>
 
-      <View style={[styles.setupCtaBar, styles.setupCtaBarFlexBox]}>
-        <Pressable
-          onPress={handleLogout}
-          style={({ pressed }) => [styles.ctaButton, styles.ctaLayout, pressed && styles.ctaPressed]}
-        >
-          <Text style={[styles.buttonLabel, styles.buttonPosition]}>Log Out</Text>
-        </Pressable>
-
-        <Pressable
+      <SafeAreaView style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}>
+        <Button
+          label="Continue →"
           onPress={handleContinue}
-          style={({ pressed }) => [
-            styles.ctaButton2, styles.ctaLayout, localStyles.ctaButtonActive, pressed && { opacity: 0.8 }
-          ]}
-        >
-          <Text style={[styles.buttonLabel2, styles.buttonPosition, localStyles.ctaTextActive]}>
-            Continue →
-          </Text>
-        </Pressable>
-      </View>
+          variant="Primary"
+          style={localStyles.continueButton}
+        />
+      </SafeAreaView>
     </View>
   );
 };
 
 const localStyles = StyleSheet.create({
-  progressBarFillLarge: { width: 300 },
+  progressBarFillLarge: { width: '100%' },
   selectedAvatarContainer: {
-    width: 96, height: 96, borderRadius: 20, backgroundColor: '#1E1E1E',
-    borderWidth: 2, borderColor: '#333333', overflow: 'hidden', position: 'relative',
+    width: 96, height: 96, borderRadius: 20, backgroundColor: COLORS.surface,
+    borderWidth: 2, borderColor: COLORS.border, overflow: 'hidden', position: 'relative',
   },
   categorySection: { width: '100%', paddingHorizontal: 24, marginTop: 20 },
   categoryHeader: { justifyContent: 'space-between', alignItems: 'center' },
   categoryRow: { flexDirection: 'row', justifyContent: 'flex-start', gap: 16, marginTop: 12, width: '100%' },
   customOption: {
-    width: 72, height: 72, borderRadius: 16, backgroundColor: '#26262e',
-    borderWidth: 1, borderColor: '#3a3a48', alignItems: 'center', justifyContent: 'center', position: 'relative',
+    width: 72, height: 72, borderRadius: 16, backgroundColor: COLORS.surface2,
+    borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', position: 'relative',
   },
-  customOptionSelected: { borderColor: '#00F5FF', backgroundColor: 'rgba(0, 245, 255, 0.1)' },
+  customOptionSelected: { borderColor: COLORS.favor, backgroundColor: `rgba(0, 245, 255, 0.1)` },
   selectionBadge: {
     position: 'absolute', top: 6, right: 6, width: 18, height: 18,
-    borderRadius: 9, backgroundColor: '#00F5FF', alignItems: 'center',
-    justifyContent: 'center', borderWidth: 2, borderColor: '#1E1E1E',
+    borderRadius: 9, backgroundColor: COLORS.favor, alignItems: 'center',
+    justifyContent: 'center', borderWidth: 2, borderColor: COLORS.surface,
   },
-  ctaButtonActive: { backgroundColor: '#00F5FF', borderColor: '#00F5FF', borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  ctaTextActive: { color: '#000000', fontWeight: 'bold' },
+  continueButton: { 
+    height: 52, 
+    alignSelf: 'stretch' 
+  },
   errorContainer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 59, 48, 0.1)',
     padding: 12, borderRadius: 12, marginHorizontal: 24, marginTop: 8, borderWidth: 1, borderColor: 'rgba(255, 59, 48, 0.3)', gap: 6,
   },
-  errorText: { color: '#FF3B30', fontSize: 14, fontWeight: '500' },
+  errorText: { color: COLORS.error, fontSize: 14, fontWeight: '500' },
 });
 
 export default ProfileSetupScreenB;
