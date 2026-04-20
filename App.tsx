@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { DMSans_400Regular, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
+import { COLORS } from './app/constants/colors';
 
 import AppNavigator from './app/navigation/AppNavigator';
 import AnimatedSplashScreen from './app/screens/AnimatedSplashScreen';
@@ -14,7 +16,7 @@ const customDarkTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: '#1A1A1F',
+    background: COLORS.bg,
   },
 };
 
@@ -36,16 +38,25 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {/* 1. Use ternary instead of && to prevent 'false' object render errors */}
-      {isSplashComplete ? null : (
-        <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
-      )}
-      
-      <TokenBalanceProvider>
-        <NavigationContainer theme={customDarkTheme}>
-          <AppNavigator />
-        </NavigationContainer>
-      </TokenBalanceProvider>
+      <View style={styles.root}>
+        {/* 1. Use ternary instead of && to prevent 'false' object render errors */}
+        {isSplashComplete ? null : (
+          <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
+        )}
+
+        <TokenBalanceProvider>
+          <NavigationContainer theme={customDarkTheme}>
+            <AppNavigator />
+          </NavigationContainer>
+        </TokenBalanceProvider>
+      </View>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+});
