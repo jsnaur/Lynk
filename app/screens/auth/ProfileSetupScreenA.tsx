@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
-import { COLORS } from "../../constants/colors";
+import { COLORS, withOpacity } from "../../constants/colors";
 import { FONTS } from "../../constants/fonts";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS } from "../../constants/accessories";
@@ -89,7 +89,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
   // Get icon color based on body gender
   const genderIconColor = useMemo(() => {
     if (!selectedBody) return COLORS.favor;
-    return selectedBody.gender === "Masc" ? COLORS.study : COLORS.item;
+    return selectedBody.gender === "Masc" ? COLORS.favor : COLORS.study;
   }, [selectedBody]);
 
   const handleContinue = useCallback(() => {
@@ -343,7 +343,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
 
         {errorMessage ? (
           <View style={localStyles.errorContainer}>
-            <Ionicons name="alert-circle" size={18} color="#FF3B30" />
+            <Ionicons name="alert-circle" size={18} color={COLORS.error} />
             <Text style={localStyles.errorText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -425,8 +425,8 @@ const localStyles = StyleSheet.create({
   },
   errorContainer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255, 59, 48, 0.1)', padding: 12, borderRadius: 12,
-    marginHorizontal: 24, marginTop: 8, borderWidth: 1, borderColor: 'rgba(255, 59, 48, 0.3)', gap: 6,
+    backgroundColor: withOpacity(COLORS.error, 0.1), padding: 12, borderRadius: 12,
+    marginHorizontal: 24, marginTop: 8, borderWidth: 1, borderColor: withOpacity(COLORS.error, 0.3), gap: 6,
   },
   errorText: { color: COLORS.error, fontSize: 14, fontWeight: '500' },
   fieldLayoutError: { borderColor: COLORS.error, borderWidth: 2 },
