@@ -118,12 +118,19 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       // Specifically filter out Body items explicitly, and anything not mapped in SLOT_TO_CATEGORY
       const sellableItems = ACCESSORY_ITEMS.filter((item) => item.slot !== 'Body' && item.slot in SLOT_TO_CATEGORY);
       
-      if (filter === 'all') {
-        return sellableItems;
-      }
-      return sellableItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
+      const filteredItems = filter === 'all'
+        ? sellableItems
+        : sellableItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
+
+      return [...filteredItems].sort((left, right) => {
+        const leftOwned = ownedIds.has(left.id);
+        const rightOwned = ownedIds.has(right.id);
+
+        if (leftOwned === rightOwned) return 0;
+        return leftOwned ? 1 : -1;
+      });
     },
-    [filter],
+    [filter, ownedIds],
   );
 
   const completePurchase = useCallback(async (item: AccessoryItem) => {
