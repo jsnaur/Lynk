@@ -1,4 +1,6 @@
 import { StyleSheet } from "react-native";
+import { COLORS, withOpacity } from "../../constants/colors";
+import { FONTS } from "../../constants/fonts";
 
 export const styles = StyleSheet.create({
 	utilityInfoFormFlexBox: {
@@ -17,28 +19,28 @@ export const styles = StyleSheet.create({
 		overflow: "hidden"
 	},
 	hintBodyTypo: {
-		fontFamily: "DMSans-Regular",
-		color: "#8a8a9a"
+		fontFamily: FONTS.body,
+		color: COLORS.textSecondary
 	},
 	screenTitleTypo: {
-		fontFamily: "DMSans-Bold",
+		fontFamily: FONTS.body,
 		fontWeight: "700",
-		color: "#f0f0f5"
+		color: COLORS.textPrimary
 	},
 	hintTitleTypo: {
 		fontWeight: "600",
-		fontFamily: "DMSans-Bold"
+		fontFamily: FONTS.body
 	},
 	fieldLayout: {
 		minHeight: 52,
 		paddingVertical: 0,
 		paddingHorizontal: 16,
 		borderRadius: 14,
-		width: 326,
+		width: "100%",
 		borderWidth: 1,
-		borderColor: "#3a3a48",
+		borderColor: COLORS.border,
 		borderStyle: "solid",
-		backgroundColor: "#26262e",
+		backgroundColor: COLORS.surface,
 		flexDirection: "row",
 		alignItems: "center",
 		overflow: "hidden"
@@ -83,15 +85,15 @@ export const styles = StyleSheet.create({
 	profileSetupScreen: {
 		width: "100%",
 		height: 844,
-		backgroundColor: "#1a1a1f"
+		backgroundColor: COLORS.bg
 	},
 	setupProgressHeader: {
-		paddingTop: 32,
+		paddingTop: 20,
 		paddingBottom: 20
 	},
 	progressBarTrack: {
 		borderRadius: 2,
-		backgroundColor: "#31313c",
+		backgroundColor: COLORS.surface2,
 		flexDirection: "row",
 		alignSelf: "stretch",
 		alignItems: "center",
@@ -101,7 +103,7 @@ export const styles = StyleSheet.create({
 		height: 4,
 		width: 100,
 		borderRadius: 4,
-		backgroundColor: "#00f5ff",
+		backgroundColor: COLORS.favor,
 		overflow: "hidden"
 	},
 	headerTextBlock: {
@@ -113,19 +115,19 @@ export const styles = StyleSheet.create({
 	},
 	stepLabel: {
 		textAlign: "center",
-		color: "#8a8a9a",
+		color: COLORS.textSecondary,
 		fontSize: 12,
-		fontFamily: "DMSans-Regular"
+		fontFamily: FONTS.body
 	},
 	screenTitle: {
 		fontSize: 24,
-		color: "#f0f0f5",
+		color: COLORS.textPrimary,
 		textAlign: "center"
 	},
 	screenSubtitle: {
 		fontSize: 14,
 		textAlign: "center",
-		color: "#8a8a9a",
+		color: COLORS.textSecondary,
 		alignSelf: "stretch"
 	},
 	utilityInfoForm: {
@@ -139,27 +141,30 @@ export const styles = StyleSheet.create({
 		fontSize: 13,
 		letterSpacing: 1.5,
 		textAlign: "center",
-		color: "#8a8a9a"
+		color: COLORS.textSecondary
 	},
 	inputField: {
 		fontSize: 15,
 		textAlign: "left",
 		flex: 1,
-		color: "#8a8a9a"
+		color: COLORS.textSecondary
 	},
 	textInput: {
 		fontSize: 15,
 		textAlign: "left",
 		flex: 1,
-		color: "#f0f0f5",
-		fontFamily: "DMSans-Regular"
+		color: COLORS.textPrimary,
+		fontFamily: FONTS.body
 	},
 	dropdownSelectField: {
-		gap: 10
+		gap: 10,
+		flexDirection: 'row',
+		alignItems: 'center',
+		flex: 1
 	},
 	dropdownWrapper: {
-		width: 326,
-		alignSelf: "center",
+		width: "100%",
+		alignSelf: "stretch",
 		position: "relative",
 		overflow: "visible"
 	},
@@ -168,13 +173,15 @@ export const styles = StyleSheet.create({
 	},
 	dropdownValue: {
 		flex: 1,
-		color: "#f0f0f5",
+		color: COLORS.textPrimary,
 		fontSize: 15,
 		textAlign: "left",
-		fontFamily: "DMSans-Regular"
+		fontFamily: FONTS.body,
+		minHeight: 16,
+		paddingVertical: 12
 	},
 	placeholderText: {
-		color: "#8a8a9a"
+		color: COLORS.textSecondary
 	},
 	dropdownPressed: {
 		opacity: 0.85
@@ -186,18 +193,18 @@ export const styles = StyleSheet.create({
 	},
 	majorDropdownList: {
 		position: "absolute",
-		top: 52,
+		top: 51,
 		left: 0,
 		borderWidth: 1,
-		borderTopWidth: 0,
-		borderColor: "#3a3a48",
-		backgroundColor: "#31313c",
+		borderTopWidth: 1,
+		borderColor: COLORS.border,
+		backgroundColor: COLORS.surface2,
 		borderBottomLeftRadius: 14,
 		borderBottomRightRadius: 14,
 		overflow: "hidden",
 		zIndex: 120,
 		elevation: 8,
-		width: 326
+		width: "100%"
 	},
 	majorDropdownScroll: {
 		maxHeight: 280
@@ -210,13 +217,13 @@ export const styles = StyleSheet.create({
 		paddingHorizontal: 16
 	},
 	majorDropdownOptionPressed: {
-		backgroundColor: "rgba(240, 240, 245, 0.08)"
+		backgroundColor: withOpacity(COLORS.textPrimary, 0.08)
 	},
 	dropdownList: {
 		marginTop: 8,
 		borderWidth: 1,
-		borderColor: "#3a3a48",
-		backgroundColor: "#26262e",
+		borderColor: COLORS.border,
+		backgroundColor: COLORS.surface,
 		borderRadius: 14,
 		overflow: "hidden",
 		zIndex: 50,
@@ -230,12 +237,12 @@ export const styles = StyleSheet.create({
 		paddingHorizontal: 16
 	},
 	dropdownOptionPressed: {
-		backgroundColor: "rgba(0, 245, 255, 0.08)"
+		backgroundColor: withOpacity(COLORS.favor, 0.08)
 	},
 	dropdownOptionText: {
-		color: "#f0f0f5",
+		color: COLORS.textPrimary,
 		fontSize: 15,
-		fontFamily: "DMSans-Regular"
+		fontFamily: FONTS.body
 	},
 	yearSelectFieldOpen: {
 		borderBottomLeftRadius: 0,
@@ -244,18 +251,18 @@ export const styles = StyleSheet.create({
 	},
 	yearDropdownList: {
 		position: "absolute",
-		top: 52,
+		top: 51,
 		left: 0,
 		borderWidth: 1,
-		borderTopWidth: 0,
-		borderColor: "#3a3a48",
-		backgroundColor: "#31313c",
+		borderTopWidth: 1,
+		borderColor: COLORS.border,
+		backgroundColor: COLORS.surface2,
 		borderBottomLeftRadius: 14,
 		borderBottomRightRadius: 14,
 		overflow: "hidden",
 		zIndex: 120,
 		elevation: 8,
-		width: 326
+		width: "100%"
 	},
 	yearDropdownScroll: {
 		maxHeight: 280
@@ -268,7 +275,7 @@ export const styles = StyleSheet.create({
 		paddingHorizontal: 16
 	},
 	yearDropdownOptionPressed: {
-		backgroundColor: "rgba(240, 240, 245, 0.08)"
+		backgroundColor: withOpacity(COLORS.textPrimary, 0.08)
 	},
 	chevronIcon: {
 		width: 16,
@@ -280,15 +287,15 @@ export const styles = StyleSheet.create({
 	},
 	dividerLineL: {
 		height: 1,
-		backgroundColor: "#3a3a48",
+		backgroundColor: COLORS.border,
 		flex: 1,
 		overflow: "hidden"
 	},
 	dividerLabel: {
 		fontSize: 8,
-		fontFamily: "PressStart2P-Regular",
+		fontFamily: FONTS.display,
 		textAlign: "center",
-		color: "#8a8a9a"
+		color: COLORS.textSecondary
 	},
 	avatarPreviewRow: {
 		borderRadius: 16
@@ -300,21 +307,21 @@ export const styles = StyleSheet.create({
 		minHeight: 80,
 		borderRadius: 16,
 		borderWidth: 1,
-		borderColor: "#3a3a48",
-		backgroundColor: "#26262e",
+		borderColor: COLORS.border,
+		backgroundColor: COLORS.surface,
 		alignItems: "center",
 		justifyContent: "center"
 	},
 	hintTitle: {
 		textAlign: "left",
 		fontSize: 14,
-		color: "#f0f0f5"
+		color: COLORS.textPrimary
 	},
 	hintBody: {
 		textAlign: "left",
-		color: "#8a8a9a",
+		color: COLORS.textSecondary,
 		fontSize: 12,
-		fontFamily: "DMSans-Regular"
+		fontFamily: FONTS.body
 	},
 	avatarGrid: {
 		width: 324,
@@ -326,8 +333,8 @@ export const styles = StyleSheet.create({
 	},
 	avatarGridItem: {
 		borderWidth: 1,
-		borderColor: "#3a3a48",
-		backgroundColor: "#26262e",
+		borderColor: COLORS.border,
+		backgroundColor: COLORS.surface,
 		width: 72,
 		height: 72,
 		alignItems: "center",
@@ -337,8 +344,8 @@ export const styles = StyleSheet.create({
 		opacity: 0.88
 	},
 	avatarGridItem8: {
-		backgroundColor: "rgba(0, 245, 255, 0.1)",
-		borderColor: "#00f5ff",
+		backgroundColor: withOpacity(COLORS.favor, 0.1),
+		borderColor: COLORS.favor,
 		borderWidth: 2
 	},
 	selectionCheckBadgeIcon: {
@@ -352,23 +359,23 @@ export const styles = StyleSheet.create({
 	},
 	setupCtaBar: {
 		paddingTop: 16,
-		paddingBottom: 48,
+		paddingBottom: 16,
 		paddingHorizontal: 24
 	},
 	ctaButton: {
 		borderWidth: 1,
-		borderColor: "#3a3a48",
+		borderColor: COLORS.border,
 		borderStyle: "solid",
 		height: 52
 	},
 	buttonLabel: {
 		marginLeft: -15,
 		fontWeight: "500",
-		fontFamily: "DMSans-Medium",
-		color: "#8a8a9a"
+		fontFamily: FONTS.body,
+		color: COLORS.textSecondary
 	},
 	ctaButton2: {
-		backgroundColor: "#8a8a9a"
+		backgroundColor: COLORS.textSecondary
 	},
 	ctaPressed: {
 		opacity: 0.75
@@ -378,8 +385,8 @@ export const styles = StyleSheet.create({
 	},
 	buttonLabel2: {
 		marginLeft: -43,
-		color: "#f0f0f5",
-		fontFamily: "DMSans-Bold",
+		color: COLORS.textPrimary,
+		fontFamily: FONTS.body,
 		fontWeight: "700"
 	}
 });

@@ -1,4 +1,5 @@
 import React from 'react';
+import { COLORS } from '../constants/colors';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthScreen from '../screens/auth/AuthScreen';
 import ProfileSetupScreen from '../screens/auth/ProfileSetupScreenA';
@@ -25,7 +26,13 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 const AuthNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+        contentStyle: { backgroundColor: COLORS.bg },
+      }}
+    >
       <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="ForgotPass1" component={ForgotPass1} />
       <Stack.Screen name="ForgotPass2" component={ForgotPass2} />

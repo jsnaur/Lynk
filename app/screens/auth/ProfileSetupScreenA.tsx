@@ -1,11 +1,16 @@
+// app/screens/auth/ProfileSetupScreenA.tsx
+
 import React, { FC, useCallback, useMemo, useState } from "react";
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { styles } from "./ProfileSetupScreen.styles";
-import { COLORS } from "../../constants/colors";
+import { COLORS, withOpacity } from "../../constants/colors";
+import { FONTS } from "../../constants/fonts";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS } from "../../constants/accessories";
+import Button from "../../components/buttons/Button";
 
 import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
 
@@ -19,6 +24,17 @@ const majorOptions = [
 ];
 
 const graduationYearOptions = ["2026", "2027", "2028", "2029", "2030", "2031", "2032"];
+
+// Inappropriate content filter
+const INAPPROPRIATE_WORDS = [
+  "damn", "hell", "crap", "piss", "shit", "fuck", "bitch", "ass", "dick", "cock",
+  "pussy", "whore", "slut", "nigga", "nigger", "faggot", "retard", "idiot",
+];
+
+const containsInappropriateContent = (text: string): boolean => {
+  const lowerText = text.toLowerCase();
+  return INAPPROPRIATE_WORDS.some((word) => lowerText.includes(word));
+};
 
 // Fetch exactly the 8 body base types
 const BODY_OPTIONS = ACCESSORY_ITEMS.filter((item) => item.slot === "Body");
@@ -34,17 +50,47 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
   const [graduationYear, setGraduationYear] = useState<string>("");
   const [yearOpen, setYearOpen] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [displayNameError, setDisplayNameError] = useState<string>("");
+
+  // Check if display name is valid
+  const isDisplayNameValid = useMemo(() => {
+    return displayName.trim() !== "" && !containsInappropriateContent(displayName);
+  }, [displayName]);
 
   const SelectedAvatarBody = useMemo(() => {
     return BODY_OPTIONS.find((f) => f.id === selectedBodyId)?.Sprite;
   }, [selectedBodyId]);
 
-  const handleLogout = useCallback(async () => {
-    setMajorOpen(false);
-    setYearOpen(false);
-    setErrorMessage("");
-    await supabase.auth.signOut();
-  }, []);
+  // Calculate progress: 4 fields = 50% when all filled
+  const progressPercentage = useMemo(() => {
+    const filledFields = [
+      displayName.trim() !== "",
+      selectedMajor !== "",
+      graduationYear !== "",
+      selectedBodyId !== "",
+    ].filter(Boolean).length;
+    return (filledFields / 4) * 50; // 0-50% for Step 1
+  }, [displayName, selectedMajor, graduationYear, selectedBodyId]);
+
+  // Get selected body for avatar name
+  const selectedBody = useMemo(() => {
+    return BODY_OPTIONS.find((b) => b.id === selectedBodyId);
+  }, [selectedBodyId]);
+
+  // Generate avatar title with gender and tone
+  const avatarTitle = useMemo(() => {
+    if (!selectedBody) return "Your Avatar";
+    const genderLabel = selectedBody.gender === "Masc" ? "Masculine" : "Feminine";
+    const toneMatch = selectedBody.name.match(/Tone (\w)/);
+    const tone = toneMatch ? toneMatch[1] : "A";
+    return `${genderLabel} ${tone}`;
+  }, [selectedBody]);
+
+  // Get icon color based on body gender
+  const genderIconColor = useMemo(() => {
+    if (!selectedBody) return COLORS.favor;
+    return selectedBody.gender === "Masc" ? COLORS.favor : COLORS.study;
+  }, [selectedBody]);
 
   const handleContinue = useCallback(() => {
     if (!displayName.trim() || !selectedMajor || !graduationYear || !selectedBodyId) {
@@ -52,9 +98,14 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const selectedBody = BODY_OPTIONS.find((b) => b.id === selectedBodyId);
+    if (containsInappropriateContent(displayName)) {
+      setDisplayNameError("Display name contains inappropriate text. Please choose a different name.");
+      setErrorMessage("");
+      return;
+    }
 
     setErrorMessage("");
+    setDisplayNameError("");
     setMajorOpen(false);
     setYearOpen(false);
 
@@ -65,14 +116,15 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
       selectedBodyId,
       gender: selectedBody?.gender || "Shared", // Pass the chosen gender forward
     });
-  }, [navigation, selectedBodyId, displayName, selectedMajor, graduationYear]);
+  }, [navigation, selectedBodyId, displayName, selectedMajor, graduationYear, selectedBody]);
 
   return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={localStyles.topLockedSection}>
       <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
         <View style={styles.progressBarTrack}>
-          <View style={styles.progressBarFill} />
+          <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
         </View>
         <View style={[styles.headerTextBlock, styles.textCommon]}>
           <Text style={styles.stepLabel}>Step 1 of 2</Text>
@@ -82,15 +134,26 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
           </Text>
         </View>
       </View>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
       <View style={[styles.utilityInfoForm, styles.utilityInfoFormFlexBox]}>
         <Text style={[styles.fieldGroupLabel, styles.hintTitleTypo]}>YOUR INFO</Text>
 
-        <View style={styles.fieldLayout}>
+        <View style={[styles.fieldLayout, 
+          displayNameError ? localStyles.fieldLayoutError : 
+          isDisplayNameValid ? localStyles.fieldLayoutSuccess : {}
+        ]}>
           <TextInput
             value={displayName}
             onChangeText={(text) => {
               setDisplayName(text);
+              if (text.trim() && containsInappropriateContent(text)) {
+                setDisplayNameError("This contains sensitive text. Invalid display name.");
+              } else {
+                setDisplayNameError("");
+              }
               if (errorMessage) setErrorMessage("");
             }}
             placeholder="Display Name (visible to campus)"
@@ -99,6 +162,12 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
             autoCapitalize="words"
           />
         </View>
+        {displayNameError ? (
+          <View style={localStyles.errorMessageContainer}>
+            <Ionicons name="alert-circle" size={14} color={COLORS.error} />
+            <Text style={localStyles.errorMessageText}>{displayNameError}</Text>
+          </View>
+        ) : null}
 
         <View style={[styles.dropdownWrapper, majorOpen && styles.dropdownWrapperOnTop]}>
           <Pressable
@@ -108,21 +177,29 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
               if (errorMessage) setErrorMessage("");
             }}
             style={({ pressed }) => [
-              styles.dropdownSelectField,
-              styles.fieldLayout,
-              majorOpen && styles.majorSelectFieldOpen,
-              pressed && styles.dropdownPressed,
+              localStyles.dropdownTrigger,
+              selectedMajor && !majorOpen && localStyles.dropdownTriggerSuccess,
+              majorOpen && localStyles.dropdownTriggerOpen,
+              pressed && localStyles.dropdownTriggerPressed,
             ]}
           >
-            <Text
-              style={[
-                styles.dropdownValue,
-                selectedMajor ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
-              ]}
-            >
-              {selectedMajor || "Select your major..."}
-            </Text>
-            <Ionicons name={majorOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
+            <View style={localStyles.dropdownTextContainer}>
+              <Text
+                style={[
+                  localStyles.dropdownTriggerText,
+                  selectedMajor ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {selectedMajor || "Select your major..."}
+              </Text>
+            </View>
+            <Ionicons
+              name={majorOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={selectedMajor ? COLORS.textPrimary : COLORS.textSecondary}
+            />
           </Pressable>
 
           {majorOpen && (
@@ -139,6 +216,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
                     onPress={() => {
                       setSelectedMajor(major);
                       setMajorOpen(false);
+                      if (errorMessage) setErrorMessage("");
                     }}
                     style={({ pressed }) => [styles.majorDropdownOption, pressed && styles.majorDropdownOptionPressed]}
                   >
@@ -158,21 +236,29 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
               if (errorMessage) setErrorMessage("");
             }}
             style={({ pressed }) => [
-              styles.dropdownSelectField,
-              styles.fieldLayout,
-              yearOpen && styles.yearSelectFieldOpen,
-              pressed && styles.dropdownPressed,
+              localStyles.dropdownTrigger,
+              graduationYear && !yearOpen && localStyles.dropdownTriggerSuccess,
+              yearOpen && localStyles.dropdownTriggerOpen,
+              pressed && localStyles.dropdownTriggerPressed,
             ]}
           >
-            <Text
-              style={[
-                styles.dropdownValue,
-                graduationYear ? localStyles.dropdownTextActive : localStyles.dropdownTextPlaceholder,
-              ]}
-            >
-              {graduationYear || "Graduation Year"}
-            </Text>
-            <Ionicons name={yearOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
+            <View style={localStyles.dropdownTextContainer}>
+              <Text
+                style={[
+                  localStyles.dropdownTriggerText,
+                  graduationYear ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {graduationYear || "Select graduation year..."}
+              </Text>
+            </View>
+            <Ionicons
+              name={yearOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={graduationYear ? COLORS.textPrimary : COLORS.textSecondary}
+            />
           </Pressable>
 
           {yearOpen && (
@@ -189,6 +275,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
                     onPress={() => {
                       setGraduationYear(year);
                       setYearOpen(false);
+                      if (errorMessage) setErrorMessage("");
                     }}
                     style={({ pressed }) => [styles.yearDropdownOption, pressed && styles.yearDropdownOptionPressed]}
                   >
@@ -204,7 +291,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
       <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
         <View style={styles.setupCtaBarFlexBox}>
           <View style={styles.dividerLineL} />
-          <Text style={styles.dividerLabel}>CHOOSE YOUR BASE</Text>
+          <Text style={[styles.dividerLabel, { fontFamily: FONTS.display }]}>CHOOSE YOUR BASE</Text>
           <View style={styles.dividerLineL} />
         </View>
 
@@ -214,7 +301,14 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
           </View>
 
           <View style={styles.textCommon}>
-            <Text style={[styles.hintTitle, styles.hintTitleTypo]}>Your Avatar</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={[styles.hintTitle, styles.hintTitleTypo]}>{avatarTitle}</Text>
+              <Ionicons 
+                name={selectedBody?.gender === "Masc" ? "male" : "female"} 
+                size={16} 
+                color={genderIconColor} 
+              />
+            </View>
             <Text style={[styles.hintBody, styles.hintBodyTypo]}>
               Represents you on the quest board.{"\n"}Unlock more in the Shop.
             </Text>
@@ -253,63 +347,107 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
 
         {errorMessage ? (
           <View style={localStyles.errorContainer}>
-            <Ionicons name="alert-circle" size={18} color="#FF3B30" />
+            <Ionicons name="alert-circle" size={18} color={COLORS.error} />
             <Text style={localStyles.errorText}>{errorMessage}</Text>
           </View>
         ) : null}
       </ScrollView>
 
-      <View style={[styles.setupCtaBar, styles.setupCtaBarFlexBox]}>
-        <Pressable
-          onPress={handleLogout}
-          style={({ pressed }) => [styles.ctaButton, styles.ctaLayout, pressed && styles.ctaPressed]}
-        >
-          <Text style={[styles.buttonLabel, styles.buttonPosition]}>Log Out</Text>
-        </Pressable>
-
-        <Pressable
+      {/* Ensured the SafeAreaView natively stretches content and wraps the button perfectly */}
+      <SafeAreaView edges={["bottom"]} style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, alignSelf: 'stretch' }}>
+        <Button
+          label="Continue →"
           onPress={handleContinue}
-          style={({ pressed }) => [
-            styles.ctaButton2, styles.ctaLayout, localStyles.ctaButtonActive, pressed && { opacity: 0.8 }
-          ]}
-        >
-          <Text style={[styles.buttonLabel2, styles.buttonPosition, localStyles.ctaTextActive]}>
-            Continue →
-          </Text>
-        </Pressable>
-      </View>
+          variant="Primary"
+          disabled={!displayName.trim() || !selectedMajor || !graduationYear || !selectedBodyId}
+          style={localStyles.continueButton}
+        />
+      </SafeAreaView>
     </View>
+    </SafeAreaView>
   );
 };
 
 const localStyles = StyleSheet.create({
-  textInputColorOverride: { color: '#FFFFFF' },
-  dropdownTextActive: { color: '#FFFFFF' },
-  dropdownTextPlaceholder: { color: '#8a8a9a' },
+  topLockedSection: {
+    backgroundColor: COLORS.bg,
+    zIndex: 20,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  textInputColorOverride: { color: COLORS.textPrimary },
+  dropdownTrigger: {
+    minHeight: 52,
+    width: '100%',
+    paddingVertical: 0,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownTriggerOpen: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  dropdownTriggerSuccess: {
+    borderColor: COLORS.item,
+    borderWidth: 2,
+  },
+  dropdownTriggerPressed: {
+    opacity: 0.85,
+  },
+  dropdownTextContainer: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  dropdownTriggerText: {
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: 'left',
+    fontFamily: FONTS.body,
+    includeFontPadding: false,
+  },
+  dropdownTextSelected: { color: COLORS.textPrimary },
+  dropdownTextPlaceholder: { color: COLORS.textSecondary },
   selectedAvatarContainer: {
-    width: 96, height: 96, borderRadius: 20, backgroundColor: '#1E1E1E',
-    borderWidth: 2, borderColor: '#333333', overflow: 'hidden',
+    width: 96, height: 96, borderRadius: 20, backgroundColor: COLORS.surface,
+    borderWidth: 2, borderColor: COLORS.border, overflow: 'hidden',
     position: 'relative', alignItems: 'center', justifyContent: 'center'
   },
   gridAvatarContainer: {
-    width: 64, height: 64, borderRadius: 16, backgroundColor: '#1E1E1E',
+    width: 64, height: 64, borderRadius: 16, backgroundColor: COLORS.surface,
     borderWidth: 2, borderColor: 'transparent', overflow: 'hidden',
     position: 'relative', margin: 4, alignItems: 'center', justifyContent: 'center'
   },
-  gridAvatarSelected: { borderColor: '#00F5FF' },
+  gridAvatarSelected: { borderColor: COLORS.favor },
   checkBadge: {
-    position: 'absolute', bottom: 4, right: 4, width: 18, height: 18,
-    borderRadius: 9, backgroundColor: '#00F5FF', alignItems: 'center',
-    justifyContent: 'center', borderWidth: 2, borderColor: '#1E1E1E'
+    position: 'absolute', top: 4, right: 4, width: 18, height: 18,
+    borderRadius: 9, backgroundColor: COLORS.favor, alignItems: 'center',
+    justifyContent: 'center', borderWidth: 2, borderColor: COLORS.surface
   },
-  ctaButtonActive: { backgroundColor: '#00F5FF', borderColor: '#00F5FF', borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  ctaTextActive: { color: '#000000', fontWeight: 'bold' },
+  // Removed `width: '100%'` and `paddingHorizontal: 0` to prevent layout clipping and padding overlap
+  continueButton: { 
+    height: 52, 
+    alignSelf: 'stretch' 
+  },
   errorContainer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255, 59, 48, 0.1)', padding: 12, borderRadius: 12,
-    marginHorizontal: 24, marginTop: 8, borderWidth: 1, borderColor: 'rgba(255, 59, 48, 0.3)', gap: 6,
+    backgroundColor: withOpacity(COLORS.error, 0.1), padding: 12, borderRadius: 12,
+    marginHorizontal: 24, marginTop: 8, borderWidth: 1, borderColor: withOpacity(COLORS.error, 0.3), gap: 6,
   },
-  errorText: { color: '#FF3B30', fontSize: 14, fontWeight: '500' }
+  errorText: { color: COLORS.error, fontSize: 14, fontWeight: '500' },
+  fieldLayoutError: { borderColor: COLORS.error, borderWidth: 2 },
+  fieldLayoutSuccess: { borderColor: COLORS.item, borderWidth: 2 },
+  errorMessageContainer: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginHorizontal: 24, marginTop: 4, marginBottom: 14,
+    height: 20
+  },
+  errorMessageText: { color: COLORS.error, fontSize: 12, fontWeight: '500' }
 });
 
 export default ProfileSetupScreenA;

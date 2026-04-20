@@ -7,21 +7,15 @@ import { FONTS } from '../../constants/fonts';
 type DropdownSelectFieldProps = {
   placeholder?: string;
   selectedValue?: string;
-  state?: 'Inactive' | 'Active' | 'Selected';
   onPress?: (isOpen: boolean) => void;
 };
 
 export default function DropdownSelectField({
   placeholder = 'Placeholder',
-  selectedValue = 'Chosen Item',
-  state: externalState = 'Inactive',
+  selectedValue,
   onPress,
 }: DropdownSelectFieldProps) {
-  // Manage internal dropdown open state
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
-  // Map state to visual representation
-  const displayState = isDropdownOpen ? 'Active' : externalState;
 
   const handlePress = () => {
     const newOpenState = !isDropdownOpen;
@@ -29,38 +23,22 @@ export default function DropdownSelectField({
     onPress?.(newOpenState);
   };
 
-  const getColor = () => {
-    if (displayState === 'Selected') return COLORS.favor;
-    if (displayState === 'Active') return COLORS.textPrimary;
-    return COLORS.textSecondary;
-  };
-
-  const getBorderColor = () => {
-    if (displayState === 'Active') return COLORS.textPrimary;
-    if (displayState === 'Selected') return COLORS.favor;
-    return COLORS.border;
-  };
-
-  const displayText = displayState === 'Selected' ? selectedValue : placeholder;
+  const displayText = selectedValue ? selectedValue : placeholder;
+  const textColor = selectedValue ? COLORS.textPrimary : COLORS.textSecondary;
 
   return (
     <TouchableOpacity
-      style={[
-        styles.container,
-        {
-          borderColor: getBorderColor(),
-        },
-      ]}
+      style={styles.container}
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.text, { color: getColor() }]}>
+      <Text style={[styles.text, { color: textColor }]}> 
         {displayText}
       </Text>
       <MaterialCommunityIcons
         name={isDropdownOpen ? 'chevron-up' : 'chevron-down'}
         size={20}
-        color={getColor()}
+        color={textColor}
       />
     </TouchableOpacity>
   );
