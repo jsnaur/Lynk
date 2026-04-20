@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,7 @@ import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, A
 import { COLORS, withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { supabase } from '../../lib/supabase';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
@@ -42,6 +43,28 @@ const SLOT_TO_CATEGORY: { [key: string]: ShopCategory } = {
 const GRID_GAP = 10;
 const H_PADDING = 16;
 
+const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
+  Body: 'body-masc-a',
+  HairBase: 'hairb-flat-m',
+  HairFringe: 'hairf-chill-m',
+  Eyes: 'eyes-default',
+  Mouth: 'mouth-neutral',
+  Top: 'top-cit-m',
+  Bottom: 'bot-cit-m',
+};
+
+function getAccessoryById(accessoryId?: string | null) {
+  if (!accessoryId) return undefined;
+  return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
+}
+
+function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string>> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Partial<Record<AvatarSlot, string>>;
+  }
+  return DEFAULT_AVATAR_ACCESSORIES;
+}
+
 type ShopScreenProps = {
   onTabPress?: (tab: MainTab) => void;
 };
@@ -56,6 +79,67 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   // Later you will sync this state from the profile's `equipped_accessories` JSONB column
   const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
 
+  useEffect(() => {
+    let mounted = true;
+    let profileChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const fetchProfileAccessories = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !mounted) {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('equipped_accessories')
+        .eq('id', user.id)
+        .single();
+
+      if (!mounted || error) {
+        return;
+      }
+
+      setAppliedAccessories(normalizeAccessories(data?.equipped_accessories));
+
+      if (!profileChannel) {
+        profileChannel = supabase
+          .channel(`profiles:equipped_accessories=eq.${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${user.id}`,
+            },
+            async () => {
+              const { data: refreshedData } = await supabase
+                .from('profiles')
+                .select('equipped_accessories')
+                .eq('id', user.id)
+                .single();
+
+              if (!mounted) {
+                return;
+              }
+
+              setAppliedAccessories(normalizeAccessories(refreshedData?.equipped_accessories));
+            },
+          )
+          .subscribe();
+      }
+    };
+
+    void fetchProfileAccessories();
+
+    return () => {
+      mounted = false;
+      if (profileChannel) {
+        supabase.removeChannel(profileChannel);
+      }
+    };
+  }, []);
+
   const columnWidth = useMemo(() => {
     const w = Dimensions.get('window').width;
     return (w - H_PADDING * 2 - GRID_GAP * 2) / 3;
@@ -66,12 +150,19 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       // Specifically filter out Body items explicitly, and anything not mapped in SLOT_TO_CATEGORY
       const sellableItems = ACCESSORY_ITEMS.filter((item) => item.slot !== 'Body' && item.slot in SLOT_TO_CATEGORY);
       
-      if (filter === 'all') {
-        return sellableItems;
-      }
-      return sellableItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
+      const filteredItems = filter === 'all'
+        ? sellableItems
+        : sellableItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
+
+      return [...filteredItems].sort((left, right) => {
+        const leftOwned = ownedIds.has(left.id);
+        const rightOwned = ownedIds.has(right.id);
+
+        if (leftOwned === rightOwned) return 0;
+        return leftOwned ? 1 : -1;
+      });
     },
-    [filter],
+    [filter, ownedIds],
   );
 
   const completePurchase = useCallback(async (item: AccessoryItem) => {
@@ -107,7 +198,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
               const accessoryId = appliedAccessories[slot];
               if (!accessoryId) return null;
 
-              const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+              const accessory = getAccessoryById(accessoryId);
               if (!accessory) return null;
 
               const Sprite = accessory.Sprite;

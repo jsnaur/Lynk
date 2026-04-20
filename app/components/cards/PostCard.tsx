@@ -61,7 +61,7 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
 				</View>
 
 				<Text style={styles.title}>{quest.title}</Text>
-				<Text numberOfLines={2} style={styles.preview}>
+				<Text numberOfLines={3} style={styles.preview}>
 					{quest.preview}
 				</Text>
 
@@ -177,11 +177,11 @@ const styles = StyleSheet.create({
 		gap: 6,
 	},
 	avatarContainer: {
-		width: 24,
-		height: 24,
+		width: 26,
+		height: 26,
 		position: 'relative',
 		overflow: 'hidden',
-		borderRadius: 12,
+		borderRadius: 13,
 		backgroundColor: COLORS.surface2,
 	},
 	avatarLayer: {
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
 		transform: [{ scale: 1.3 }, { translateY: 2 }],
 	},
 	posterName: {
-		fontSize: 12,
+		fontSize: 13,
 		color: COLORS.textSecondary,
 		fontFamily: FONTS.body,
 	},
@@ -200,8 +200,8 @@ const styles = StyleSheet.create({
 	},
 	rewardPill: {
 		borderRadius: 10,
-		paddingHorizontal: 7,
-		paddingVertical: 3,
+		paddingHorizontal: 8,
+		paddingVertical: 4,
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 3,
