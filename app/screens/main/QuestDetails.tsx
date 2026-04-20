@@ -81,6 +81,27 @@ function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string
   return DEFAULT_AVATAR_ACCESSORIES;
 }
 
+function formatRelativeTime(dateValue: string | number | Date) {
+  const date = new Date(dateValue);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 5) return `${diffWeeks}w ago`;
+
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 type LayeredAvatarProps = {
   accessories?: Partial<Record<AvatarSlot, string>>;
   size: number;
@@ -187,7 +208,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             userId: c.user_id,
             author: c.user_id === user?.id ? 'You' : (c.profiles?.display_name || 'Unknown User'),
             text: c.content,
-            time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: formatRelativeTime(c.created_at),
             accessories: normalizeAccessories(c.profiles?.equipped_accessories),
           }));
           setComments(formattedComments);
@@ -217,7 +238,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         userId: newC.user_id,
                         author: profileData?.display_name || `User ${newC.user_id.substring(0, 4)}`,
                         text: newC.content,
-                        time: new Date(newC.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        time: formatRelativeTime(newC.created_at),
                         accessories: normalizeAccessories(profileData?.equipped_accessories),
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
@@ -292,7 +313,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       userId: currentUserId,
       author: currentUserProfile?.display_name || 'You', 
       text: trimmed,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: 'Just now',
       accessories: normalizeAccessories(currentUserProfile?.equipped_accessories),
     };
 
