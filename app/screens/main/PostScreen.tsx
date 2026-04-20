@@ -5,6 +5,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Easing,
   KeyboardAvoidingView,
   PanResponder,
   Platform,
@@ -34,6 +35,9 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 const { GUILD_BASE_XP, TOKEN_MIN, TOKEN_MAX } = APPRAISER_CONSTANTS;
 
+const MAX_PARTICIPANTS_MIN = 2;
+const MAX_PARTICIPANTS_MAX = 20;
+
 const CATEGORY_BG = {
   favor: withOpacity(COLORS.favor, 0.15),
   study: withOpacity(COLORS.study, 0.15),
@@ -41,6 +45,7 @@ const CATEGORY_BG = {
 } as const;
 
 type QuestCategory = 'Favor' | 'Study' | 'Item';
+type QuestMode = 'solo' | 'group';
 
 const CATEGORIES: { key: QuestCategory; color: string; bg: string }[] = [
   { key: 'Favor', color: COLORS.favor, bg: CATEGORY_BG.favor },
@@ -58,6 +63,237 @@ function FieldError({ message, visible }: { message: string; visible: boolean })
   );
 }
 
+// ─── Quest Mode Pill Toggle ───────────────────────────────────────────────────
+function QuestModePill({
+  mode,
+  onChangeMode,
+}: {
+  mode: QuestMode;
+  onChangeMode: (m: QuestMode) => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(mode === 'solo' ? 0 : 1)).current;
+
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: mode === 'solo' ? 0 : 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [mode]);
+
+  const indicatorLeft = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['2%', '51%'],
+  });
+
+  return (
+    <View style={styles.modePillTrack}>
+      <Animated.View style={[styles.modePillIndicator, { left: indicatorLeft }]} />
+      <Pressable
+        style={styles.modePillOption}
+        onPress={() => onChangeMode('solo')}
+      >
+        <Ionicons
+          name="person-outline"
+          size={13}
+          color={mode === 'solo' ? COLORS.textPrimary : COLORS.textSecondary}
+        />
+        <Text style={[styles.modePillLabel, mode === 'solo' && styles.modePillLabelActive]}>
+          Solo
+        </Text>
+      </Pressable>
+      <Pressable
+        style={styles.modePillOption}
+        onPress={() => onChangeMode('group')}
+      >
+        <Ionicons
+          name="people-outline"
+          size={13}
+          color={mode === 'group' ? COLORS.textPrimary : COLORS.textSecondary}
+        />
+        <Text style={[styles.modePillLabel, mode === 'group' && styles.modePillLabelActive]}>
+          Group
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ─── Auto-Accept Toggle ───────────────────────────────────────────────────────
+function AutoAcceptToggle({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: value ? 1 : 0,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [value]);
+
+  const thumbX = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 22] });
+  const trackColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [COLORS.surface2, withOpacity(COLORS.xp, 0.55)],
+  });
+
+  return (
+    <Pressable onPress={() => onChange(!value)} style={styles.toggleHit}>
+      <Animated.View style={[styles.toggleTrack, { backgroundColor: trackColor }]}>
+        <Animated.View style={[styles.toggleThumb, { transform: [{ translateX: thumbX }] }]} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// ─── Participant Stepper ──────────────────────────────────────────────────────
+function ParticipantStepper({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const canDecrement = value > MAX_PARTICIPANTS_MIN;
+  const canIncrement = value < MAX_PARTICIPANTS_MAX;
+
+  return (
+    <View style={styles.participantStepper}>
+      <Pressable
+        hitSlop={10}
+        onPress={() => canDecrement && onChange(value - 1)}
+        style={({ pressed }) => [
+          styles.participantStepBtn,
+          (!canDecrement || pressed) && styles.stepperDim,
+        ]}
+      >
+        <DecrementBtn width={32} height={32} />
+      </Pressable>
+
+      <View style={styles.participantValueWrap}>
+        <Text style={styles.participantValue}>{value}</Text>
+        <Text style={styles.participantValueLabel}>helpers</Text>
+      </View>
+
+      <Pressable
+        hitSlop={10}
+        onPress={() => canIncrement && onChange(value + 1)}
+        style={({ pressed }) => [
+          styles.participantStepBtn,
+          (!canIncrement || pressed) && styles.stepperDim,
+        ]}
+      >
+        <IncrementBtn width={32} height={32} />
+      </Pressable>
+    </View>
+  );
+}
+
+// ─── Group Quest Config Panel ─────────────────────────────────────────────────
+function GroupQuestPanel({
+  maxParticipants,
+  isAutoAccept,
+  onChangeMax,
+  onChangeAutoAccept,
+}: {
+  maxParticipants: number;
+  isAutoAccept: boolean;
+  onChangeMax: (v: number) => void;
+  onChangeAutoAccept: (v: boolean) => void;
+}) {
+  const heightAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(heightAnim, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 200,
+        delay: 60,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, []);
+
+  // Dots to visualise slots
+  const dots = Array.from({ length: Math.min(maxParticipants, 10) });
+  const overflow = maxParticipants > 10 ? maxParticipants - 10 : 0;
+
+  return (
+    <Animated.View
+      style={[
+        styles.groupPanel,
+        {
+          opacity: opacityAnim,
+          maxHeight: heightAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 320],
+          }),
+          overflow: 'hidden',
+        },
+      ]}
+    >
+      {/* Participant count row */}
+      <View style={styles.groupPanelRow}>
+        <View style={styles.groupPanelLeft}>
+          <Text style={styles.groupPanelTitle}>Max helpers</Text>
+          <Text style={styles.groupPanelSub}>Anyone can join up to this limit</Text>
+          {/* Slot visualiser */}
+          <View style={styles.slotDotsRow}>
+            {dots.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.slotDot, { backgroundColor: withOpacity(COLORS.xp, 0.7) }]}
+              />
+            ))}
+            {overflow > 0 && (
+              <Text style={styles.slotOverflow}>+{overflow}</Text>
+            )}
+          </View>
+        </View>
+        <ParticipantStepper value={maxParticipants} onChange={onChangeMax} />
+      </View>
+
+      <View style={styles.groupDivider} />
+
+      {/* Auto-accept row */}
+      <View style={styles.groupPanelRow}>
+        <View style={styles.groupPanelLeft}>
+          <View style={styles.autoAcceptLabelRow}>
+            <Text style={styles.groupPanelTitle}>Auto-accept</Text>
+            {isAutoAccept && (
+              <View style={styles.autoAcceptBadge}>
+                <Text style={styles.autoAcceptBadgeText}>ON</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.groupPanelSub}>
+            {isAutoAccept
+              ? 'Helpers join instantly — no approval needed'
+              : 'You manually approve each applicant'}
+          </Text>
+        </View>
+        <AutoAcceptToggle value={isAutoAccept} onChange={onChangeAutoAccept} />
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PostScreen({ navigation }: { navigation: any }) {
   const { refreshBalance } = useTokenBalance();
   const [category, setCategory] = useState<QuestCategory | null>(null);
@@ -67,6 +303,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [tokenBounty, setTokenBounty] = useState(DEFAULT_APPRAISAL.tokenBounty);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  // Group quest state
+  const [questMode, setQuestMode] = useState<QuestMode>('solo');
+  const [maxParticipants, setMaxParticipants] = useState(MAX_PARTICIPANTS_MIN);
+  const [isAutoAccept, setIsAutoAccept] = useState(true);
+
   const sheetTranslateY = useRef(new Animated.Value(0)).current;
   const isDismissingRef = useRef(false);
 
@@ -108,6 +350,15 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     });
   }, []);
 
+  const handleModeChange = useCallback((m: QuestMode) => {
+    setQuestMode(m);
+    // Reset to sensible defaults when switching back to solo
+    if (m === 'solo') {
+      setMaxParticipants(MAX_PARTICIPANTS_MIN);
+      setIsAutoAccept(true);
+    }
+  }, []);
+
   const animateDismiss = useCallback(() => {
     if (isDismissingRef.current) return;
     isDismissingRef.current = true;
@@ -138,7 +389,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             animateDismiss();
             return;
           }
-
           Animated.spring(sheetTranslateY, {
             toValue: 0,
             useNativeDriver: true,
@@ -162,28 +412,36 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const publishToSupabase = async () => {
     setIsPublishing(true);
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new Error('You must be logged in to post.');
 
-      // Default CIT University fallback
-      let lat = 10.2975; 
+      // Derive final backend values
+      const finalMaxParticipants = questMode === 'solo' ? 1 : maxParticipants;
+      // is_auto_accept is only meaningful for group quests; solo always true
+      const finalIsAutoAccept = questMode === 'solo' ? true : isAutoAccept;
+
+      let lat = 10.2975;
       let lon = 123.8803;
 
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-           // Prevent unsatisfied settings exception
-           const servicesEnabled = await Location.hasServicesEnabledAsync();
-           if (servicesEnabled) {
-              const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-              lat = loc.coords.latitude;
-              lon = loc.coords.longitude;
-           } else {
-             console.log("GPS turned off. Using default location.");
-           }
+          const servicesEnabled = await Location.hasServicesEnabledAsync();
+          if (servicesEnabled) {
+            const loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            lat = loc.coords.latitude;
+            lon = loc.coords.longitude;
+          } else {
+            console.log('GPS turned off. Using default location.');
+          }
         }
       } catch (locErr: any) {
-        console.log("Location fetch caught, using default fallback.", locErr.message);
+        console.log('Location fetch caught, using default fallback.', locErr.message);
       }
 
       const { error } = await supabase.rpc('create_quest_with_bounty', {
@@ -195,6 +453,8 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         p_token_bounty: tokenBounty,
         p_latitude: lat,
         p_longitude: lon,
+        p_max_participants: finalMaxParticipants,
+        p_is_auto_accept: finalIsAutoAccept,
       });
 
       if (error) {
@@ -204,7 +464,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
           error.message.toLowerCase().includes('insufficient token balance');
 
         if (insufficientBalance) {
-          throw new Error('Not enough tokens for this bounty. Lower the token reward or earn more tokens.');
+          throw new Error(
+            'Not enough tokens for this bounty. Lower the token reward or earn more tokens.',
+          );
         }
 
         throw error;
@@ -235,11 +497,16 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     setSubmitAttempted(true);
     if (!isValid) return;
 
+    const participantsLine =
+      questMode === 'group'
+        ? `\nHelpers: up to ${maxParticipants} · ${isAutoAccept ? 'Auto-accept' : 'Manual approve'}`
+        : '';
+
     Alert.alert(
       'Publish quest?',
       `Guild Appraiser: ${appraisal.tier} tier (${appraisal.confidence} confidence)\nCategory: ${category}\nTotal XP: ${GUILD_BASE_XP + appraisal.bonusXp}${
         tokenBounty > 0 ? `\nTokens: ${tokenBounty}` : ''
-      }`,
+      }${participantsLine}`,
       [
         { text: 'Keep editing', style: 'cancel' },
         {
@@ -248,7 +515,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         },
       ],
     );
-  }, [isValid, category, appraisal, tokenBounty, publishToSupabase]);
+  }, [isValid, category, appraisal, tokenBounty, questMode, maxParticipants, isAutoAccept, publishToSupabase]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -264,21 +531,21 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             </View>
 
             <View style={styles.navRow}>
-            <Pressable
-              onPress={animateDismiss}
-              style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
-              disabled={isPublishing}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-            <Text style={styles.navTitle}>New Quest</Text>
-            <Pressable
-              onPress={onPublish}
-              style={({ pressed }) => [styles.publishBtn, pressed && styles.pressed]}
-              disabled={isPublishing}
-            >
-              <Text style={styles.publishText}>{isPublishing ? '...' : 'Publish'}</Text>
-            </Pressable>
+              <Pressable
+                onPress={animateDismiss}
+                style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
+                disabled={isPublishing}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+              <Text style={styles.navTitle}>New Quest</Text>
+              <Pressable
+                onPress={onPublish}
+                style={({ pressed }) => [styles.publishBtn, pressed && styles.pressed]}
+                disabled={isPublishing}
+              >
+                <Text style={styles.publishText}>{isPublishing ? '...' : 'Publish'}</Text>
+              </Pressable>
             </View>
           </View>
 
@@ -297,6 +564,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               }
             }}
           >
+            {/* CATEGORY */}
             <View style={styles.section}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>CATEGORY</Text>
@@ -317,16 +585,25 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                       ]}
                     >
                       <View style={[styles.categoryDot, { backgroundColor: color }]} />
-                      <Text style={[styles.categoryLabel, selected && { color: COLORS.textPrimary }]}>
+                      <Text
+                        style={[
+                          styles.categoryLabel,
+                          selected && { color: COLORS.textPrimary },
+                        ]}
+                      >
                         {key}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
-              <FieldError message="Please select a category" visible={submitAttempted && !category} />
+              <FieldError
+                message="Please select a category"
+                visible={submitAttempted && !category}
+              />
             </View>
 
+            {/* TITLE */}
             <View style={styles.section}>
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
@@ -346,9 +623,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 maxLength={TITLE_MAX}
                 autoCorrect
               />
-              <FieldError message="Title is required" visible={submitAttempted && !titleTrim} />
+              <FieldError
+                message="Title is required"
+                visible={submitAttempted && !titleTrim}
+              />
             </View>
 
+            {/* DESCRIPTION */}
             <View style={styles.section}>
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
@@ -369,9 +650,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 multiline
                 textAlignVertical="top"
               />
-              <FieldError message="Description is required" visible={submitAttempted && !descTrim} />
+              <FieldError
+                message="Description is required"
+                visible={submitAttempted && !descTrim}
+              />
             </View>
 
+            {/* LOCATION */}
             <View style={styles.section}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>LOCATION ON CAMPUS</Text>
@@ -388,9 +673,59 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   autoCorrect
                 />
               </View>
-              <FieldError message="Campus location is required" visible={submitAttempted && !locTrim} />
+              <FieldError
+                message="Campus location is required"
+                visible={submitAttempted && !locTrim}
+              />
             </View>
 
+            {/* ─── QUEST MODE ─────────────────────────────────────────────── */}
+            <View style={styles.section}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>QUEST MODE</Text>
+              </View>
+
+              {/* Mode pill switcher */}
+              <View style={styles.modeCard}>
+                <View style={styles.modeCardTop}>
+                  <View style={styles.modeCardTitleBlock}>
+                    <Ionicons
+                      name={questMode === 'solo' ? 'person-outline' : 'people-outline'}
+                      size={16}
+                      color={questMode === 'group' ? COLORS.xp : COLORS.textSecondary}
+                    />
+                    <Text style={styles.modeCardTitle}>
+                      {questMode === 'solo' ? 'Solo Quest' : 'Group Quest'}
+                    </Text>
+                    {questMode === 'group' && (
+                      <View style={styles.groupBadge}>
+                        <Text style={styles.groupBadgeText}>NEW</Text>
+                      </View>
+                    )}
+                  </View>
+                  <QuestModePill mode={questMode} onChangeMode={handleModeChange} />
+                </View>
+
+                <Text style={styles.modeCardDesc}>
+                  {questMode === 'solo'
+                    ? 'One hero answers the call. Best for quick personal tasks.'
+                    : 'Rally a party of helpers. Great for larger tasks or study groups.'}
+                </Text>
+
+                {/* Expandable group config */}
+                {questMode === 'group' && (
+                  <GroupQuestPanel
+                    maxParticipants={maxParticipants}
+                    isAutoAccept={isAutoAccept}
+                    onChangeMax={setMaxParticipants}
+                    onChangeAutoAccept={setIsAutoAccept}
+                  />
+                )}
+              </View>
+            </View>
+            {/* ──────────────────────────────────────────────────────────────── */}
+
+            {/* GUILD APPRAISER + REWARD */}
             <View style={styles.section}>
               <View style={styles.appraiserCard}>
                 <View style={styles.appraiserHeader}>
@@ -429,15 +764,15 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <Text style={styles.dividerLabel}>SET REWARD</Text>
                 <View style={styles.dividerLine} />
               </View>
-              <Text style={styles.hint}>
-                Higher bounties get picked up faster.
-              </Text>
+              <Text style={styles.hint}>Higher bounties get picked up faster.</Text>
 
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>XP reward</Text>
-                    <Text style={styles.rewardSub}>Auto-set by Guild Appraiser: +{appraisal.bonusXp} XP</Text>
+                    <Text style={styles.rewardSub}>
+                      Auto-set by Guild Appraiser: +{appraisal.bonusXp} XP
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -501,6 +836,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
@@ -693,6 +1029,217 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Regular',
     flex: 1,
   },
+
+  // ── Quest Mode Card ─────────────────────────────────────────────────────────
+  modeCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    padding: 14,
+    gap: 10,
+    overflow: 'hidden',
+  },
+  modeCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  modeCardTitleBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flex: 1,
+  },
+  modeCardTitle: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  modeCardDesc: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: COLORS.textSecondary,
+    fontFamily: 'DMSans-Regular',
+  },
+  groupBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: withOpacity(COLORS.xp, 0.18),
+    borderWidth: 1,
+    borderColor: withOpacity(COLORS.xp, 0.35),
+  },
+  groupBadgeText: {
+    fontSize: 8,
+    fontFamily: 'PressStart2P-Regular',
+    color: COLORS.xp,
+    letterSpacing: 0.5,
+  },
+
+  // ── Mode Pill Switcher ──────────────────────────────────────────────────────
+  modePillTrack: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface2,
+    borderRadius: 999,
+    padding: 2,
+    width: 134,
+    height: 34,
+    position: 'relative',
+    alignItems: 'center',
+  },
+  modePillIndicator: {
+    position: 'absolute',
+    top: 2,
+    width: '48%',
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: COLORS.border,
+  },
+  modePillOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    zIndex: 1,
+  },
+  modePillLabel: {
+    fontSize: 12,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  modePillLabelActive: {
+    color: COLORS.textPrimary,
+  },
+
+  // ── Group Panel ─────────────────────────────────────────────────────────────
+  groupPanel: {
+    marginTop: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: withOpacity(COLORS.xp, 0.22),
+    backgroundColor: withOpacity(COLORS.xp, 0.05),
+    overflow: 'hidden',
+  },
+  groupPanelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  groupPanelLeft: {
+    flex: 1,
+    gap: 3,
+  },
+  groupPanelTitle: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  groupPanelSub: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontFamily: 'DMSans-Regular',
+    lineHeight: 15,
+  },
+  groupDivider: {
+    height: 1,
+    backgroundColor: withOpacity(COLORS.xp, 0.15),
+    marginHorizontal: 14,
+  },
+
+  // Slot dots
+  slotDotsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  slotDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  slotOverflow: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    fontFamily: 'DMSans-Regular',
+    alignSelf: 'center',
+  },
+
+  // Participant stepper
+  participantStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  participantStepBtn: {
+    opacity: 1,
+  },
+  participantValueWrap: {
+    alignItems: 'center',
+    minWidth: 44,
+  },
+  participantValue: {
+    fontSize: 20,
+    fontFamily: 'SpaceMono-Bold',
+    fontWeight: '700',
+    color: COLORS.xp,
+    textAlign: 'center',
+  },
+  participantValueLabel: {
+    fontSize: 8,
+    fontFamily: 'DMSans-Regular',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+
+  // Auto-accept toggle
+  autoAcceptLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  autoAcceptBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: withOpacity(COLORS.xp, 0.18),
+  },
+  autoAcceptBadgeText: {
+    fontSize: 8,
+    fontFamily: 'PressStart2P-Regular',
+    color: COLORS.xp,
+  },
+  toggleHit: {
+    padding: 4,
+  },
+  toggleTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.textPrimary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+
+  // ── Appraiser + Reward ──────────────────────────────────────────────────────
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
