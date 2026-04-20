@@ -21,66 +21,29 @@ function getAccessoryById(accessoryId?: string | null) {
 	return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
 }
 
-// Generate a random avatar with a consistent seed for a given ID
-function generateRandomAccessories(seed: string): Partial<Record<AvatarSlot, string>> {
-	// Create a simple hash from the seed to get pseudo-random but consistent results
-	let hash = 0;
-	for (let i = 0; i < seed.length; i++) {
-		const char = seed.charCodeAt(i);
-		hash = ((hash << 5) - hash) + char;
-		hash = hash & hash; // Convert to 32bit integer
-	}
-	const rng = () => {
-		hash = (hash * 9301 + 49297) % 233280;
-		return hash / 233280;
-	};
+const DEFAULT_POSTER_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
+	Body: 'body-masc-a',
+	HairBase: 'hairb-flat-m',
+	HairFringe: 'hairf-chill-m',
+	Eyes: 'eyes-default',
+	Mouth: 'mouth-neutral',
+	Top: 'top-cit-m',
+	Bottom: 'bot-cit-m',
+};
 
-	const accessories: Partial<Record<AvatarSlot, string>> = {};
-
-	// Pick a random body
-	const bodies = ACCESSORY_ITEMS.filter((item): item is (typeof ACCESSORY_ITEMS)[number] => Boolean(item) && item.slot === 'Body');
-	if (bodies.length > 0) {
-		accessories['Body'] = bodies[Math.floor(rng() * bodies.length)].id;
-	}
-
-	// Determine gender from body if available
-	const bodyItem = getAccessoryById(accessories['Body']);
-	const gender = bodyItem?.gender || (rng() > 0.5 ? 'Masc' : 'Fem');
-
-	// Pick matching gender items for clothing and hair
-	const getRandomBySlot = (slot: AvatarSlot) => {
-		const matching = ACCESSORY_ITEMS.filter(
-			(item): item is (typeof ACCESSORY_ITEMS)[number] => Boolean(item) && item.slot === slot && (item.gender === gender || item.gender === 'Shared')
-		);
-		return matching.length > 0 ? matching[Math.floor(rng() * matching.length)].id : undefined;
-	};
-
-	// Add essential items
-	accessories['HairBase'] = getRandomBySlot('HairBase') || undefined;
-	accessories['HairFringe'] = getRandomBySlot('HairFringe') || undefined;
-	accessories['Eyes'] = getRandomBySlot('Eyes') || undefined;
-	accessories['Mouth'] = getRandomBySlot('Mouth') || undefined;
-	accessories['Top'] = getRandomBySlot('Top') || undefined;
-	accessories['Bottom'] = getRandomBySlot('Bottom') || undefined;
-
-	// Optionally add some accessories
-	if (rng() > 0.6) {
-		accessories['Background'] = getRandomBySlot('Background') || undefined;
-	}
-	if (rng() > 0.5) {
-		accessories['Headgear'] = getRandomBySlot('Headgear') || undefined;
-	}
-
-	return accessories;
+function hasPosterAccessories(
+	value: FeedQuest['posterAccessories'],
+): value is Partial<Record<AvatarSlot, string>> {
+	return value != null && typeof value === 'object' && Object.keys(value).length > 0;
 }
 
 export default function PostCard({ quest, onPress }: PostCardProps) {
 	const categoryMeta = CATEGORY_META[quest.category];
 	
-	// Use provided accessories or generate random ones
-	const posterAccessories = quest.posterAccessories && Object.keys(quest.posterAccessories).length > 0
+	// Use provided accessories, otherwise a fixed temporary placeholder avatar.
+	const posterAccessories = hasPosterAccessories(quest.posterAccessories)
 		? quest.posterAccessories
-		: generateRandomAccessories(quest.posterName || 'anon');
+		: DEFAULT_POSTER_ACCESSORIES;
 
 	return (
 		<Pressable style={styles.card} onPress={onPress}>
