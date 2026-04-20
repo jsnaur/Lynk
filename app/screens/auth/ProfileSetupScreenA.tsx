@@ -41,7 +41,6 @@ const BODY_OPTIONS = ACCESSORY_ITEMS.filter((item) => item.slot === "Body");
 const defaultSelectedId = BODY_OPTIONS[0]?.id || "";
 
 type Props = NativeStackScreenProps<any, "ProfileSetup">;
-type DropdownState = "inactive" | "active" | "selected";
 
 const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
   const [selectedBodyId, setSelectedBodyId] = useState<string>(defaultSelectedId);
@@ -57,15 +56,6 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
   const isDisplayNameValid = useMemo(() => {
     return displayName.trim() !== "" && !containsInappropriateContent(displayName);
   }, [displayName]);
-
-  const getDropdownState = useCallback((isOpen: boolean, value: string): DropdownState => {
-    if (isOpen) return "active";
-    if (value) return "selected";
-    return "inactive";
-  }, []);
-
-  const majorState = useMemo(() => getDropdownState(majorOpen, selectedMajor), [getDropdownState, majorOpen, selectedMajor]);
-  const yearState = useMemo(() => getDropdownState(yearOpen, graduationYear), [getDropdownState, yearOpen, graduationYear]);
 
   const SelectedAvatarBody = useMemo(() => {
     return BODY_OPTIONS.find((f) => f.id === selectedBodyId)?.Sprite;
@@ -183,25 +173,29 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
               if (errorMessage) setErrorMessage("");
             }}
             style={({ pressed }) => [
-              styles.dropdownSelectField,
-              styles.fieldLayout,
-              majorState === "inactive" && localStyles.dropdownStateInactive,
-              majorState === "active" && localStyles.dropdownStateActive,
-              majorState === "selected" && localStyles.dropdownStateSelected,
-              majorOpen && styles.majorSelectFieldOpen,
-              pressed && styles.dropdownPressed,
+              localStyles.dropdownTrigger,
+              selectedMajor && !majorOpen && localStyles.dropdownTriggerSuccess,
+              majorOpen && localStyles.dropdownTriggerOpen,
+              pressed && localStyles.dropdownTriggerPressed,
             ]}
           >
-            <Text
-              style={[
-                styles.dropdownValue,
-                majorState === "selected" ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
-              ]}
-              numberOfLines={1}
-            >
-              {majorState === "selected" ? selectedMajor : "Select your major..."}
-            </Text>
-            <Ionicons name={majorOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
+            <View style={localStyles.dropdownTextContainer}>
+              <Text
+                style={[
+                  localStyles.dropdownTriggerText,
+                  selectedMajor ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {selectedMajor || "Select your major..."}
+              </Text>
+            </View>
+            <Ionicons
+              name={majorOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={selectedMajor ? COLORS.textPrimary : COLORS.textSecondary}
+            />
           </Pressable>
 
           {majorOpen && (
@@ -218,6 +212,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
                     onPress={() => {
                       setSelectedMajor(major);
                       setMajorOpen(false);
+                      if (errorMessage) setErrorMessage("");
                     }}
                     style={({ pressed }) => [styles.majorDropdownOption, pressed && styles.majorDropdownOptionPressed]}
                   >
@@ -237,25 +232,29 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
               if (errorMessage) setErrorMessage("");
             }}
             style={({ pressed }) => [
-              styles.dropdownSelectField,
-              styles.fieldLayout,
-              yearState === "inactive" && localStyles.dropdownStateInactive,
-              yearState === "active" && localStyles.dropdownStateActive,
-              yearState === "selected" && localStyles.dropdownStateSelected,
-              yearOpen && styles.yearSelectFieldOpen,
-              pressed && styles.dropdownPressed,
+              localStyles.dropdownTrigger,
+              graduationYear && !yearOpen && localStyles.dropdownTriggerSuccess,
+              yearOpen && localStyles.dropdownTriggerOpen,
+              pressed && localStyles.dropdownTriggerPressed,
             ]}
           >
-            <Text
-              style={[
-                styles.dropdownValue,
-                yearState === "selected" ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
-              ]}
-              numberOfLines={1}
-            >
-              {yearState === "selected" ? graduationYear : "Select graduation year..."}
-            </Text>
-            <Ionicons name={yearOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
+            <View style={localStyles.dropdownTextContainer}>
+              <Text
+                style={[
+                  localStyles.dropdownTriggerText,
+                  graduationYear ? localStyles.dropdownTextSelected : localStyles.dropdownTextPlaceholder,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {graduationYear || "Select graduation year..."}
+              </Text>
+            </View>
+            <Ionicons
+              name={yearOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={graduationYear ? COLORS.textPrimary : COLORS.textSecondary}
+            />
           </Pressable>
 
           {yearOpen && (
@@ -272,6 +271,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
                     onPress={() => {
                       setGraduationYear(year);
                       setYearOpen(false);
+                      if (errorMessage) setErrorMessage("");
                     }}
                     style={({ pressed }) => [styles.yearDropdownOption, pressed && styles.yearDropdownOptionPressed]}
                   >
@@ -365,11 +365,43 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
 
 const localStyles = StyleSheet.create({
   textInputColorOverride: { color: COLORS.textPrimary },
+  dropdownTrigger: {
+    minHeight: 52,
+    width: '100%',
+    paddingVertical: 0,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownTriggerOpen: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  dropdownTriggerSuccess: {
+    borderColor: COLORS.item,
+    borderWidth: 2,
+  },
+  dropdownTriggerPressed: {
+    opacity: 0.85,
+  },
+  dropdownTextContainer: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  dropdownTriggerText: {
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: 'left',
+    fontFamily: FONTS.body,
+    includeFontPadding: false,
+  },
   dropdownTextSelected: { color: COLORS.textPrimary },
   dropdownTextPlaceholder: { color: COLORS.textSecondary },
-  dropdownStateInactive: { borderColor: COLORS.border, backgroundColor: COLORS.surface },
-  dropdownStateActive: { borderColor: COLORS.border, backgroundColor: COLORS.surface },
-  dropdownStateSelected: { borderColor: COLORS.item, backgroundColor: COLORS.surface },
   selectedAvatarContainer: {
     width: 96, height: 96, borderRadius: 20, backgroundColor: COLORS.surface,
     borderWidth: 2, borderColor: COLORS.border, overflow: 'hidden',
