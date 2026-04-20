@@ -7,6 +7,7 @@ import ProfileSetupScreenB from '../screens/auth/ProfileSetupScreenB';
 import { supabase } from '../lib/supabase'; 
 import { Session } from '@supabase/supabase-js';
 import { View, ActivityIndicator } from 'react-native';
+import { COLORS } from '../constants/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,14 +79,20 @@ const AppNavigator = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.bg }}>
+        <ActivityIndicator size="large" color={COLORS.favor} />
       </View>
     );
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+        contentStyle: { backgroundColor: COLORS.bg },
+      }}
+    >
       {session && session.user ? (
         // Swap initial route dynamically based on whether profile is completed
         isNewUser ? (
