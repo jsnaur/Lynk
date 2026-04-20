@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,7 @@ import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, A
 import { COLORS, withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { supabase } from '../../lib/supabase';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
@@ -42,6 +43,28 @@ const SLOT_TO_CATEGORY: { [key: string]: ShopCategory } = {
 const GRID_GAP = 10;
 const H_PADDING = 16;
 
+const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
+  Body: 'body-masc-a',
+  HairBase: 'hairb-flat-m',
+  HairFringe: 'hairf-chill-m',
+  Eyes: 'eyes-default',
+  Mouth: 'mouth-neutral',
+  Top: 'top-cit-m',
+  Bottom: 'bot-cit-m',
+};
+
+function getAccessoryById(accessoryId?: string | null) {
+  if (!accessoryId) return undefined;
+  return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
+}
+
+function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string>> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Partial<Record<AvatarSlot, string>>;
+  }
+  return DEFAULT_AVATAR_ACCESSORIES;
+}
+
 type ShopScreenProps = {
   onTabPress?: (tab: MainTab) => void;
 };
@@ -55,6 +78,35 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   
   // Later you will sync this state from the profile's `equipped_accessories` JSONB column
   const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchProfileAccessories = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !mounted) {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('equipped_accessories')
+        .eq('id', user.id)
+        .single();
+
+      if (!mounted || error) {
+        return;
+      }
+
+      setAppliedAccessories(normalizeAccessories(data?.equipped_accessories));
+    };
+
+    void fetchProfileAccessories();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const columnWidth = useMemo(() => {
     const w = Dimensions.get('window').width;
@@ -107,7 +159,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
               const accessoryId = appliedAccessories[slot];
               if (!accessoryId) return null;
 
-              const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+              const accessory = getAccessoryById(accessoryId);
               if (!accessory) return null;
 
               const Sprite = accessory.Sprite;
