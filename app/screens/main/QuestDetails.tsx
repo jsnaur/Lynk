@@ -20,28 +20,11 @@ import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
 
-// Avatar SVGs
-import Avatar1 from "../../../assets/ProfileSetupPic/Sprite.svg";
-import Avatar2 from "../../../assets/ProfileSetupPic/Sprite (1).svg";
-import Avatar3 from "../../../assets/ProfileSetupPic/Sprite (2).svg";
-import Avatar4 from "../../../assets/ProfileSetupPic/Sprite (3).svg";
-import Avatar5 from "../../../assets/ProfileSetupPic/Sprite (4).svg";
-import Avatar6 from "../../../assets/ProfileSetupPic/Selected_Avatar_Content.svg";
-
 import CompactQuestCard from '../../components/cards/CompactQuestCard';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { COLORS, withOpacity } from '../../constants/colors';
+import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { supabase } from '../../lib/supabase';
-
-// Map the avatars to an array so we can select them by index
-const avatarAssets = [
-  Avatar1,
-  Avatar2,
-  Avatar3,
-  Avatar4,
-  Avatar5,
-  Avatar6
-];
 
 type QuestDetailParams = {
   quest?: FeedQuest & { id?: string; user_id?: string; description?: string; bonus_xp?: number; token_bounty?: number; accepted_by?: string };
@@ -58,13 +41,13 @@ type UIComment = {
   author: string;
   text: string;
   time: string;
-  avatarIndex?: number | null; 
+  accessories?: Partial<Record<AvatarSlot, string>>;
 };
 
 type ProfilePreview = {
   id: string;
   displayName: string;
-  avatarIndex?: number | null;
+  accessories?: Partial<Record<AvatarSlot, string>>;
   major?: string | null;
   graduationYear?: string | null;
   bio?: string | null; // Added bio type
@@ -75,6 +58,68 @@ const CATEGORY_COLORS: Record<FeedCategory, string> = {
   study: COLORS.study,
   item: COLORS.item,
 };
+
+const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
+  Body: 'body-masc-a',
+  HairBase: 'hairb-flat-m',
+  HairFringe: 'hairf-chill-m',
+  Eyes: 'eyes-default',
+  Mouth: 'mouth-neutral',
+  Top: 'top-cit-m',
+  Bottom: 'bot-cit-m',
+};
+
+function getAccessoryById(accessoryId?: string | null) {
+  if (!accessoryId) return undefined;
+  return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
+}
+
+function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string>> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Partial<Record<AvatarSlot, string>>;
+  }
+  return DEFAULT_AVATAR_ACCESSORIES;
+}
+
+type LayeredAvatarProps = {
+  accessories?: Partial<Record<AvatarSlot, string>>;
+  size: number;
+  scale?: number;
+  translateY?: number;
+};
+
+function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: LayeredAvatarProps) {
+  const safeAccessories = normalizeAccessories(accessories);
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        overflow: 'hidden',
+        backgroundColor: COLORS.surface2,
+      }}
+    >
+      {ALL_SLOTS_Z_ORDER.map((slot) => {
+        const accId = safeAccessories[slot];
+        if (!accId) return null;
+        const item = getAccessoryById(accId);
+        if (!item) return null;
+        const Sprite = item.Sprite;
+        return (
+          <View
+            key={slot}
+            pointerEvents="none"
+            style={{ ...StyleSheet.absoluteFillObject, transform: [{ scale }, { translateY }] }}
+          >
+            <Sprite width="100%" height="100%" />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const quest = route?.params?.quest;
@@ -130,7 +175,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             *,
             profiles (
               display_name,
-              avatar_index
+              equipped_accessories
             )
           `)
           .eq('quest_id', quest.id)
@@ -143,7 +188,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             author: c.user_id === user?.id ? 'You' : (c.profiles?.display_name || 'Unknown User'),
             text: c.content,
             time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            avatarIndex: c.profiles?.avatar_index, 
+            accessories: normalizeAccessories(c.profiles?.equipped_accessories),
           }));
           setComments(formattedComments);
         }
@@ -162,7 +207,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 // Fetch new comment's author profile
                 supabase
                   .from('profiles')
-                  .select('display_name, avatar_index')
+                  .select('display_name, equipped_accessories')
                   .eq('id', newC.user_id)
                   .single()
                   .then(({ data: profileData }) => {
@@ -173,7 +218,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         author: profileData?.display_name || `User ${newC.user_id.substring(0, 4)}`,
                         text: newC.content,
                         time: new Date(newC.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        avatarIndex: profileData?.avatar_index,
+                        accessories: normalizeAccessories(profileData?.equipped_accessories),
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
                     }
@@ -248,7 +293,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       author: currentUserProfile?.display_name || 'You', 
       text: trimmed,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      avatarIndex: currentUserProfile?.avatar_index, 
+      accessories: normalizeAccessories(currentUserProfile?.equipped_accessories),
     };
 
     setComments((prev) => [...prev, newLocalComment]);
@@ -283,7 +328,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       displayName: selectedComment.author === 'You'
         ? (currentUserProfile?.display_name || 'You')
         : selectedComment.author,
-      avatarIndex: selectedComment.avatarIndex,
+      accessories: selectedComment.accessories,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
       bio: currentUserProfile?.bio || null, // Fallback bio added
@@ -294,7 +339,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     // Fetch the updated profile data including the bio
     const { data: profileData, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_index, major, graduation_year, bio') // Added bio to the query
+      .select('id, display_name, equipped_accessories, major, graduation_year, bio') // Added bio to the query
       .eq('id', selectedComment.userId)
       .maybeSingle();
 
@@ -305,19 +350,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setSelectedProfile({
       id: profileData.id,
       displayName: profileData.display_name || 'Anonymous',
-      avatarIndex: profileData.avatar_index,
+      accessories: normalizeAccessories(profileData.equipped_accessories),
       major: profileData.major,
       graduationYear: profileData.graduation_year,
       bio: profileData.bio, // Set the fetched bio here
     });
   };
-
-  const SelectedProfileAvatar = selectedProfile
-    && selectedProfile.avatarIndex !== undefined
-    && selectedProfile.avatarIndex !== null
-    && avatarAssets[selectedProfile.avatarIndex]
-    ? avatarAssets[selectedProfile.avatarIndex]
-    : avatarAssets[0];
 
   const profileSubtitle = selectedProfile
     ? `${selectedProfile.major || 'Undeclared'}${selectedProfile.graduationYear ? ` · Class of '${selectedProfile.graduationYear.slice(-2)}` : ''}`
@@ -422,17 +460,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
           {/* COMMENTS LIST */}
           {comments.map((comment) => {
-            // Determine which SVG to render
-            const CommentAvatar = (comment.avatarIndex !== undefined && comment.avatarIndex !== null && avatarAssets[comment.avatarIndex]) 
-              ? avatarAssets[comment.avatarIndex] 
-              : avatarAssets[0];
-
             return (
               <View key={comment.id} style={styles.commentRow}>
                 
-                {/* Render the local SVG avatar scaled down for the comments */}
                 <Pressable style={styles.commentAvatarWrap} onPress={() => openCommentActions(comment)} hitSlop={8}>
-                  <CommentAvatar width={28} height={28} />
+                  <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
                 </Pressable>
                 
                 <View style={styles.commentContent}>
@@ -501,7 +533,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
               <View style={styles.previewIdentityRow}>
                 <View style={styles.previewAvatarFrame}>
-                  <SelectedProfileAvatar width={68} height={68} />
+                  <LayeredAvatar accessories={selectedProfile?.accessories} size={68} scale={1.55} translateY={4} />
                 </View>
                 <View style={styles.previewIdentityText}>
                   <Text style={styles.previewName}>{selectedProfile?.displayName || 'Anonymous'}</Text>
