@@ -47,7 +47,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
   // Get icon color based on body gender
   const genderIconColor = useMemo(() => {
     if (!selectedBody) return COLORS.favor;
-    return selectedBody.gender === "Masc" ? COLORS.study : COLORS.item;
+    return selectedBody.gender === "Masc" ? COLORS.favor : COLORS.study;
   }, [selectedBody]);
 
   // Filter items flagged as "setup" and match the selected gender or "Shared"
