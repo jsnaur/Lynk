@@ -8,6 +8,8 @@ import PostScreen from '../screens/main/PostScreen';
 import ShopScreen from '../screens/main/Shop';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import CustomizeScreen from '../screens/main/CustomizeScreen';
+// Import the upcoming Leaderboard screen
+// import LeaderboardScreen from '../screens/main/LeaderboardScreen'; 
 import { MainTab } from '../components/BottomNav';
 
 const Stack = createNativeStackNavigator();
@@ -92,6 +94,12 @@ const MainNavigator = () => {
       />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Customize" component={CustomizeScreen} />
+      
+      {/* NEW: Leaderboard Screen registration */}
+      <Stack.Screen 
+        name="Leaderboard" 
+        getComponent={() => require('../screens/main/LeaderboardScreen').default} 
+      />
     </Stack.Navigator>
   );
 };
