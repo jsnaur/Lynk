@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    FlatList,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -341,39 +342,48 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     })}
                 </View>
 
-                <ScrollView
-                    contentContainerStyle={styles.feedContent}
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl 
-                            refreshing={refreshing} 
-                            onRefresh={onRefresh} 
-                            tintColor={COLORS.favor} 
-                            colors={[COLORS.favor]}  
-                        />
-                    }
-                >
-                    {initialLoading ? (
-                        Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                {/* Performance Fix: Replaced ScrollView with FlatList */}
+                {initialLoading ? (
+                    <ScrollView contentContainerStyle={styles.feedContent} showsVerticalScrollIndicator={false}>
+                        {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
                             <PostCardSkeleton key={`post-skeleton-${index}`} />
-                        ))
-                    ) : filteredQuests.length === 0 ? (
-                        <View style={styles.emptyStateContainer}>
-                            <Text style={styles.emptyStateTitle}>No quests found</Text>
-                            <Text style={styles.emptyStateSubtitle}>
-                                Try changing your filters or check back later.
-                            </Text>
-                        </View>
-                    ) : (
-                        filteredQuests.map((quest) => (
-                            <PostCard
-                                key={quest.id}
-                                quest={quest as any} // Requires categories.ts FeedQuest update for strict matching
-                                onPress={() => navigation?.navigate?.('QuestDetail', { quest })}
+                        ))}
+                    </ScrollView>
+                ) : (
+                    <FlatList
+                        data={filteredQuests}
+                        keyExtractor={(item) => item.id.toString()}
+                        contentContainerStyle={styles.feedContent}
+                        showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl 
+                                refreshing={refreshing} 
+                                onRefresh={onRefresh} 
+                                tintColor={COLORS.favor} 
+                                colors={[COLORS.favor]}  
                             />
-                        ))
-                    )}
-                </ScrollView>
+                        }
+                        ListEmptyComponent={
+                            <View style={styles.emptyStateContainer}>
+                                <Text style={styles.emptyStateTitle}>No quests found</Text>
+                                <Text style={styles.emptyStateSubtitle}>
+                                    Try changing your filters or check back later.
+                                </Text>
+                            </View>
+                        }
+                        renderItem={({ item }) => (
+                            <PostCard
+                                quest={item as any}
+                                onPress={() => navigation?.navigate?.('QuestDetail', { quest: item })}
+                            />
+                        )}
+                        // FlatList Performance Optimizations
+                        initialNumToRender={5}
+                        maxToRenderPerBatch={5}
+                        windowSize={5}
+                        removeClippedSubviews={true}
+                    />
+                )}
             </SafeAreaView>
 
             <BottomNav activeTab="Feed" onTabPress={onTabPress} />

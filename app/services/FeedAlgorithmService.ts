@@ -77,10 +77,10 @@ export async function getPersonalizedFeed(
 
   const prompt = `Rank these quests based on urgency, bounty, and relevance for: ${userProfileText}. Data: ${JSON.stringify(minifiedQuests)}`;
 
-  // STEP 3: Call Gemini API using the ultra-fast 8B model with strict JSON schema
+  // STEP 3: Call Gemini API using the updated Gemini 2.5 Flash Lite model
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
