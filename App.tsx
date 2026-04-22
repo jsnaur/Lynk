@@ -39,16 +39,16 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.root}>
-        {/* 1. Use ternary instead of && to prevent 'false' object render errors */}
-        {isSplashComplete ? null : (
+        {/* Render Splash Screen OR App Navigator, but not both concurrently to prevent load delays */}
+        {!isSplashComplete ? (
           <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
+        ) : (
+          <TokenBalanceProvider>
+            <NavigationContainer theme={customDarkTheme}>
+              <AppNavigator />
+            </NavigationContainer>
+          </TokenBalanceProvider>
         )}
-
-        <TokenBalanceProvider>
-          <NavigationContainer theme={customDarkTheme}>
-            <AppNavigator />
-          </NavigationContainer>
-        </TokenBalanceProvider>
       </View>
     </SafeAreaProvider>
   );
