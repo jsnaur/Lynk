@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import {
     Animated,
     FlatList,
+    Pressable,
     StyleSheet,
     Text,
     View,
@@ -390,6 +391,14 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
+                    <Pressable
+                        style={styles.backButton}
+                        onPress={() => navigation?.goBack?.()}
+                        hitSlop={10}
+                    >
+                        <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
+                        <Text style={styles.backText}>Profile</Text>
+                    </Pressable>
                     <Text style={styles.headerTitle}>RANKINGS</Text>
                     <View style={styles.headerAccent}>
                         <Ionicons name="trophy" size={18} color={COLORS.token} />
@@ -514,6 +523,16 @@ const styles = StyleSheet.create({
         height: 64,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
+    },
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
+    backText: {
+        fontFamily: FONTS.body,
+        fontSize: 14,
+        color: COLORS.textPrimary,
     },
     headerTitle: {
         fontFamily: FONTS.display,
