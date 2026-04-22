@@ -530,6 +530,8 @@ const styles = StyleSheet.create({
         borderColor: COLORS.border,
         overflow: 'hidden',
         position: 'relative',
+        alignItems: 'center',       // <-- Added to center the avatar horizontally
+        justifyContent: 'center',   // <-- Added to center the avatar vertically
     },
     loadingAvatarIconWrap: {
         flex: 1,
