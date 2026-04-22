@@ -128,7 +128,7 @@ function calculateLevelFromXP(totalXP: number) {
 
     const currentThreshold = XP_THRESHOLDS[currentLevel - 1] || 0;
     const nextThreshold = XP_THRESHOLDS[currentLevel] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1] + 5000;
-    
+
     const xpInCurrentLevel = totalXP - currentThreshold;
     const xpNeededForNextLevel = nextThreshold - currentThreshold;
     const progressPercent = Math.min(1, xpInCurrentLevel / xpNeededForNextLevel);
@@ -151,12 +151,41 @@ function BadgeSlot({ image, label }: { image: any; label?: string }) {
     );
 }
 
+function LeaderboardCard({ onPress }: { onPress: () => void }) {
+    return (
+        <Pressable
+            style={({ pressed }) => [styles.leaderboardCard, pressed && { opacity: 0.75 }]}
+            onPress={onPress}
+        >
+            <LinearGradient
+                colors={['rgba(255,215,0,0.13)', 'rgba(192,84,252,0.08)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.leaderboardLeft}>
+                <View style={styles.leaderboardIconWrap}>
+                    <Ionicons name="trophy" size={20} color={COLORS.token} />
+                </View>
+                <View>
+                    <Text style={styles.leaderboardTitle}>HALL OF FAME</Text>
+                    <Text style={styles.leaderboardSubtitle}>Global Rankings</Text>
+                </View>
+            </View>
+            <View style={styles.leaderboardRight}>
+                <Text style={styles.leaderboardCta}>VIEW</Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.token} />
+            </View>
+        </Pressable>
+    );
+}
+
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
     const { balance } = useTokenBalance();
     const [profile, setProfile] = useState<any>(null);
     const [profileLoading, setProfileLoading] = useState<boolean>(true);
-    const [totalXP, setTotalXP] = useState<number>(0); 
-    const [state, setState] = useState<ProfileState>({ 
+    const [totalXP, setTotalXP] = useState<number>(0);
+    const [state, setState] = useState<ProfileState>({
         badgeSelectorVisible: false,
         editProfileVisible: false,
     });
@@ -244,7 +273,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Profile</Text>
-                    <Pressable 
+                    <Pressable
                         style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]}
                         hitSlop={10}
                         onPress={() => navigation?.navigate('Settings')}
@@ -287,7 +316,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     <View style={styles.badgesBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Badges</Text>
-                            <Pressable 
+                            <Pressable
                                 style={styles.setLink}
                                 onPress={() => setState({ ...state, badgeSelectorVisible: true })}
                             >
@@ -332,7 +361,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
                         </View>
 
-                        <Pressable 
+                        {/* ── Leaderboard Card ── */}
+                        <LeaderboardCard onPress={() => navigation?.navigate('Leaderboard')} />
+
+                        <Pressable
                             style={styles.tokenCard}
                             onPress={() => {
                                 if (onTabPress) onTabPress('Shop');
@@ -354,7 +386,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </View>
                         </Pressable>
 
-                        <Pressable 
+                        <Pressable
                             style={styles.questsShortcut}
                             onPress={() => {
                                 if (onTabPress) onTabPress('Quests');
@@ -420,16 +452,16 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                         graduation_year: data.graduationYear
                                     })
                                     .eq('id', user.id);
-                                    
+
                                 if (error) {
                                     console.error("Supabase Save Error:", error.message);
                                 }
                             }
-                            
-                            await fetchProfile(); 
+
+                            await fetchProfile();
                         } catch (e) {
                             console.error("Error updating profile", e);
-                        } 
+                        }
                     }}
                 />
             )}
@@ -566,7 +598,7 @@ const styles = StyleSheet.create({
     badgeRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginHorizontal: -4, 
+        marginHorizontal: -4,
     },
     badgeSlot: {
         flex: 1,
@@ -652,6 +684,57 @@ const styles = StyleSheet.create({
         color: COLORS.textSecondary,
         fontFamily: 'monospace',
     },
+    // ── Leaderboard Card ──────────────────────────────────────────────────────
+    leaderboardCard: {
+        height: 64,
+        paddingHorizontal: 16,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255,215,0,0.30)',
+        backgroundColor: COLORS.surface,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        overflow: 'hidden',
+    },
+    leaderboardLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    leaderboardIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,215,0,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,215,0,0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    leaderboardTitle: {
+        fontFamily: 'PressStart2P',
+        fontSize: 9,
+        color: COLORS.token,
+        letterSpacing: 0.5,
+    },
+    leaderboardSubtitle: {
+        fontSize: 11,
+        color: COLORS.textSecondary,
+        marginTop: 3,
+    },
+    leaderboardRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    leaderboardCta: {
+        fontFamily: 'PressStart2P',
+        fontSize: 8,
+        color: COLORS.token,
+        letterSpacing: 1,
+    },
+    // ─────────────────────────────────────────────────────────────────────────
     tokenCard: {
         height: 64,
         paddingHorizontal: 16,
