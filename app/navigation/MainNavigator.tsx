@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeFeedScreen from '../screens/main/HomeFeedScreen';
 import ProfileDashboardScreen from '../screens/main/ProfileDashboardScreen';
@@ -14,7 +14,7 @@ import { MainTab } from '../components/BottomNav';
 
 const Stack = createNativeStackNavigator();
 
-const MainTabsScreen = ({ navigation }: { navigation: any }) => {
+const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('Feed');
   const tabBeforePostRef = useRef<MainTab>('Feed');
 
@@ -31,6 +31,15 @@ const MainTabsScreen = ({ navigation }: { navigation: any }) => {
     },
     [activeTab],
   );
+
+  // NEW: Handle incoming tab navigation requests from stack screens (like Leaderboard)
+  useEffect(() => {
+    if (route?.params?.activeTab) {
+      handleTabPress(route.params.activeTab);
+      // Clear the parameter after handling it to prevent getting stuck on this tab
+      navigation.setParams({ activeTab: undefined });
+    }
+  }, [route?.params?.activeTab, handleTabPress, navigation]);
 
   const postNavigation = useMemo(
     () => ({
