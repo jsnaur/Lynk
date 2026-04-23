@@ -72,19 +72,30 @@ function timeAgo(dateString: string) {
 
 const SKELETON_CARD_COUNT = 4;
 
+// --- MODULE LEVEL CACHE ---
+// This prevents the screen from reloading data if the component gets unmounted by the tab navigator.
+let CACHED_QUESTS: any[] = [];
+let CACHED_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {};
+let HAS_FETCHED_INITIALLY = false;
+
 export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScreenProps) {
     const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
-    const [initialLoading, setInitialLoading] = useState(true);
-    const [quests, setQuests] = useState<any[]>([]); // Using any internally due to FeedQuest strictness
     
-    // Store JSON avatar instead of an index
-    const [currentUserAccessories, setCurrentUserAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
+    // Initialize state instantly from the cache
+    const [initialLoading, setInitialLoading] = useState(!HAS_FETCHED_INITIALLY);
+    const [quests, setQuests] = useState<any[]>(CACHED_QUESTS); 
+    const [currentUserAccessories, setCurrentUserAccessories] = useState<Partial<Record<AvatarSlot, string>>>(CACHED_ACCESSORIES);
+    
     const [isNotifOpen, setIsNotifOpen] = useState(false); 
     const [unreadNotifCount, setUnreadNotifCount] = useState(0);
     const notifChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+    const flatListRef = useRef<FlatList>(null);
 
-    const fetchProfile = async () => {
+    const fetchProfile = async (forceRefresh = false) => {
+        // Skip if we already have it in memory, unless forced by refresh
+        if (HAS_FETCHED_INITIALLY && !forceRefresh) return;
+
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             const { data } = await supabase
@@ -93,7 +104,8 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 .eq('id', user.id)
                 .single();
             if (data?.equipped_accessories) {
-                setCurrentUserAccessories(data.equipped_accessories as Partial<Record<AvatarSlot, string>>);
+                CACHED_ACCESSORIES = data.equipped_accessories as Partial<Record<AvatarSlot, string>>;
+                setCurrentUserAccessories(CACHED_ACCESSORIES);
             }
         }
     };
@@ -120,7 +132,13 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         }
     };
 
-    const fetchQuests = async () => {
+    const fetchQuests = async (forceRefresh = false) => {
+        // Skip if we already have it in memory, unless forced by refresh
+        if (HAS_FETCHED_INITIALLY && !forceRefresh) {
+            setInitialLoading(false);
+            return;
+        }
+
         try {
             let lat = 10.2975;
             let lon = 123.8803;
@@ -149,7 +167,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     title: q.title,
                     preview: q.description,
                     posterName: q.poster_name || 'Anonymous',
-                    // Using posterAccessories instead of posterAvatarIndex
                     posterAccessories: q.equipped_accessories || {},
                     xp: 50 + (q.bonus_xp || 0), 
                     token: q.token_bounty,
@@ -161,13 +178,21 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 lon, 
                 undefined, 
                 (fastQuests) => {
-                    setQuests(formatQuests(fastQuests));
+                    const formatted = formatQuests(fastQuests);
+                    CACHED_QUESTS = formatted;
+                    HAS_FETCHED_INITIALLY = true;
+                    setQuests(formatted);
                     setInitialLoading(false);
                     setRefreshing(false); 
                 }
             );
 
-            setQuests(formatQuests(aiSortedQuests));
+            const finalFormatted = formatQuests(aiSortedQuests);
+            CACHED_QUESTS = finalFormatted;
+            HAS_FETCHED_INITIALLY = true;
+            setQuests(finalFormatted);
+            setInitialLoading(false);
+            setRefreshing(false);
 
         } catch (error) {
             console.error('Error fetching quests:', error);
@@ -211,6 +236,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     }, []);
 
     useEffect(() => {
+        // These will now instantly return if cache exists and we aren't explicitly forcing a refresh
         fetchProfile();
         fetchQuests();
         fetchUnreadNotifCount();
@@ -219,10 +245,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     useEffect(() => {
         const unsubscribe = navigation?.addListener?.('focus', () => {
-            fetchProfile();
-            fetchQuests();
             fetchUnreadNotifCount();
-            ensureNotificationsSubscription();
         });
         return unsubscribe;
     }, [navigation]);
@@ -241,6 +264,18 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
         onTabPress?.('Profile');
     }, [onTabPress]);
 
+    const handleBottomNavPress = useCallback((tab: MainTab) => {
+        // If clicking the Feed tab while already on it, scroll up and force refresh!
+        if (tab === 'Feed') {
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            setRefreshing(true);
+            fetchProfile(true);
+            fetchQuests(true);
+        } else {
+            onTabPress?.(tab);
+        }
+    }, [onTabPress]);
+
     const filteredQuests = useMemo(() => {
         if (activeFilter === 'all') {
             return quests;
@@ -250,8 +285,8 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchProfile();
-        fetchQuests();
+        fetchProfile(true);
+        fetchQuests(true);
     }, []);
 
     return (
@@ -266,7 +301,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         accessibilityRole="button"
                     >
                         <View style={styles.avatarChip}>
-                            {initialLoading ? (
+                            {(!currentUserAccessories || Object.keys(currentUserAccessories).length === 0) ? (
                                 <Ionicons name="person" size={22} color={COLORS.textPrimary} />
                             ) : (
                                 <View style={styles.avatarPreview}>
@@ -342,7 +377,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     })}
                 </View>
 
-                {/* Performance Fix: Replaced ScrollView with FlatList */}
                 {initialLoading ? (
                     <ScrollView contentContainerStyle={styles.feedContent} showsVerticalScrollIndicator={false}>
                         {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
@@ -351,6 +385,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     </ScrollView>
                 ) : (
                     <FlatList
+                        ref={flatListRef}
                         data={filteredQuests}
                         keyExtractor={(item) => item.id.toString()}
                         contentContainerStyle={styles.feedContent}
@@ -377,7 +412,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                 onPress={() => navigation?.navigate?.('QuestDetail', { quest: item })}
                             />
                         )}
-                        // FlatList Performance Optimizations
                         initialNumToRender={5}
                         maxToRenderPerBatch={5}
                         windowSize={5}
@@ -386,7 +420,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 )}
             </SafeAreaView>
 
-            <BottomNav activeTab="Feed" onTabPress={onTabPress} />
+            <BottomNav activeTab="Feed" onTabPress={handleBottomNavPress} />
             
             {isNotifOpen && (
                 <NotificationSheet 
