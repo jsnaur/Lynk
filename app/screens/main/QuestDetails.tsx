@@ -175,8 +175,21 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
   const [applicantsExpanded, setApplicantsExpanded] = useState(true);
 
+  // Archive Viewer State specifically for the Poster
+  const [viewingArchive, setViewingArchiveState] = useState(false);
+  const viewingArchiveRef = useRef(false);
+
   // Use a ref to ensure the realtime subscription always checks against the latest status
   const questStatusRef = useRef(questData?.status || 'open');
+
+  const toggleArchiveView = () => {
+    const newState = !viewingArchiveRef.current;
+    viewingArchiveRef.current = newState;
+    setViewingArchiveState(newState);
+    if (currentUserId) {
+      fetchQuestData(currentUserId);
+    }
+  };
 
   const fetchQuestData = useCallback(async (userIdToUse?: string) => {
     if (!quest?.id) return;
@@ -201,8 +214,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setParticipants(partData);
     }
 
-    // Determine which comments to fetch
-    const activeVisibility = (qData?.status === 'open') ? 'public' : 'private';
+    // Determine which comments to fetch (Respecting the Poster's Archive Toggle)
+    const activeVisibility = (qData?.status === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
 
     // Fetch Comments based on visibility
     const { data: cData } = await supabase
@@ -265,7 +278,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 if (newC.user_id === activeUserId) return; 
 
                 // Ignore incoming messages that don't match our current view state
-                const expectedVisibility = questStatusRef.current === 'open' ? 'public' : 'private';
+                const expectedVisibility = (questStatusRef.current === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
                 if (newC.visibility !== expectedVisibility) return;
 
                 // Fetch new comment's author profile
@@ -398,6 +411,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const isParticipant = isPoster || myParticipantStatus === 'accepted';
   const commentsOpen = questData?.status === 'open';
   const showComments = commentsOpen || isParticipant;
+  
+  // Only the poster can see the toggle button to view archived comments
+  const showArchivedToggle = !commentsOpen && isPoster;
 
   const onSubmitComment = async () => {
     const trimmed = message.trim();
@@ -694,12 +710,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
           {showComments ? (
             <>
-              {/* COMMENTS HEADER */}
+              {/* COMMENTS HEADER WITH MINIMAL TOGGLE FOR POSTER */}
               <View style={styles.commentsHeader}>
-                <Text style={styles.commentsTitle}>{commentsOpen ? 'Public Comments' : 'Private Group Chat'}</Text>
-                <View style={styles.countChip}>
-                  <Text style={styles.countText}>{commentCount}</Text>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                  <Text style={styles.commentsTitle}>
+                    {commentsOpen ? 'Comments' : (viewingArchive ? 'Archived Comments' : 'Group Chat')}
+                  </Text>
+                  <View style={styles.countChip}>
+                    <Text style={styles.countText}>{commentCount}</Text>
+                  </View>
                 </View>
+
+                {showArchivedToggle && (
+                  <Pressable onPress={toggleArchiveView} hitSlop={12}>
+                    <Text style={styles.archiveToggleText}>
+                      {viewingArchive ? 'View Chat' : 'View Archive'}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
 
               {/* COMMENTS LIST */}
@@ -730,8 +758,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           )}
         </ScrollView>
 
-        {/* INPUT BAR */}
-        {showComments && (
+        {/* INPUT BAR (HIDDEN WHEN POSTER IS VIEWING ARCHIVE) */}
+        {showComments && !viewingArchive && (
           <View style={styles.inputBar}>
             <TextInput
               value={message}
@@ -1073,6 +1101,11 @@ const styles = StyleSheet.create({
   countText: {
     color: COLORS.textSecondary,
     fontSize: 12,
+    fontWeight: '600',
+  },
+  archiveToggleText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
     fontWeight: '600',
   },
   commentRow: {
