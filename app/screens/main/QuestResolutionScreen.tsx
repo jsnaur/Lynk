@@ -25,7 +25,7 @@ export type QuestResolutionSheetModalProps = {
   onClose?: () => void;
   questId: string;
   questTitle: string;
-  acceptorName: string; // Kept for prop-compatibility, but we fetch the true list dynamically
+  acceptorName: string; 
   tokenReward: number;
   xpReward: number;
   onComplete?: () => void;
@@ -36,6 +36,7 @@ const QuestResolutionSheetModal = ({
   onClose,
   questId,
   questTitle,
+  acceptorName,
   tokenReward,
   xpReward,
   onComplete,
@@ -100,20 +101,27 @@ const QuestResolutionSheetModal = ({
     );
   };
 
+  const isSingle = evaluations.length === 1;
+
   const canSubmit = useMemo(() => {
     if (evaluations.length === 0) return false;
-    // Everyone must have an outcome. If completed, they must also have a rating.
+    if (isSingle) {
+      const single = evaluations[0];
+      return single.outcome === 'completed' && single.rating !== null;
+    }
+    // For Multi: Everyone must have an outcome. If completed, they must also have a rating.
     return evaluations.every(
       (ev) => ev.outcome === 'failed' || (ev.outcome === 'completed' && ev.rating !== null)
     );
-  }, [evaluations]);
+  }, [evaluations, isSingle]);
 
   const submitLabel = useMemo(() => {
     if (isSubmitting) return 'Resolving...';
     if (isSubmitted) return 'Completed!';
-    if (!canSubmit) return 'Complete evaluations to submit';
+    if (isSingle && !canSubmit) return 'Complete + Rate to Submit';
+    if (!isSingle && !canSubmit) return 'Complete evaluations to submit';
     return 'Submit & Finish';
-  }, [canSubmit, isSubmitted, isSubmitting]);
+  }, [canSubmit, isSubmitted, isSubmitting, isSingle]);
 
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting) return;
@@ -127,6 +135,7 @@ const QuestResolutionSheetModal = ({
         rating: ev.rating,
       }));
 
+      // We use the same robust RPC regardless of single or group scale.
       const { error } = await supabase.rpc('resolve_group_quest', {
         p_quest_id: questId,
         p_resolutions: payload,
@@ -142,7 +151,7 @@ const QuestResolutionSheetModal = ({
         onClose?.();
       }, 1000);
     } catch (error: any) {
-      console.error('Failed to resolve group quest:', error);
+      console.error('Failed to resolve quest:', error);
       Alert.alert('Error', error.message || 'Failed to resolve the quest. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -154,6 +163,14 @@ const QuestResolutionSheetModal = ({
       onClose?.();
     }
   };
+
+  // Helper variables for the 1-to-1 UI Flow
+  const singleEval = evaluations[0];
+  const singleIsCompleted = singleEval?.outcome === 'completed';
+  const singleRating = singleEval?.rating;
+  const singleDisplayName = singleEval?.name || acceptorName;
+  const shouldShowSingleRating = singleIsCompleted;
+  const shouldShowSingleRewards = singleRating !== null;
 
   return (
     <Modal
@@ -172,7 +189,7 @@ const QuestResolutionSheetModal = ({
           </Pressable>
 
           <View style={styles.headerBlock}>
-            <Text style={styles.title}>Quest Resolution</Text>
+            <Text style={styles.title}>{isSingle ? "Complete This Quest?" : "Quest Resolution"}</Text>
             <Text style={styles.questTitle}>"{questTitle}"</Text>
           </View>
 
@@ -185,115 +202,255 @@ const QuestResolutionSheetModal = ({
             <View style={styles.centerWrap}>
               <Text style={styles.loadingText}>No active participants found.</Text>
             </View>
-          ) : (
-            <ScrollView 
-              style={styles.scrollArea} 
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {evaluations.map((ev) => {
-                const isCompleted = ev.outcome === 'completed';
-                const isFailed = ev.outcome === 'failed';
+          ) : isSingle ? (
+            
+            // ==========================================
+            // 1-TO-1 QUEST UI (Original Preferred View)
+            // ==========================================
+            <View style={styles.scrollArea}>
+              <View style={styles.section}>
+                <Pressable
+                  onPress={() => {
+                    if (!singleIsCompleted) {
+                      updateEvaluation(singleEval.userId, 'outcome', 'completed');
+                    }
+                  }}
+                  disabled={singleIsCompleted || isSubmitting}
+                  style={({ pressed }) => [
+                    styles.completeButton,
+                    singleIsCompleted && styles.completeButtonDone,
+                    singleIsCompleted && styles.completeButtonLocked,
+                    !singleIsCompleted && pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.completeButtonText}>
+                    {singleIsCompleted ? 'Marked as Completed' : 'Mark as Completed'}
+                  </Text>
+                </Pressable>
+              </View>
 
-                return (
-                  <View key={ev.userId} style={styles.evalCard}>
-                    <Text style={styles.evalName}>{ev.name}</Text>
+              {shouldShowSingleRating && (
+                <>
+                  <View style={styles.dividerRow}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerLabel}>now, rate your experience</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
 
-                    <View style={styles.outcomeRow}>
+                  <View style={styles.section}>
+                    <Text style={styles.ratingPrompt}>
+                      How was <Text style={styles.posterName}>{singleDisplayName}</Text> as a quest partner?
+                    </Text>
+
+                    <View style={styles.ratingRow}>
                       <Pressable
-                        onPress={() => updateEvaluation(ev.userId, 'outcome', 'failed')}
-                        style={[styles.outcomeBtn, isFailed && styles.outcomeBtnFailed]}
+                        onPress={() => updateEvaluation(singleEval.userId, 'rating', 'positive')}
+                        disabled={isSubmitting}
+                        style={({ pressed }) => [
+                          styles.ratingButton,
+                          styles.positiveButton,
+                          singleRating === 'positive' && styles.positiveButtonActive,
+                          pressed && styles.pressed,
+                        ]}
                       >
-                        <Text style={[styles.outcomeText, isFailed && styles.outcomeTextFailedActive]}>
-                          Failed
+                        <ThumbUpIcon width={24} height={24} />
+                        <Text
+                          style={[
+                            styles.ratingButtonLabel,
+                            singleRating === 'positive' ? styles.positiveText : styles.idleText,
+                          ]}
+                        >
+                          Positive
                         </Text>
                       </Pressable>
 
                       <Pressable
-                        onPress={() => updateEvaluation(ev.userId, 'outcome', 'completed')}
-                        style={[styles.outcomeBtn, isCompleted && styles.outcomeBtnCompleted]}
+                        onPress={() => updateEvaluation(singleEval.userId, 'rating', 'negative')}
+                        disabled={isSubmitting}
+                        style={({ pressed }) => [
+                          styles.ratingButton,
+                          styles.negativeButton,
+                          singleRating === 'negative' && styles.negativeButtonActive,
+                          pressed && styles.pressed,
+                        ]}
                       >
-                        <Text style={[styles.outcomeText, isCompleted && styles.outcomeTextCompletedActive]}>
-                          Completed
+                        <ThumbDownIcon width={24} height={24} />
+                        <Text
+                          style={[
+                            styles.ratingButtonLabel,
+                            singleRating === 'negative' ? styles.negativeText : styles.idleText,
+                          ]}
+                        >
+                          Negative
                         </Text>
                       </Pressable>
                     </View>
+                  </View>
+                </>
+              )}
 
-                    {isCompleted && (
-                      <View style={styles.ratingRowGroup}>
+              {shouldShowSingleRewards && (
+                <>
+                  <View style={styles.section}>
+                    <LinearGradient
+                      style={styles.rewardCard}
+                      locations={[0, 1]}
+                      colors={['rgba(255, 215, 0, 0.10)', 'rgba(192, 132, 252, 0.10)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <View style={styles.rewardIcons}>
+                        <XpPixelIcon width={32} height={32} />
+                        <TokenPixelIcon width={32} height={32} />
+                      </View>
+
+                      <View style={styles.rewardTextWrap}>
+                        <View style={styles.rewardTopRow}>
+                          <Text style={styles.rewardXpText}>+{xpReward} XP</Text>
+                          <Text style={styles.rewardTokenText}>+{tokenReward} Tokens</Text>
+                        </View>
+                        <Text style={styles.rewardSubtext}>Karma updated. Quest archived.</Text>
+                      </View>
+                    </LinearGradient>
+                  </View>
+
+                  <View style={styles.footer}>
+                    <Pressable
+                      onPress={handleSubmit}
+                      disabled={!canSubmit || isSubmitted || isSubmitting}
+                      style={({ pressed }) => [
+                        styles.submitButton,
+                        (!canSubmit || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
+                        canSubmit && !isSubmitted && pressed && styles.pressed,
+                      ]}
+                    >
+                      {isSubmitting ? (
+                        <ActivityIndicator color="#1a1a1f" />
+                      ) : (
+                        <Text style={styles.submitLabel}>{submitLabel}</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
+
+          ) : (
+
+            // ==========================================
+            // GROUP QUEST UI (Roster Style View)
+            // ==========================================
+            <>
+              <ScrollView 
+                style={styles.scrollArea} 
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {evaluations.map((ev) => {
+                  const isCompleted = ev.outcome === 'completed';
+                  const isFailed = ev.outcome === 'failed';
+
+                  return (
+                    <View key={ev.userId} style={styles.evalCard}>
+                      <Text style={styles.evalName}>{ev.name}</Text>
+
+                      <View style={styles.outcomeRow}>
                         <Pressable
-                          onPress={() => updateEvaluation(ev.userId, 'rating', 'negative')}
-                          style={[
-                            styles.ratingBtnSmall,
-                            ev.rating === 'negative' && styles.ratingBtnSmallNeg,
-                          ]}
+                          onPress={() => updateEvaluation(ev.userId, 'outcome', 'failed')}
+                          style={[styles.outcomeBtn, isFailed && styles.outcomeBtnFailed]}
                         >
-                          <ThumbDownIcon width={20} height={20} />
-                          <Text style={[styles.ratingBtnText, ev.rating === 'negative' && styles.textNeg]}>
-                            Negative
+                          <Text style={[styles.outcomeText, isFailed && styles.outcomeTextFailedActive]}>
+                            Failed
                           </Text>
                         </Pressable>
 
                         <Pressable
-                          onPress={() => updateEvaluation(ev.userId, 'rating', 'positive')}
-                          style={[
-                            styles.ratingBtnSmall,
-                            ev.rating === 'positive' && styles.ratingBtnSmallPos,
-                          ]}
+                          onPress={() => updateEvaluation(ev.userId, 'outcome', 'completed')}
+                          style={[styles.outcomeBtn, isCompleted && styles.outcomeBtnCompleted]}
                         >
-                          <ThumbUpIcon width={20} height={20} />
-                          <Text style={[styles.ratingBtnText, ev.rating === 'positive' && styles.textPos]}>
-                            Positive
+                          <Text style={[styles.outcomeText, isCompleted && styles.outcomeTextCompletedActive]}>
+                            Completed
                           </Text>
                         </Pressable>
                       </View>
-                    )}
-                  </View>
-                );
-              })}
 
-              <View style={styles.section}>
-                <LinearGradient
-                  style={styles.rewardCard}
-                  locations={[0, 1]}
-                  colors={['rgba(255, 215, 0, 0.10)', 'rgba(192, 132, 252, 0.10)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={styles.rewardIcons}>
-                    <XpPixelIcon width={32} height={32} />
-                    <TokenPixelIcon width={32} height={32} />
-                  </View>
+                      {isCompleted && (
+                        <View style={styles.ratingRowGroup}>
+                          <Pressable
+                            onPress={() => updateEvaluation(ev.userId, 'rating', 'negative')}
+                            style={[
+                              styles.ratingBtnSmall,
+                              ev.rating === 'negative' && styles.ratingBtnSmallNeg,
+                            ]}
+                          >
+                            <ThumbDownIcon width={20} height={20} />
+                            <Text style={[styles.ratingBtnText, ev.rating === 'negative' && styles.textNeg]}>
+                              Negative
+                            </Text>
+                          </Pressable>
 
-                  <View style={styles.rewardTextWrap}>
-                    <View style={styles.rewardTopRow}>
-                      <Text style={styles.rewardXpText}>+{xpReward} XP</Text>
-                      <Text style={styles.rewardTokenText}>{tokenReward} Tokens</Text>
+                          <Pressable
+                            onPress={() => updateEvaluation(ev.userId, 'rating', 'positive')}
+                            style={[
+                              styles.ratingBtnSmall,
+                              ev.rating === 'positive' && styles.ratingBtnSmallPos,
+                            ]}
+                          >
+                            <ThumbUpIcon width={20} height={20} />
+                            <Text style={[styles.ratingBtnText, ev.rating === 'positive' && styles.textPos]}>
+                              Positive
+                            </Text>
+                          </Pressable>
+                        </View>
+                      )}
                     </View>
-                    <Text style={styles.rewardSubtext}>Rewards pool split among completed.</Text>
-                  </View>
-                </LinearGradient>
+                  );
+                })}
+
+                <View style={[styles.section, { paddingHorizontal: 0 }]}>
+                  <LinearGradient
+                    style={styles.rewardCard}
+                    locations={[0, 1]}
+                    colors={['rgba(255, 215, 0, 0.10)', 'rgba(192, 132, 252, 0.10)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <View style={styles.rewardIcons}>
+                      <XpPixelIcon width={32} height={32} />
+                      <TokenPixelIcon width={32} height={32} />
+                    </View>
+
+                    <View style={styles.rewardTextWrap}>
+                      <View style={styles.rewardTopRow}>
+                        <Text style={styles.rewardXpText}>+{xpReward} XP</Text>
+                        <Text style={styles.rewardTokenText}>{tokenReward} Tokens</Text>
+                      </View>
+                      <Text style={styles.rewardSubtext}>Rewards pool split among completed.</Text>
+                    </View>
+                  </LinearGradient>
+                </View>
+              </ScrollView>
+
+              <View style={styles.footer}>
+                <Pressable
+                  onPress={handleSubmit}
+                  disabled={!canSubmit || isSubmitted || isSubmitting}
+                  style={({ pressed }) => [
+                    styles.submitButton,
+                    (!canSubmit || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
+                    canSubmit && !isSubmitted && pressed && styles.pressed,
+                  ]}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#1a1a1f" />
+                  ) : (
+                    <Text style={styles.submitLabel}>{submitLabel}</Text>
+                  )}
+                </Pressable>
               </View>
-            </ScrollView>
+            </>
           )}
 
-          <View style={styles.footer}>
-            <Pressable
-              onPress={handleSubmit}
-              disabled={!canSubmit || isSubmitted || isSubmitting}
-              style={({ pressed }) => [
-                styles.submitButton,
-                (!canSubmit || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
-                canSubmit && !isSubmitted && pressed && styles.pressed,
-              ]}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#1a1a1f" />
-              ) : (
-                <Text style={styles.submitLabel}>{submitLabel}</Text>
-              )}
-            </Pressable>
-          </View>
         </View>
       </View>
     </Modal>
@@ -301,6 +458,7 @@ const QuestResolutionSheetModal = ({
 };
 
 const styles = StyleSheet.create({
+  // Global Sheet Styles
   modalRoot: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -310,7 +468,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.58)',
   },
   screen: {
-    height: '88%',
+    minHeight: '78%',
+    maxHeight: '88%',
     width: '100%',
     backgroundColor: '#26262e',
     borderTopLeftRadius: 24,
@@ -359,6 +518,106 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
   },
+
+  // 1-to-1 Specific Styles
+  section: {
+    paddingHorizontal: 24,
+    paddingBottom: 18,
+  },
+  completeButton: {
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: '#39ff14',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completeButtonDone: {
+    backgroundColor: '#6f7280',
+  },
+  completeButtonLocked: {
+    opacity: 0.9,
+  },
+  completeButtonText: {
+    color: '#1a1a1f',
+    fontSize: 16,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '700',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#3a3a48',
+  },
+  dividerLabel: {
+    fontSize: 12,
+    color: '#8a8a9a',
+    fontFamily: 'DMSans-Regular',
+    textAlign: 'center',
+  },
+  ratingPrompt: {
+    color: '#8a8a9a',
+    fontSize: 14,
+    textAlign: 'center',
+    fontFamily: 'DMSans-Regular',
+    marginBottom: 12,
+  },
+  posterName: {
+    color: '#f0f0f5',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  ratingButton: {
+    flex: 1,
+    minHeight: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  positiveButton: {
+    backgroundColor: '#31313c',
+    borderColor: '#3a3a48',
+  },
+  positiveButtonActive: {
+    backgroundColor: 'rgba(57, 255, 20, 0.12)',
+    borderColor: '#39ff14',
+    borderWidth: 2,
+  },
+  negativeButton: {
+    backgroundColor: '#31313c',
+    borderColor: '#3a3a48',
+  },
+  negativeButtonActive: {
+    backgroundColor: 'rgba(255, 92, 92, 0.12)',
+    borderColor: '#ff5c5c',
+    borderWidth: 2,
+  },
+  ratingButtonLabel: {
+    fontSize: 12,
+    fontFamily: 'DMSans-Medium',
+    fontWeight: '500',
+  },
+  idleText: {
+    color: '#8a8a9a',
+  },
+  positiveText: {
+    color: '#39ff14',
+  },
+  negativeText: {
+    color: '#ff8d8d',
+  },
+
+  // Multi-Group Specific Styles
   scrollArea: {
     flex: 1,
   },
@@ -448,9 +707,8 @@ const styles = StyleSheet.create({
   },
   textPos: { color: '#39ff14' },
   textNeg: { color: '#ff8d8d' },
-  section: {
-    marginTop: 6,
-  },
+
+  // Shared Rewards and Footer Styles
   rewardCard: {
     borderRadius: 14,
     borderWidth: 1,
