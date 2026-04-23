@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Modal,
   Pressable,
@@ -52,6 +52,7 @@ type UIComment = {
   text: string;
   time: string;
   accessories?: Partial<Record<AvatarSlot, string>>;
+  visibility?: string;
 };
 
 type ProfilePreview = {
@@ -60,7 +61,7 @@ type ProfilePreview = {
   accessories?: Partial<Record<AvatarSlot, string>>;
   major?: string | null;
   graduationYear?: string | null;
-  bio?: string | null; // Preserved bio type
+  bio?: string | null;
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
@@ -174,6 +175,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
   const [applicantsExpanded, setApplicantsExpanded] = useState(true);
 
+  // Use a ref to ensure the realtime subscription always checks against the latest status
+  const questStatusRef = useRef(questData?.status || 'open');
+
   const fetchQuestData = useCallback(async (userIdToUse?: string) => {
     if (!quest?.id) return;
     
@@ -181,6 +185,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     const { data: qData } = await supabase.from('quests').select('*').eq('id', quest.id).single();
     if (qData) {
       setQuestData(qData);
+      questStatusRef.current = qData.status; // Update Ref for realtime
       if (qData.user_id) {
         const { data: pData } = await supabase.from('profiles').select('*').eq('id', qData.user_id).maybeSingle();
         if (pData) setPosterProfile(pData);
@@ -196,7 +201,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setParticipants(partData);
     }
 
-    // Fetch Comments
+    // Determine which comments to fetch
+    const activeVisibility = (qData?.status === 'open') ? 'public' : 'private';
+
+    // Fetch Comments based on visibility
     const { data: cData } = await supabase
       .from('comments')
       .select(`
@@ -207,6 +215,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         )
       `)
       .eq('quest_id', quest.id)
+      .eq('visibility', activeVisibility)
       .order('created_at', { ascending: true }); 
 
     if (cData) {
@@ -217,6 +226,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         text: c.content,
         time: formatRelativeTime(c.created_at),
         accessories: normalizeAccessories(c.profiles?.equipped_accessories),
+        visibility: c.visibility,
       }));
       setComments(formattedComments);
     }
@@ -254,6 +264,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 const newC = payload.new;
                 if (newC.user_id === activeUserId) return; 
 
+                // Ignore incoming messages that don't match our current view state
+                const expectedVisibility = questStatusRef.current === 'open' ? 'public' : 'private';
+                if (newC.visibility !== expectedVisibility) return;
+
                 // Fetch new comment's author profile
                 supabase
                   .from('profiles')
@@ -269,6 +283,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         text: newC.content,
                         time: formatRelativeTime(newC.created_at),
                         accessories: normalizeAccessories(profileData?.equipped_accessories),
+                        visibility: newC.visibility,
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
                     }
@@ -288,23 +303,19 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     };
   }, [quest?.id, fetchQuestData]);
 
-  // RESTORED: handleApplyOrDrop replaces toggleAccept
   const handleApplyOrDrop = async () => {
     if (!currentUserId || !questData?.id) return;
     try {
       setLoading(true);
       if (myParticipantStatus === 'accepted') {
-        // Drop Quest
         const { error } = await supabase
           .from('quest_participants')
           .update({ status: 'withdrawn' })
           .eq('quest_id', questData.id)
           .eq('user_id', currentUserId);
         if (error) throw error;
-        // Optimistic update
         setParticipants(prev => prev.map(p => p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p));
       } else {
-        // Apply for Quest
         const { data: newStatus, error } = await supabase.rpc('apply_for_quest', { p_quest_id: questData.id });
         if (error) throw error;
         
@@ -323,7 +334,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     }
   };
 
-  // RESTORED: Poster accepting an applicant
   const handleAcceptApplicant = async (applicantId: string) => {
     try {
       setLoading(true);
@@ -341,7 +351,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     }
   };
 
-  // RESTORED: Poster starting manual quest
   const handleStartManualQuest = async () => {
     try {
       setLoading(true);
@@ -380,19 +389,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   let statusText = 'Open';
   if (questData?.status === 'in_progress') statusText = 'In Progress';
   if (questData?.status === 'completed') statusText = 'Completed';
-  if (questData?.status === 'accepted') statusText = 'In Progress'; // Fallback for legacy DB state
+  if (questData?.status === 'accepted') statusText = 'In Progress';
 
   const isQuestAccepted = questData?.status === 'in_progress' || questData?.status === 'completed' || questData?.status === 'accepted';
   const shouldShowCompactCard = isQuestAccepted;
+
+  // VISIBILITY LOGIC
+  const isParticipant = isPoster || myParticipantStatus === 'accepted';
+  const commentsOpen = questData?.status === 'open';
+  const showComments = commentsOpen || isParticipant;
 
   const onSubmitComment = async () => {
     const trimmed = message.trim();
     if (!trimmed || !currentUserId || !questData?.id) return;
 
     setMessage('');
+    const targetVisibility = questData?.status === 'open' ? 'public' : 'private';
     const tempCommentId = `temp-${Date.now()}`;
     
-    // Add local comment instantly with current user's index
     const newLocalComment: UIComment = {
       id: tempCommentId,
       userId: currentUserId,
@@ -400,11 +414,20 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       text: trimmed,
       time: 'Just now',
       accessories: normalizeAccessories(currentUserProfile?.equipped_accessories),
+      visibility: targetVisibility,
     };
 
     setComments((prev) => [...prev, newLocalComment]);
 
-    const { error } = await supabase.from('comments').insert([{ quest_id: questData.id, user_id: currentUserId, content: trimmed }]);
+    const { error } = await supabase
+      .from('comments')
+      .insert([{ 
+        quest_id: questData.id, 
+        user_id: currentUserId, 
+        content: trimmed,
+        visibility: targetVisibility 
+      }]);
+      
     if (error) {
       Alert.alert('Error', 'Failed to post comment. Please try again.');
       setComments((prev) => prev.filter(c => c.id !== tempCommentId));
@@ -428,7 +451,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const onViewProfile = async () => {
     if (!selectedComment?.userId) return;
 
-    // Open with immediate fallback data (now including bio)
     setSelectedProfile({
       id: selectedComment.userId,
       displayName: selectedComment.author === 'You'
@@ -437,21 +459,18 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       accessories: selectedComment.accessories,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
-      bio: currentUserProfile?.bio || null, // Fallback bio added
+      bio: currentUserProfile?.bio || null, 
     });
     setActionsVisible(false);
     setProfilePreviewVisible(true);
 
-    // Fetch the updated profile data including the bio
     const { data: profileData, error } = await supabase
       .from('profiles')
-      .select('id, display_name, equipped_accessories, major, graduation_year, bio') // Added bio to the query
+      .select('id, display_name, equipped_accessories, major, graduation_year, bio') 
       .eq('id', selectedComment.userId)
       .maybeSingle();
 
-    if (error || !profileData) {
-      return;
-    }
+    if (error || !profileData) return;
 
     setSelectedProfile({
       id: profileData.id,
@@ -459,11 +478,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       accessories: normalizeAccessories(profileData.equipped_accessories),
       major: profileData.major,
       graduationYear: profileData.graduation_year,
-      bio: profileData.bio, // Set the fetched bio here
+      bio: profileData.bio,
     });
   };
 
-  // Profile Preview explicitly for the Quest Poster
   const openPosterProfile = async () => {
     const targetUserId = questData?.user_id || quest?.user_id;
     if (!targetUserId) return;
@@ -590,7 +608,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           )}
 
-          {/* RESTORED: POSTER VIEW (MANUAL REVIEW) */}
+          {/* POSTER VIEW (MANUAL REVIEW) */}
           {isPoster && !isAutoAccept && questData?.status === 'open' && (
             <View style={styles.applicantsCard}>
                <Pressable 
@@ -651,7 +669,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           )}
 
-          {/* RESTORED: NON-POSTER CTA BUTTON */}
+          {/* NON-POSTER CTA BUTTON */}
           {(!shouldShowCompactCard || myParticipantStatus === 'accepted') && !isPoster && (
              <View style={{ marginTop: 4 }}>
                 {myParticipantStatus === 'applied' ? (
@@ -674,57 +692,62 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
              </View>
           )}
 
-          {/* COMMENTS HEADER */}
-          <View style={styles.commentsHeader}>
-            <Text style={styles.commentsTitle}>Comments</Text>
-            <View style={styles.countChip}>
-              <Text style={styles.countText}>{commentCount}</Text>
-            </View>
-          </View>
-
-          {/* COMMENTS LIST */}
-          {comments.map((comment) => {
-            return (
-              <View key={comment.id} style={styles.commentRow}>
-                
-                <Pressable style={styles.commentAvatarWrap} onPress={() => openCommentActions(comment)} hitSlop={8}>
-                  <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
-                </Pressable>
-                
-                <View style={styles.commentContent}>
-                  <View style={styles.rowBetween}>
-                    <Pressable onPress={() => openCommentActions(comment)} hitSlop={8}>
-                      <Text style={styles.commentAuthor}>{comment.author}</Text>
-                    </Pressable>
-                    <Text style={styles.commentTime}>{comment.time}</Text>
-                  </View>
-                  <Text style={styles.commentText}>{comment.text}</Text>
+          {showComments ? (
+            <>
+              {/* COMMENTS HEADER */}
+              <View style={styles.commentsHeader}>
+                <Text style={styles.commentsTitle}>{commentsOpen ? 'Public Comments' : 'Private Group Chat'}</Text>
+                <View style={styles.countChip}>
+                  <Text style={styles.countText}>{commentCount}</Text>
                 </View>
               </View>
-            );
-          })}
+
+              {/* COMMENTS LIST */}
+              {comments.map((comment) => {
+                return (
+                  <View key={comment.id} style={styles.commentRow}>
+                    <Pressable style={styles.commentAvatarWrap} onPress={() => openCommentActions(comment)} hitSlop={8}>
+                      <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
+                    </Pressable>
+                    <View style={styles.commentContent}>
+                      <View style={styles.rowBetween}>
+                        <Pressable onPress={() => openCommentActions(comment)} hitSlop={8}>
+                          <Text style={styles.commentAuthor}>{comment.author}</Text>
+                        </Pressable>
+                        <Text style={styles.commentTime}>{comment.time}</Text>
+                      </View>
+                      <Text style={styles.commentText}>{comment.text}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </>
+          ) : (
+            <View style={styles.lockedCommentsBox}>
+              <Ionicons name="lock-closed" size={24} color={COLORS.textSecondary} />
+              <Text style={styles.lockedCommentsText}>This quest is currently in progress.{"\n"}Comments are closed to the public.</Text>
+            </View>
+          )}
         </ScrollView>
 
         {/* INPUT BAR */}
-        <View style={styles.inputBar}>
-          <TextInput
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Add a comment..."
-            placeholderTextColor={COLORS.textSecondary}
-            style={styles.input}
-          />
-          <Pressable style={styles.sendButton} onPress={onSubmitComment}>
-            <Ionicons name="send" size={16} color={COLORS.bg} />
-          </Pressable>
-        </View>
+        {showComments && (
+          <View style={styles.inputBar}>
+            <TextInput
+              value={message}
+              onChangeText={setMessage}
+              placeholder={commentsOpen ? "Add a public comment..." : "Message group..."}
+              placeholderTextColor={COLORS.textSecondary}
+              style={styles.input}
+            />
+            <Pressable style={styles.sendButton} onPress={onSubmitComment}>
+              <Ionicons name="send" size={16} color={COLORS.bg} />
+            </Pressable>
+          </View>
+        )}
 
-        <Modal
-          visible={actionsVisible}
-          animationType="fade"
-          transparent
-          onRequestClose={closeCommentActions}
-        >
+        {/* COMMENT ACTION MODAL */}
+        <Modal visible={actionsVisible} animationType="fade" transparent onRequestClose={closeCommentActions}>
           <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
             <Pressable style={styles.actionBubble} onPress={() => {}}>
               <Pressable style={styles.actionRow} onPress={onViewProfile}>
@@ -740,12 +763,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </Pressable>
         </Modal>
 
-        <Modal
-          visible={profilePreviewVisible}
-          animationType="slide"
-          transparent
-          onRequestClose={closeProfilePreview}
-        >
+        {/* PROFILE PREVIEW MODAL */}
+        <Modal visible={profilePreviewVisible} animationType="slide" transparent onRequestClose={closeProfilePreview}>
           <Pressable style={styles.previewBackdrop} onPress={closeProfilePreview}>
             <Pressable style={styles.previewCard} onPress={() => {}}>
               <View style={styles.previewHeader}>
@@ -762,7 +781,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 <View style={styles.previewIdentityText}>
                   <Text style={styles.previewName}>{selectedProfile?.displayName || 'Anonymous'}</Text>
                   <Text style={styles.previewSubtitle}>{profileSubtitle}</Text>
-                  {/* Updated Bio render here! */}
                   <Text style={styles.previewBio}>
                     {selectedProfile?.bio || 'Tell your campus a little about yourself...'}
                   </Text>
@@ -1093,6 +1111,25 @@ const styles = StyleSheet.create({
   commentText: {
     color: COLORS.textSecondary,
     fontSize: 13,
+  },
+  lockedCommentsBox: {
+    marginHorizontal: 16,
+    marginVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 32,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+  },
+  lockedCommentsText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   inputBar: {
     borderTopWidth: 1,
