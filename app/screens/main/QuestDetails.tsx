@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Modal,
   Pressable,
@@ -27,17 +27,7 @@ import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/
 import { supabase } from '../../lib/supabase';
 
 type QuestDetailParams = {
-  quest?: FeedQuest & { 
-    id?: string; 
-    user_id?: string; 
-    description?: string; 
-    bonus_xp?: number; 
-    token_bounty?: number; 
-    accepted_by?: string;
-    is_auto_accept?: boolean;
-    max_participants?: number;
-    status?: string;
-  };
+  quest?: FeedQuest & { id?: string; user_id?: string; description?: string; bonus_xp?: number; token_bounty?: number; accepted_by?: string };
 };
 
 type QuestDetailsProps = {
@@ -60,7 +50,7 @@ type ProfilePreview = {
   accessories?: Partial<Record<AvatarSlot, string>>;
   major?: string | null;
   graduationYear?: string | null;
-  bio?: string | null; 
+  bio?: string | null; // Added bio type
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
@@ -155,16 +145,15 @@ function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: Laye
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const quest = route?.params?.quest;
   
+  const [accepted, setAccepted] = useState(false);
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState('');
   const [cardExpanded, setCardExpanded] = useState(false);
   
   const [comments, setComments] = useState<UIComment[]>([]);
-  const [participants, setParticipants] = useState<any[]>([]);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
-  const [posterProfile, setPosterProfile] = useState<any>(null);
   
   const [questData, setQuestData] = useState<any>(quest);
   const [loading, setLoading] = useState(false);
@@ -172,78 +161,60 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [actionsVisible, setActionsVisible] = useState(false);
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
-  const [applicantsExpanded, setApplicantsExpanded] = useState(true);
-
-  const fetchQuestData = useCallback(async (userIdToUse?: string) => {
-    if (!quest?.id) return;
-    
-    // Fetch Quest Details
-    const { data: qData } = await supabase.from('quests').select('*').eq('id', quest.id).single();
-    if (qData) {
-      setQuestData(qData);
-      if (qData.user_id) {
-        const { data: pData } = await supabase.from('profiles').select('*').eq('id', qData.user_id).maybeSingle();
-        if (pData) setPosterProfile(pData);
-      }
-    }
-
-    // Fetch Participants
-    const { data: partData } = await supabase
-      .from('quest_participants')
-      .select('*, profiles(display_name, equipped_accessories)')
-      .eq('quest_id', quest.id);
-    if (partData) {
-      setParticipants(partData);
-    }
-
-    // Fetch Comments
-    const { data: cData } = await supabase
-      .from('comments')
-      .select(`
-        *,
-        profiles (
-          display_name,
-          equipped_accessories
-        )
-      `)
-      .eq('quest_id', quest.id)
-      .order('created_at', { ascending: true }); 
-
-    if (cData) {
-      const formattedComments = cData.map((c: any) => ({
-        id: c.id,
-        userId: c.user_id,
-        author: c.user_id === userIdToUse ? 'You' : (c.profiles?.display_name || 'Unknown User'),
-        text: c.content,
-        time: formatRelativeTime(c.created_at),
-        accessories: normalizeAccessories(c.profiles?.equipped_accessories),
-      }));
-      setComments(formattedComments);
-    }
-  }, [quest?.id]);
 
   useEffect(() => {
     let mounted = true;
     let commentSubscription: any = null;
 
-    const initData = async () => {
-      let activeUserId = currentUserId;
-      if (!activeUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (mounted && user) {
-          activeUserId = user.id;
-          setCurrentUserId(user.id);
-          const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-          if (mounted && profile) setCurrentUserProfile(profile);
-        }
+    const fetchUserAndQuestAndComments = async () => {
+      // 1. Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (mounted && user) {
+        setCurrentUserId(user.id);
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (mounted && profile) setCurrentUserProfile(profile);
       }
 
-      if (mounted) {
-        await fetchQuestData(activeUserId!);
-      }
-
-      // Setup Realtime Subscription
       if (quest?.id) {
+        const { data: qData, error: qError } = await supabase
+          .from('quests')
+          .select('*')
+          .eq('id', quest.id)
+          .single();
+
+        if (mounted && qData && !qError) {
+          setQuestData(qData);
+          if (qData.status === 'accepted' && qData.accepted_by === user?.id) {
+            setAccepted(true);
+          }
+        }
+
+        // 2. Fetch Comments AND Join the Profiles table
+        const { data: cData, error: cError } = await supabase
+          .from('comments')
+          .select(`
+            *,
+            profiles (
+              display_name,
+              equipped_accessories
+            )
+          `)
+          .eq('quest_id', quest.id)
+          .order('created_at', { ascending: true }); 
+
+        if (mounted && cData && !cError) {
+          const formattedComments = cData.map((c: any) => ({
+            id: c.id,
+            userId: c.user_id,
+            author: c.user_id === user?.id ? 'You' : (c.profiles?.display_name || 'Unknown User'),
+            text: c.content,
+            time: formatRelativeTime(c.created_at),
+            accessories: normalizeAccessories(c.profiles?.equipped_accessories),
+          }));
+          setComments(formattedComments);
+        }
+
+        // 3. Setup Realtime Subscription
         commentSubscription = supabase
           .channel(`public:comments:quest_id=eq.${quest.id}`)
           .on(
@@ -252,7 +223,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             (payload) => {
               if (mounted) {
                 const newC = payload.new;
-                if (newC.user_id === activeUserId) return; 
+                if (newC.user_id === user?.id) return; 
 
                 // Fetch new comment's author profile
                 supabase
@@ -280,74 +251,33 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       }
     };
 
-    initData();
+    fetchUserAndQuestAndComments();
 
     return () => {
       mounted = false;
       if (commentSubscription) supabase.removeChannel(commentSubscription);
     };
-  }, [quest?.id, fetchQuestData]);
+  }, [quest?.id]);
 
-  const handleApplyOrDrop = async () => {
+  const toggleAccept = async () => {
     if (!currentUserId || !questData?.id) return;
+    if (questData.user_id === currentUserId) {
+      Alert.alert("Cannot Accept", "You cannot accept your own quest.");
+      return;
+    }
     try {
       setLoading(true);
-      if (myParticipantStatus === 'accepted') {
-        // Drop Quest
-        const { error } = await supabase
-          .from('quest_participants')
-          .update({ status: 'withdrawn' })
-          .eq('quest_id', questData.id)
-          .eq('user_id', currentUserId);
-        if (error) throw error;
-        // Optimistic update
-        setParticipants(prev => prev.map(p => p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p));
-      } else {
-        // Apply for Quest
-        const { data: newStatus, error } = await supabase.rpc('apply_for_quest', { p_quest_id: questData.id });
-        if (error) throw error;
-        
-        await fetchQuestData(currentUserId); 
+      const isCurrentlyAcceptedByMe = accepted;
+      const newStatus = isCurrentlyAcceptedByMe ? 'open' : 'accepted';
+      const newAcceptedBy = isCurrentlyAcceptedByMe ? null : currentUserId;
 
-        if (newStatus === 'accepted') {
-          Alert.alert('Quest Accepted', 'You have successfully joined the quest!');
-        } else {
-          Alert.alert('Application Sent', 'Your application is pending poster approval.');
-        }
-      }
+      const { error } = await supabase.from('quests').update({ status: newStatus, accepted_by: newAcceptedBy }).eq('id', questData.id);
+      if (error) throw error;
+
+      setAccepted(!isCurrentlyAcceptedByMe);
+      setQuestData({ ...questData, status: newStatus, accepted_by: newAcceptedBy });
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to update quest.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAcceptApplicant = async (applicantId: string) => {
-    try {
-      setLoading(true);
-      const { error } = await supabase
-        .from('quest_participants')
-        .update({ status: 'accepted' })
-        .eq('quest_id', questData.id)
-        .eq('user_id', applicantId);
-      if (error) throw error;
-      await fetchQuestData(currentUserId!); 
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartManualQuest = async () => {
-    try {
-      setLoading(true);
-      const { error } = await supabase.rpc('start_manual_quest', { p_quest_id: questData.id });
-      if (error) throw error;
-      Alert.alert("Quest Started", "The quest is now in progress!");
-      await fetchQuestData(currentUserId!);
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
     }
@@ -357,29 +287,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const categoryColor = CATEGORY_COLORS[category];
   const title = questData?.title ?? quest?.title ?? 'Need help around campus today';
   const preview = questData?.description ?? quest?.preview ?? 'Looking for someone nearby to help with a quick request before 5PM.';
-  const posterName = quest?.posterName ?? 'Anonymous User';
-  const ago = quest?.ago ?? 'Just now';
+  const posterName = quest?.posterName ?? 'Mark Lawrence';
+  const ago = quest?.ago ?? '23m ago';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
   const token = questData?.token_bounty ?? quest?.token ?? 25;
-  
   const isPoster = currentUserId === questData?.user_id;
-  const isAutoAccept = questData?.is_auto_accept ?? true;
-  const maxParticipants = questData?.max_participants ?? 1;
-
-  const myParticipantRow = participants.find(p => p.user_id === currentUserId);
-  const myParticipantStatus = myParticipantRow?.status;
-
-  const appliedParticipants = participants.filter(p => p.status === 'applied');
-  const acceptedParticipants = participants.filter(p => p.status === 'accepted');
-
+  const isTakenBySomeoneElse = questData?.status === 'accepted' && questData?.accepted_by !== currentUserId;
+  const statusText = questData?.status === 'accepted' ? 'Accepted' : 'Open';
+  const actionText = accepted ? 'Cancel Quest' : 'Accept Quest';
   const commentCount = useMemo(() => comments.length, [comments]);
 
-  let statusText = 'Open';
-  if (questData?.status === 'in_progress') statusText = 'In Progress';
-  if (questData?.status === 'completed') statusText = 'Completed';
-  if (questData?.status === 'accepted') statusText = 'In Progress'; // Fallback for legacy DB state
-
-  const isQuestAccepted = questData?.status === 'in_progress' || questData?.status === 'completed' || questData?.status === 'accepted';
+  const isQuestAccepted = questData?.status === 'accepted' || questData?.status === 'in_progress';
   const shouldShowCompactCard = isQuestAccepted;
 
   const onSubmitComment = async () => {
@@ -422,10 +340,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setProfilePreviewVisible(false);
   };
 
-  // Profile Preview for Comment authors
   const onViewProfile = async () => {
     if (!selectedComment?.userId) return;
 
+    // Open with immediate fallback data (now including bio)
     setSelectedProfile({
       id: selectedComment.userId,
       displayName: selectedComment.author === 'You'
@@ -434,14 +352,15 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       accessories: selectedComment.accessories,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
-      bio: currentUserProfile?.bio || null, 
+      bio: currentUserProfile?.bio || null, // Fallback bio added
     });
     setActionsVisible(false);
     setProfilePreviewVisible(true);
 
+    // Fetch the updated profile data including the bio
     const { data: profileData, error } = await supabase
       .from('profiles')
-      .select('id, display_name, equipped_accessories, major, graduation_year, bio') 
+      .select('id, display_name, equipped_accessories, major, graduation_year, bio') // Added bio to the query
       .eq('id', selectedComment.userId)
       .maybeSingle();
 
@@ -455,44 +374,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       accessories: normalizeAccessories(profileData.equipped_accessories),
       major: profileData.major,
       graduationYear: profileData.graduation_year,
-      bio: profileData.bio, 
+      bio: profileData.bio, // Set the fetched bio here
     });
-  };
-
-  // Profile Preview explicitly for the Quest Poster
-  const openPosterProfile = async () => {
-    const targetUserId = questData?.user_id || quest?.user_id;
-    if (!targetUserId) return;
-
-    // Open instantly with data we already fetched explicitly in useEffect
-    setSelectedProfile({
-      id: targetUserId,
-      displayName: posterProfile?.display_name || posterName,
-      accessories: normalizeAccessories(posterProfile?.equipped_accessories),
-      major: posterProfile?.major || null,
-      graduationYear: posterProfile?.graduation_year || null,
-      bio: posterProfile?.bio || null,
-    });
-    setProfilePreviewVisible(true);
-
-    // Refresh dynamically just to guarantee fresh bio/info
-    const { data: profileData, error } = await supabase
-      .from('profiles')
-      .select('id, display_name, equipped_accessories, major, graduation_year, bio')
-      .eq('id', targetUserId)
-      .maybeSingle();
-
-    if (!error && profileData) {
-      setSelectedProfile({
-        id: profileData.id,
-        displayName: profileData.display_name || 'Anonymous',
-        accessories: normalizeAccessories(profileData.equipped_accessories),
-        major: profileData.major,
-        graduationYear: profileData.graduation_year,
-        bio: profileData.bio,
-      });
-      setPosterProfile(profileData);
-    }
   };
 
   const profileSubtitle = selectedProfile
@@ -547,25 +430,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               <Text style={styles.preview}>{preview}</Text>
 
               <View style={styles.metaRow}>
-                <Pressable 
-                  onPress={openPosterProfile} 
-                  style={styles.posterInfoWrap}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <View style={styles.posterAvatarWrap}>
-                    <LayeredAvatar 
-                      accessories={normalizeAccessories(posterProfile?.equipped_accessories)} 
-                      size={32} 
-                      scale={1.4} 
-                      translateY={2} 
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.poster}>{posterProfile?.display_name || posterName}</Text>
-                    <Text style={styles.time}>{ago}</Text>
-                  </View>
-                </Pressable>
-                
+                <View>
+                  <Text style={styles.poster}>{posterName}</Text>
+                  <Text style={styles.time}>{ago}</Text>
+                </View>
                 <View style={styles.locationChip}>
                   <LocationIcon width={14} height={14} />
                   <Text style={styles.locationText}>GLE Building, Room 605</Text>
@@ -588,88 +456,19 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           )}
 
-          {/* POSTER VIEW (MANUAL REVIEW) */}
-          {isPoster && !isAutoAccept && questData?.status === 'open' && (
-            <View style={styles.applicantsCard}>
-               <Pressable 
-                 style={styles.applicantsHeader} 
-                 onPress={() => setApplicantsExpanded(!applicantsExpanded)}
-               >
-                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-                   <Ionicons name="people" size={18} color={COLORS.textPrimary} />
-                   <Text style={styles.applicantsTitle}>Review Applicants</Text>
-                   <View style={styles.countChip}>
-                     <Text style={styles.countText}>{appliedParticipants.length}</Text>
-                   </View>
-                 </View>
-                 <Ionicons name={applicantsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.textSecondary} />
-               </Pressable>
-
-               {applicantsExpanded && (
-                 <View style={styles.applicantsList}>
-                   {acceptedParticipants.length > 0 && (
-                     <Text style={styles.startQuestHint}>
-                       Accepted ({acceptedParticipants.length}/{maxParticipants})
-                     </Text>
-                   )}
-                   {appliedParticipants.length === 0 ? (
-                     <Text style={styles.emptyApplicants}>No applicants yet.</Text>
-                   ) : (
-                     appliedParticipants.map(p => (
-                       <View key={p.id} style={styles.applicantRow}>
-                         <View style={styles.applicantInfo}>
-                           <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
-                           <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
-                         </View>
-                         <Pressable 
-                           style={[styles.acceptApplicantBtn, loading && {opacity: 0.7}]} 
-                           onPress={() => handleAcceptApplicant(p.user_id)}
-                           disabled={loading || acceptedParticipants.length >= maxParticipants}
-                         >
-                           <Text style={styles.acceptApplicantText}>Accept</Text>
-                         </Pressable>
-                       </View>
-                     ))
-                   )}
-                   
-                   <View style={styles.startQuestWrap}>
-                      <Pressable 
-                        style={[styles.startQuestBtn, (loading || acceptedParticipants.length === 0) && {opacity: 0.7}]} 
-                        onPress={handleStartManualQuest}
-                        disabled={loading || acceptedParticipants.length === 0}
-                      >
-                        <Text style={styles.startQuestText}>Start Quest Now</Text>
-                      </Pressable>
-                      <Text style={styles.startQuestHint}>
-                        This will lock the quest and reject remaining applicants.
-                      </Text>
-                   </View>
-                 </View>
-               )}
-            </View>
-          )}
-
-          {/* NON-POSTER CTA BUTTON */}
-          {(!shouldShowCompactCard || myParticipantStatus === 'accepted') && !isPoster && (
-             <View style={{ marginTop: 4 }}>
-                {myParticipantStatus === 'applied' ? (
-                  <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}>
-                    <Text style={styles.acceptText}>Application Pending</Text>
-                  </View>
-                ) : myParticipantStatus === 'accepted' ? (
-                  <Pressable style={[styles.acceptButton, { backgroundColor: COLORS.error }, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
-                    <Text style={styles.acceptText}>Drop Quest</Text>
-                  </Pressable>
-                ) : questData?.status === 'open' ? (
-                  <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
-                    <Text style={styles.acceptText}>{isAutoAccept ? 'Accept Quest' : 'Apply for Quest'}</Text>
-                  </Pressable>
-                ) : (
-                  <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}>
-                    <Text style={styles.acceptText}>Quest Unavailable</Text>
-                  </View>
-                )}
-             </View>
+          {/* ACCEPT BUTTON */}
+          {!shouldShowCompactCard && (
+            <>
+              {isPoster ? (
+                <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}><Text style={styles.acceptText}>Your Quest</Text></View>
+              ) : isTakenBySomeoneElse ? (
+                <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}><Text style={styles.acceptText}>Already Accepted</Text></View>
+              ) : (
+                <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={toggleAccept} disabled={loading}>
+                  <Text style={styles.acceptText}>{actionText}</Text>
+                </Pressable>
+              )}
+            </>
           )}
 
           {/* COMMENTS HEADER */}
@@ -760,6 +559,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 <View style={styles.previewIdentityText}>
                   <Text style={styles.previewName}>{selectedProfile?.displayName || 'Anonymous'}</Text>
                   <Text style={styles.previewSubtitle}>{profileSubtitle}</Text>
+                  {/* Updated Bio render here! */}
                   <Text style={styles.previewBio}>
                     {selectedProfile?.bio || 'Tell your campus a little about yourself...'}
                   </Text>
@@ -872,20 +672,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  posterInfoWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  posterAvatarWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface2 || '#ececec',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   poster: {
     color: COLORS.textPrimary,
     fontSize: 13,
@@ -951,84 +737,6 @@ const styles = StyleSheet.create({
     color: COLORS.bg,
     fontSize: 15,
     fontWeight: '700',
-  },
-  applicantsCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    overflow: 'hidden',
-  },
-  applicantsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    backgroundColor: COLORS.surface2,
-  },
-  applicantsTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  applicantsList: {
-    padding: 14,
-    gap: 12,
-  },
-  applicantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  applicantInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  applicantName: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  acceptApplicantBtn: {
-    backgroundColor: COLORS.favor,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  acceptApplicantText: {
-    color: COLORS.bg,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  startQuestWrap: {
-    marginTop: 8,
-    gap: 6,
-  },
-  startQuestBtn: {
-    backgroundColor: COLORS.xp,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  startQuestText: {
-    color: COLORS.bg,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  startQuestHint: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    textAlign: 'center',
-  },
-  emptyApplicants: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    paddingVertical: 8,
   },
   commentsHeader: {
     marginTop: 6,
