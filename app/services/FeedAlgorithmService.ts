@@ -58,7 +58,12 @@ export async function getPersonalizedFeed(
     onFastResult(nearbyQuests);
   }
 
-  // If there are 0 or 1 quests, or API Key is missing, no need to waste time/tokens
+  // ====================================================================
+  // DEV OVERRIDE: AI Algorithm bypassed to save API quota and load times
+  // ====================================================================
+  return nearbyQuests;
+
+  /* // If there are 0 or 1 quests, or API Key is missing, no need to waste time/tokens
   if (nearbyQuests.length <= 1 || !GEMINI_API_KEY) {
     return nearbyQuests;
   }
@@ -136,4 +141,5 @@ export async function getPersonalizedFeed(
     console.warn("AI Reranking failed, gracefully falling back to heuristic sort.", err);
     return nearbyQuests;
   }
+  */
 }
