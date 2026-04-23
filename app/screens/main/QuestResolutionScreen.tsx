@@ -55,23 +55,54 @@ const QuestResolutionSheetModal = ({
     const fetchParticipants = async () => {
       setLoadingParticipants(true);
       try {
-        const { data, error } = await supabase
+        // 1. Fetch group participants from quest_participants
+        const { data: partData, error: partError } = await supabase
           .from('quest_participants')
           .select('user_id, profiles(display_name)')
           .eq('quest_id', questId)
           .eq('status', 'accepted');
 
-        if (error) throw error;
+        if (partError) throw partError;
 
-        if (mounted && data) {
-          setEvaluations(
-            data.map((d: any) => ({
-              userId: d.user_id,
-              name: d.profiles?.display_name || 'Anonymous',
-              outcome: null,
-              rating: null,
-            }))
-          );
+        // 2. Fetch legacy 1-to-1 acceptor from quests table
+        const { data: questData, error: questError } = await supabase
+          .from('quests')
+          .select('accepted_by, acceptor:profiles!quests_accepted_by_fkey(display_name)')
+          .eq('id', questId)
+          .single();
+
+        if (questError) throw questError;
+
+        const fetchedEvaluations: ParticipantEvaluation[] = [];
+
+        // Add Legacy Accepter
+        if (questData?.accepted_by) {
+          const accObj = Array.isArray(questData.acceptor) ? questData.acceptor[0] : questData.acceptor;
+          fetchedEvaluations.push({
+            userId: questData.accepted_by,
+            name: accObj?.display_name || acceptorName || 'Anonymous',
+            outcome: null,
+            rating: null,
+          });
+        }
+
+        // Add Group Participants
+        if (partData) {
+          partData.forEach((d: any) => {
+            // Prevent duplicates if legacy acceptor is also in participants somehow
+            if (!fetchedEvaluations.find(ev => ev.userId === d.user_id)) {
+              fetchedEvaluations.push({
+                userId: d.user_id,
+                name: d.profiles?.display_name || 'Anonymous',
+                outcome: null,
+                rating: null,
+              });
+            }
+          });
+        }
+
+        if (mounted) {
+          setEvaluations(fetchedEvaluations);
         }
       } catch (err) {
         console.error('Failed to fetch participants', err);
@@ -85,7 +116,7 @@ const QuestResolutionSheetModal = ({
     return () => {
       mounted = false;
     };
-  }, [questId, visible]);
+  }, [questId, visible, acceptorName]);
 
   const updateEvaluation = (userId: string, key: 'outcome' | 'rating', value: any) => {
     setEvaluations((prev) =>
