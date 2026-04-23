@@ -148,28 +148,75 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Join with profiles to get the acceptor's details
-      const { data, error } = await supabase
+      // 1. Fetch quests posted by the user OR directly accepted by the user (Legacy 1-to-1)
+      const { data: mainQuests, error: mainErr } = await supabase
         .from('quests')
         .select(`
           *,
-          acceptor:profiles!quests_accepted_by_fkey(display_name, first_name)
+          acceptor:profiles!quests_accepted_by_fkey(display_name, first_name),
+          participants:quest_participants(user_id, status)
         `)
         .or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching quests:', error);
-        return;
+      if (mainErr) console.error('Error fetching main quests:', mainErr);
+
+      // 2. Fetch quests where user is a participant (for 1-to-many group quests)
+      const { data: partData, error: partErr } = await supabase
+        .from('quest_participants')
+        .select('quest_id')
+        .eq('user_id', user.id)
+        .in('status', ['accepted', 'completed', 'resolved']);
+
+      if (partErr) console.error('Error fetching participations:', partErr);
+
+      const partQuestIds = partData?.map((p) => p.quest_id) || [];
+      let extraQuests: any[] = [];
+      
+      // If we found group participations, grab those quest objects missing from mainQuests
+      if (partQuestIds.length > 0) {
+        const existingIds = mainQuests?.map((q) => q.id) || [];
+        const missingIds = partQuestIds.filter((id) => !existingIds.includes(id));
+        
+        if (missingIds.length > 0) {
+          const { data: extra } = await supabase
+            .from('quests')
+            .select(`
+              *,
+              acceptor:profiles!quests_accepted_by_fkey(display_name, first_name),
+              participants:quest_participants(user_id, status)
+            `)
+            .in('id', missingIds);
+            
+          if (extra) extraQuests = extra;
+        }
       }
+
+      const allData = [...(mainQuests || []), ...extraQuests];
+      
+      // Sort desc by date
+      allData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       const activeList: QuestItem[] = [];
       const historyList: QuestItem[] = [];
+      const seenIds = new Set(); // To prevent duplicates
 
-      data?.forEach((q) => {
+      allData.forEach((q) => {
+        if (seenIds.has(q.id)) return;
+        seenIds.add(q.id);
+
         const isPoster = q.user_id === user.id;
-        const isAccepter = q.accepted_by === user.id;
+        
+        // Determine if user is an accepter natively (1-on-1) or in group participants
+        const isDirectAccepter = q.accepted_by === user.id;
+        const participantMe = q.participants?.find((p: any) => p.user_id === user.id);
+        const isParticipantAccepter = participantMe && participantMe.status === 'accepted';
+        
+        const isAccepter = isDirectAccepter || isParticipantAccepter;
         const isResolved = q.status === 'completed' || q.status === 'resolved';
+        
+        // Find if *anyone* is currently an active participant so Poster can resolve
+        const hasAcceptedParticipants = q.accepted_by || (q.participants?.some((p: any) => p.status === 'accepted'));
 
         // Extract acceptor's name safely
         const acceptorObj = Array.isArray(q.acceptor) ? q.acceptor[0] : q.acceptor;
@@ -193,37 +240,46 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           statusLabel = 'Resolved';
           historyTag = isPoster ? 'Posted' : 'Accepted';
 
-          historyList.push({
-            id: q.id,
-            title: q.title,
-            role,
-            status: statusLabel as QuestStatus,
-            timeLabel: timeAgo(q.created_at),
-            historyTag,
-            accent,
-            statusColor,
-            cardTint,
-            xp: q.bonus_xp || 0,
-            token: q.token_bounty || 0,
-            acceptorName: fetchedAcceptorName,
-          });
+          // Push to history ONLY if user was directly involved
+          if (isPoster || isAccepter) {
+            historyList.push({
+              id: q.id,
+              title: q.title,
+              role,
+              status: statusLabel as QuestStatus,
+              timeLabel: timeAgo(q.created_at),
+              historyTag,
+              accent,
+              statusColor,
+              cardTint,
+              xp: q.bonus_xp || 0,
+              token: q.token_bounty || 0,
+              acceptorName: fetchedAcceptorName,
+            });
+          }
         } else {
-          if (isPoster && !q.accepted_by) {
+          // POSTER LOGIC
+          if (isPoster) {
             role = 'You posted';
-            statusLabel = 'Awaiting approval';
-          } else if (isAccepter) {
+            if (hasAcceptedParticipants) {
+              statusLabel = 'In progress'; // Poster sees it's active & running
+              statusColor = COLORS.item || '#39FF14'; // Green
+              cardTint = 'rgba(57,255,20,0.08)';
+              isActionable = true; // Show Resolve button
+            } else {
+              statusLabel = 'Awaiting approval'; // Still waiting for people
+            }
+          } 
+          // ACCEPTER LOGIC
+          else if (isAccepter) {
             role = 'You accepted';
-            statusLabel = 'In progress';
+            statusLabel = 'In progress'; // Acceptor sees they are running it
             statusColor = COLORS.xp || '#C084FC'; // Purple
-          } else if (isPoster && q.accepted_by) {
-            role = 'You posted';
-            statusLabel = 'Pending resolution';
-            statusColor = COLORS.item || '#39FF14'; // Green
-            cardTint = 'rgba(57,255,20,0.08)';
-            isActionable = true;
+            cardTint = 'rgba(192,132,252,0.08)';
+            isActionable = false; // Acceptors can't resolve
           }
 
-          // Edge case safety (e.g. malformed data)
+          // Edge case safety (e.g., malformed data)
           if (!role) return;
 
           activeList.push({
