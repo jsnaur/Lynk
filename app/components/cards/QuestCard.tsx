@@ -6,7 +6,7 @@ import { COLORS, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 
 interface QuestCardProps {
-  quest: FeedQuest;
+  quest: FeedQuest & { max_participants?: number; maxParticipants?: number };
   onPress?: () => void;
 }
 
@@ -18,6 +18,9 @@ const CATEGORY_META: Record<FeedCategory, { label: string; color: string }> = {
 
 export default function QuestCard({ quest, onPress }: QuestCardProps) {
   const categoryMeta = CATEGORY_META[quest.category] || CATEGORY_META.favor;
+  
+  // Safely check for either snake_case or camelCase depending on how the frontend mapped the RPC payload
+  const maxParticipants = quest.max_participants || quest.maxParticipants || 1;
 
   return (
     <TouchableOpacity 
@@ -29,11 +32,20 @@ export default function QuestCard({ quest, onPress }: QuestCardProps) {
       
       <View style={styles.body}>
         <View style={styles.headerRow}>
-          <View style={[styles.categoryBadge, { backgroundColor: withOpacity(categoryMeta.color, 0.15) }]}>
-            <View style={[styles.categoryDot, { backgroundColor: categoryMeta.color }]} />
-            <Text style={[styles.categoryLabel, { color: categoryMeta.color }]}>
-              {categoryMeta.label}
-            </Text>
+          <View style={styles.badgeRow}>
+            <View style={[styles.categoryBadge, { backgroundColor: withOpacity(categoryMeta.color, 0.15) }]}>
+              <View style={[styles.categoryDot, { backgroundColor: categoryMeta.color }]} />
+              <Text style={[styles.categoryLabel, { color: categoryMeta.color }]}>
+                {categoryMeta.label}
+              </Text>
+            </View>
+
+            {maxParticipants > 1 && (
+              <View style={styles.groupBadge}>
+                <MaterialCommunityIcons name="account-group-outline" size={12} color={COLORS.textSecondary} />
+                <Text style={styles.groupBadgeText}>Group: {maxParticipants} Slots</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.timeText}>{quest.ago}</Text>
         </View>
@@ -91,6 +103,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   categoryBadge: {
     borderRadius: 6,
     paddingVertical: 4,
@@ -108,6 +125,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     fontFamily: FONTS.body,
+  },
+  groupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: COLORS.surface2,
+  },
+  groupBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: FONTS.body,
+    color: COLORS.textSecondary,
   },
   timeText: {
     fontSize: 12,

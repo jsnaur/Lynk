@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '../../lib/supabase';
@@ -11,13 +11,21 @@ import XpPixelIcon from '../../../assets/QuestScreenAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestScreenAssets/Token_Pixel_Icon.svg';
 
 type Rating = 'positive' | 'negative' | null;
+type Outcome = 'completed' | 'failed' | null;
+
+type ParticipantEvaluation = {
+  userId: string;
+  name: string;
+  outcome: Outcome;
+  rating: Rating;
+};
 
 export type QuestResolutionSheetModalProps = {
   visible?: boolean;
   onClose?: () => void;
   questId: string;
   questTitle: string;
-  acceptorName: string;
+  acceptorName: string; // Kept for prop-compatibility, but we fetch the true list dynamically
   tokenReward: number;
   xpReward: number;
   onComplete?: () => void;
@@ -28,56 +36,113 @@ const QuestResolutionSheetModal = ({
   onClose,
   questId,
   questTitle,
-  acceptorName,
   tokenReward,
   xpReward,
   onComplete,
 }: QuestResolutionSheetModalProps) => {
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [rating, setRating] = useState<Rating>(null);
+  const [loadingParticipants, setLoadingParticipants] = useState(true);
+  const [evaluations, setEvaluations] = useState<ParticipantEvaluation[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { refreshBalance } = useTokenBalance();
 
-  const canSubmit = isCompleted && rating !== null;
-  const shouldShowRating = isCompleted;
-  const shouldShowRewards = rating !== null;
+  useEffect(() => {
+    let mounted = true;
+    if (!visible) return;
+
+    const fetchParticipants = async () => {
+      setLoadingParticipants(true);
+      try {
+        const { data, error } = await supabase
+          .from('quest_participants')
+          .select('user_id, profiles(display_name)')
+          .eq('quest_id', questId)
+          .eq('status', 'accepted');
+
+        if (error) throw error;
+
+        if (mounted && data) {
+          setEvaluations(
+            data.map((d: any) => ({
+              userId: d.user_id,
+              name: d.profiles?.display_name || 'Anonymous',
+              outcome: null,
+              rating: null,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Failed to fetch participants', err);
+      } finally {
+        if (mounted) setLoadingParticipants(false);
+      }
+    };
+
+    fetchParticipants();
+
+    return () => {
+      mounted = false;
+    };
+  }, [questId, visible]);
+
+  const updateEvaluation = (userId: string, key: 'outcome' | 'rating', value: any) => {
+    setEvaluations((prev) =>
+      prev.map((ev) => {
+        if (ev.userId !== userId) return ev;
+        const updated = { ...ev, [key]: value };
+        // Reset rating if they failed the quest
+        if (key === 'outcome' && value === 'failed') {
+          updated.rating = null;
+        }
+        return updated;
+      })
+    );
+  };
+
+  const canSubmit = useMemo(() => {
+    if (evaluations.length === 0) return false;
+    // Everyone must have an outcome. If completed, they must also have a rating.
+    return evaluations.every(
+      (ev) => ev.outcome === 'failed' || (ev.outcome === 'completed' && ev.rating !== null)
+    );
+  }, [evaluations]);
 
   const submitLabel = useMemo(() => {
     if (isSubmitting) return 'Resolving...';
     if (isSubmitted) return 'Completed!';
-    if (!canSubmit) return 'Complete + Rate to Submit';
+    if (!canSubmit) return 'Complete evaluations to submit';
     return 'Submit & Finish';
   }, [canSubmit, isSubmitted, isSubmitting]);
 
   const handleSubmit = async () => {
-    if (!canSubmit || isSubmitting) {
-      return;
-    }
+    if (!canSubmit || isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.rpc('resolve_quest', {
+      const payload = evaluations.map((ev) => ({
+        user_id: ev.userId,
+        status: ev.outcome,
+        rating: ev.rating,
+      }));
+
+      const { error } = await supabase.rpc('resolve_group_quest', {
         p_quest_id: questId,
-        p_rating: rating,
+        p_resolutions: payload,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      await refreshBalance(); // Refresh local balance in case the user resolved their own quest
+      await refreshBalance();
       setIsSubmitted(true);
       onComplete?.();
-      
-      // Auto-close after a short delay so the user sees the success state
+
       setTimeout(() => {
         onClose?.();
       }, 1000);
     } catch (error: any) {
-      console.error('Failed to resolve quest:', error);
+      console.error('Failed to resolve group quest:', error);
       Alert.alert('Error', error.message || 'Failed to resolve the quest. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -107,93 +172,86 @@ const QuestResolutionSheetModal = ({
           </Pressable>
 
           <View style={styles.headerBlock}>
-            <Text style={styles.title}>Complete This Quest?</Text>
+            <Text style={styles.title}>Quest Resolution</Text>
             <Text style={styles.questTitle}>"{questTitle}"</Text>
           </View>
 
-          <View style={styles.section}>
-            <Pressable
-              onPress={() => {
-                if (!isCompleted) {
-                  setIsCompleted(true);
-                }
-              }}
-              disabled={isCompleted || isSubmitting}
-              style={({ pressed }) => [
-                styles.completeButton,
-                isCompleted && styles.completeButtonDone,
-                isCompleted && styles.completeButtonLocked,
-                !isCompleted && pressed && styles.pressed,
-              ]}
+          {loadingParticipants ? (
+            <View style={styles.centerWrap}>
+              <ActivityIndicator color="#00f5ff" size="large" />
+              <Text style={styles.loadingText}>Fetching participants...</Text>
+            </View>
+          ) : evaluations.length === 0 ? (
+            <View style={styles.centerWrap}>
+              <Text style={styles.loadingText}>No active participants found.</Text>
+            </View>
+          ) : (
+            <ScrollView 
+              style={styles.scrollArea} 
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.completeButtonText}>
-                {isCompleted ? 'Marked as Completed' : 'Mark as Completed'}
-              </Text>
-            </Pressable>
-          </View>
+              {evaluations.map((ev) => {
+                const isCompleted = ev.outcome === 'completed';
+                const isFailed = ev.outcome === 'failed';
 
-          {shouldShowRating && (
-            <>
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerLabel}>now, rate your experience</Text>
-                <View style={styles.dividerLine} />
-              </View>
+                return (
+                  <View key={ev.userId} style={styles.evalCard}>
+                    <Text style={styles.evalName}>{ev.name}</Text>
 
-              <View style={styles.section}>
-                <Text style={styles.ratingPrompt}>
-                  How was <Text style={styles.posterName}>{acceptorName}</Text> as a quest partner?
-                </Text>
+                    <View style={styles.outcomeRow}>
+                      <Pressable
+                        onPress={() => updateEvaluation(ev.userId, 'outcome', 'failed')}
+                        style={[styles.outcomeBtn, isFailed && styles.outcomeBtnFailed]}
+                      >
+                        <Text style={[styles.outcomeText, isFailed && styles.outcomeTextFailedActive]}>
+                          Failed
+                        </Text>
+                      </Pressable>
 
-                <View style={styles.ratingRow}>
-                  <Pressable
-                    onPress={() => setRating('positive')}
-                    disabled={isSubmitting}
-                    style={({ pressed }) => [
-                      styles.ratingButton,
-                      styles.positiveButton,
-                      rating === 'positive' && styles.positiveButtonActive,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThumbUpIcon width={24} height={24} />
-                    <Text
-                      style={[
-                        styles.ratingButtonLabel,
-                        rating === 'positive' ? styles.positiveText : styles.idleText,
-                      ]}
-                    >
-                      Positive
-                    </Text>
-                  </Pressable>
+                      <Pressable
+                        onPress={() => updateEvaluation(ev.userId, 'outcome', 'completed')}
+                        style={[styles.outcomeBtn, isCompleted && styles.outcomeBtnCompleted]}
+                      >
+                        <Text style={[styles.outcomeText, isCompleted && styles.outcomeTextCompletedActive]}>
+                          Completed
+                        </Text>
+                      </Pressable>
+                    </View>
 
-                  <Pressable
-                    onPress={() => setRating('negative')}
-                    disabled={isSubmitting}
-                    style={({ pressed }) => [
-                      styles.ratingButton,
-                      styles.negativeButton,
-                      rating === 'negative' && styles.negativeButtonActive,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThumbDownIcon width={24} height={24} />
-                    <Text
-                      style={[
-                        styles.ratingButtonLabel,
-                        rating === 'negative' ? styles.negativeText : styles.idleText,
-                      ]}
-                    >
-                      Negative
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </>
-          )}
+                    {isCompleted && (
+                      <View style={styles.ratingRowGroup}>
+                        <Pressable
+                          onPress={() => updateEvaluation(ev.userId, 'rating', 'negative')}
+                          style={[
+                            styles.ratingBtnSmall,
+                            ev.rating === 'negative' && styles.ratingBtnSmallNeg,
+                          ]}
+                        >
+                          <ThumbDownIcon width={20} height={20} />
+                          <Text style={[styles.ratingBtnText, ev.rating === 'negative' && styles.textNeg]}>
+                            Negative
+                          </Text>
+                        </Pressable>
 
-          {shouldShowRewards && (
-            <>
+                        <Pressable
+                          onPress={() => updateEvaluation(ev.userId, 'rating', 'positive')}
+                          style={[
+                            styles.ratingBtnSmall,
+                            ev.rating === 'positive' && styles.ratingBtnSmallPos,
+                          ]}
+                        >
+                          <ThumbUpIcon width={20} height={20} />
+                          <Text style={[styles.ratingBtnText, ev.rating === 'positive' && styles.textPos]}>
+                            Positive
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
               <View style={styles.section}>
                 <LinearGradient
                   style={styles.rewardCard}
@@ -210,32 +268,32 @@ const QuestResolutionSheetModal = ({
                   <View style={styles.rewardTextWrap}>
                     <View style={styles.rewardTopRow}>
                       <Text style={styles.rewardXpText}>+{xpReward} XP</Text>
-                      <Text style={styles.rewardTokenText}>+{tokenReward} Tokens</Text>
+                      <Text style={styles.rewardTokenText}>{tokenReward} Tokens</Text>
                     </View>
-                    <Text style={styles.rewardSubtext}>Karma updated. Quest archived.</Text>
+                    <Text style={styles.rewardSubtext}>Rewards pool split among completed.</Text>
                   </View>
                 </LinearGradient>
               </View>
-
-              <View style={styles.footer}>
-                <Pressable
-                  onPress={handleSubmit}
-                  disabled={!canSubmit || isSubmitted || isSubmitting}
-                  style={({ pressed }) => [
-                    styles.submitButton,
-                    (!canSubmit || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
-                    canSubmit && !isSubmitted && pressed && styles.pressed,
-                  ]}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="#1a1a1f" />
-                  ) : (
-                    <Text style={styles.submitLabel}>{submitLabel}</Text>
-                  )}
-                </Pressable>
-              </View>
-            </>
+            </ScrollView>
           )}
+
+          <View style={styles.footer}>
+            <Pressable
+              onPress={handleSubmit}
+              disabled={!canSubmit || isSubmitted || isSubmitting}
+              style={({ pressed }) => [
+                styles.submitButton,
+                (!canSubmit || isSubmitted || isSubmitting) && styles.submitButtonDisabled,
+                canSubmit && !isSubmitted && pressed && styles.pressed,
+              ]}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#1a1a1f" />
+              ) : (
+                <Text style={styles.submitLabel}>{submitLabel}</Text>
+              )}
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -252,8 +310,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.58)',
   },
   screen: {
-    minHeight: '78%',
-    maxHeight: '88%',
+    height: '88%',
     width: '100%',
     backgroundColor: '#26262e',
     borderTopLeftRadius: 24,
@@ -274,7 +331,7 @@ const styles = StyleSheet.create({
   headerBlock: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 16,
     alignItems: 'center',
     gap: 4,
   },
@@ -291,106 +348,113 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Regular',
     textAlign: 'center',
   },
-  section: {
-    paddingHorizontal: 24,
-    paddingBottom: 18,
-  },
-  completeButton: {
-    minHeight: 52,
-    borderRadius: 16,
-    backgroundColor: '#39ff14',
+  centerWrap: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  completeButtonDone: {
-    backgroundColor: '#6f7280',
-  },
-  completeButtonLocked: {
-    opacity: 0.9,
-  },
-  completeButtonText: {
-    color: '#1a1a1f',
-    fontSize: 16,
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 24,
-    paddingBottom: 16,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#3a3a48',
-  },
-  dividerLabel: {
-    fontSize: 12,
+  loadingText: {
     color: '#8a8a9a',
     fontFamily: 'DMSans-Regular',
-    textAlign: 'center',
-  },
-  ratingPrompt: {
-    color: '#8a8a9a',
     fontSize: 14,
-    textAlign: 'center',
-    fontFamily: 'DMSans-Regular',
-    marginBottom: 12,
   },
-  posterName: {
-    color: '#f0f0f5',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  ratingButton: {
+  scrollArea: {
     flex: 1,
-    minHeight: 64,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    gap: 14,
+  },
+  evalCard: {
+    backgroundColor: '#31313c',
     borderRadius: 16,
     borderWidth: 1,
-    justifyContent: 'center',
+    borderColor: '#3a3a48',
+    padding: 16,
+    gap: 14,
+  },
+  evalName: {
+    color: '#f0f0f5',
+    fontSize: 16,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+  },
+  outcomeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  outcomeBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#3a3a48',
+    backgroundColor: '#26262e',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
   },
-  positiveButton: {
-    backgroundColor: '#31313c',
-    borderColor: '#3a3a48',
-  },
-  positiveButtonActive: {
-    backgroundColor: 'rgba(57, 255, 20, 0.12)',
-    borderColor: '#39ff14',
-    borderWidth: 2,
-  },
-  negativeButton: {
-    backgroundColor: '#31313c',
-    borderColor: '#3a3a48',
-  },
-  negativeButtonActive: {
+  outcomeBtnFailed: {
     backgroundColor: 'rgba(255, 92, 92, 0.12)',
     borderColor: '#ff5c5c',
-    borderWidth: 2,
   },
-  ratingButtonLabel: {
-    fontSize: 12,
-    fontFamily: 'DMSans-Medium',
-    fontWeight: '500',
+  outcomeBtnCompleted: {
+    backgroundColor: 'rgba(57, 255, 20, 0.12)',
+    borderColor: '#39ff14',
   },
-  idleText: {
+  outcomeText: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
     color: '#8a8a9a',
   },
-  positiveText: {
+  outcomeTextFailedActive: {
+    color: '#ff8d8d',
+  },
+  outcomeTextCompletedActive: {
     color: '#39ff14',
   },
-  negativeText: {
-    color: '#ff8d8d',
+  ratingRowGroup: {
+    flexDirection: 'row',
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#3a3a48',
+    paddingTop: 14,
+  },
+  ratingBtnSmall: {
+    flex: 1,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#3a3a48',
+    backgroundColor: '#26262e',
+  },
+  ratingBtnSmallPos: {
+    backgroundColor: 'rgba(57, 255, 20, 0.12)',
+    borderColor: '#39ff14',
+  },
+  ratingBtnSmallNeg: {
+    backgroundColor: 'rgba(255, 92, 92, 0.12)',
+    borderColor: '#ff5c5c',
+  },
+  ratingBtnText: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Medium',
+    color: '#8a8a9a',
+  },
+  textPos: { color: '#39ff14' },
+  textNeg: { color: '#ff8d8d' },
+  section: {
+    marginTop: 6,
   },
   rewardCard: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#ffd700',
+    borderColor: 'rgba(255, 215, 0, 0.2)',
     paddingHorizontal: 14,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -431,8 +495,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    marginTop: 'auto',
+    paddingTop: 12,
   },
   submitButton: {
     height: 52,
