@@ -715,15 +715,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     leaderboardTitle: {
-        fontFamily: 'PressStart2P',
-        fontSize: 9,
-        color: COLORS.token,
-        letterSpacing: 0.5,
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
     },
     leaderboardSubtitle: {
         fontSize: 11,
         color: COLORS.textSecondary,
-        marginTop: 3,
     },
     leaderboardRight: {
         flexDirection: 'row',
@@ -731,10 +729,9 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     leaderboardCta: {
-        fontFamily: 'PressStart2P',
-        fontSize: 8,
+        fontSize: 13,
+        fontWeight: '600',
         color: COLORS.token,
-        letterSpacing: 1,
     },
     // ─────────────────────────────────────────────────────────────────────────
     tokenCard: {
