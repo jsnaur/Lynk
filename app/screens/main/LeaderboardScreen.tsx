@@ -497,7 +497,18 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                 </View>
             )}
 
-            <BottomNav activeTab="Profile" onTabPress={onTabPress} />
+            {/* NEW: Updated BottomNav integration */}
+            <BottomNav 
+                activeTab="Profile" 
+                onTabPress={(tab) => {
+                    if (onTabPress) {
+                        onTabPress(tab);
+                    } else if (navigation) {
+                        // Triggers the stack to pop the leaderboard screen and pass the selected tab to MainTabsScreen
+                        navigation.navigate('HomeFeed', { activeTab: tab });
+                    }
+                }} 
+            />
         </View>
     );
 }
