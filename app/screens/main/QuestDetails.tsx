@@ -50,7 +50,7 @@ type ProfilePreview = {
   accessories?: Partial<Record<AvatarSlot, string>>;
   major?: string | null;
   graduationYear?: string | null;
-  bio?: string | null; // Added bio type
+  bio?: string | null; 
 };
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
@@ -154,6 +154,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+  const [posterProfile, setPosterProfile] = useState<any>(null);
   
   const [questData, setQuestData] = useState<any>(quest);
   const [loading, setLoading] = useState(false);
@@ -176,6 +177,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       }
 
       if (quest?.id) {
+        // Fetch Quest Details (without risky joins)
         const { data: qData, error: qError } = await supabase
           .from('quests')
           .select('*')
@@ -186,6 +188,19 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           setQuestData(qData);
           if (qData.status === 'accepted' && qData.accepted_by === user?.id) {
             setAccepted(true);
+          }
+
+          // Explicitly fetch Poster Profile right after
+          if (qData.user_id) {
+            const { data: pData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', qData.user_id)
+              .maybeSingle();
+
+            if (mounted && pData) {
+              setPosterProfile(pData);
+            }
           }
         }
 
@@ -287,8 +302,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const categoryColor = CATEGORY_COLORS[category];
   const title = questData?.title ?? quest?.title ?? 'Need help around campus today';
   const preview = questData?.description ?? quest?.preview ?? 'Looking for someone nearby to help with a quick request before 5PM.';
-  const posterName = quest?.posterName ?? 'Mark Lawrence';
-  const ago = quest?.ago ?? '23m ago';
+  const posterName = quest?.posterName ?? 'Anonymous User';
+  const ago = quest?.ago ?? 'Just now';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
   const token = questData?.token_bounty ?? quest?.token ?? 25;
   const isPoster = currentUserId === questData?.user_id;
@@ -340,10 +355,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setProfilePreviewVisible(false);
   };
 
+  // Profile Preview for Comment authors
   const onViewProfile = async () => {
     if (!selectedComment?.userId) return;
 
-    // Open with immediate fallback data (now including bio)
     setSelectedProfile({
       id: selectedComment.userId,
       displayName: selectedComment.author === 'You'
@@ -352,15 +367,14 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       accessories: selectedComment.accessories,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
-      bio: currentUserProfile?.bio || null, // Fallback bio added
+      bio: currentUserProfile?.bio || null, 
     });
     setActionsVisible(false);
     setProfilePreviewVisible(true);
 
-    // Fetch the updated profile data including the bio
     const { data: profileData, error } = await supabase
       .from('profiles')
-      .select('id, display_name, equipped_accessories, major, graduation_year, bio') // Added bio to the query
+      .select('id, display_name, equipped_accessories, major, graduation_year, bio') 
       .eq('id', selectedComment.userId)
       .maybeSingle();
 
@@ -374,8 +388,45 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       accessories: normalizeAccessories(profileData.equipped_accessories),
       major: profileData.major,
       graduationYear: profileData.graduation_year,
-      bio: profileData.bio, // Set the fetched bio here
+      bio: profileData.bio, 
     });
+  };
+
+  // Profile Preview explicitly for the Quest Poster
+  const openPosterProfile = async () => {
+    const targetUserId = questData?.user_id || quest?.user_id;
+    if (!targetUserId) return;
+
+    // Open instantly with data we already fetched explicitly in useEffect
+    setSelectedProfile({
+      id: targetUserId,
+      displayName: posterProfile?.display_name || posterName,
+      accessories: normalizeAccessories(posterProfile?.equipped_accessories),
+      major: posterProfile?.major || null,
+      graduationYear: posterProfile?.graduation_year || null,
+      bio: posterProfile?.bio || null,
+    });
+    setProfilePreviewVisible(true);
+
+    // Refresh dynamically just to guarantee fresh bio/info
+    const { data: profileData, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, equipped_accessories, major, graduation_year, bio')
+      .eq('id', targetUserId)
+      .maybeSingle();
+
+    if (!error && profileData) {
+      setSelectedProfile({
+        id: profileData.id,
+        displayName: profileData.display_name || 'Anonymous',
+        accessories: normalizeAccessories(profileData.equipped_accessories),
+        major: profileData.major,
+        graduationYear: profileData.graduation_year,
+        bio: profileData.bio,
+      });
+      // Sync cache
+      setPosterProfile(profileData);
+    }
   };
 
   const profileSubtitle = selectedProfile
@@ -430,10 +481,26 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               <Text style={styles.preview}>{preview}</Text>
 
               <View style={styles.metaRow}>
-                <View>
-                  <Text style={styles.poster}>{posterName}</Text>
-                  <Text style={styles.time}>{ago}</Text>
-                </View>
+                {/* Fixed User Info Area - Expanded HitSlop & Specific Profile Call */}
+                <Pressable 
+                  onPress={openPosterProfile} 
+                  style={styles.posterInfoWrap}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <View style={styles.posterAvatarWrap}>
+                    <LayeredAvatar 
+                      accessories={normalizeAccessories(posterProfile?.equipped_accessories)} 
+                      size={32} 
+                      scale={1.4} 
+                      translateY={2} 
+                    />
+                  </View>
+                  <View>
+                    <Text style={styles.poster}>{posterProfile?.display_name || posterName}</Text>
+                    <Text style={styles.time}>{ago}</Text>
+                  </View>
+                </Pressable>
+                
                 <View style={styles.locationChip}>
                   <LocationIcon width={14} height={14} />
                   <Text style={styles.locationText}>GLE Building, Room 605</Text>
@@ -559,7 +626,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 <View style={styles.previewIdentityText}>
                   <Text style={styles.previewName}>{selectedProfile?.displayName || 'Anonymous'}</Text>
                   <Text style={styles.previewSubtitle}>{profileSubtitle}</Text>
-                  {/* Updated Bio render here! */}
                   <Text style={styles.previewBio}>
                     {selectedProfile?.bio || 'Tell your campus a little about yourself...'}
                   </Text>
@@ -671,6 +737,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  posterInfoWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  posterAvatarWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: COLORS.surface2 || '#ececec',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   poster: {
     color: COLORS.textPrimary,
