@@ -34,6 +34,7 @@ const DISMISS_ANIMATION_MS = 240;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 const { GUILD_BASE_XP, TOKEN_MIN, TOKEN_MAX } = APPRAISER_CONSTANTS;
+const MAX_PARTICIPANTS_LIMIT = 50;
 
 const CATEGORY_BG = {
   favor: withOpacity(COLORS.favor, 0.15),
@@ -65,7 +66,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [maxParticipantsStr, setMaxParticipantsStr] = useState('1');
+  const [maxParticipants, setMaxParticipants] = useState<number>(1);
   const [isAutoAccept, setIsAutoAccept] = useState(true);
   const [tokenBounty, setTokenBounty] = useState(DEFAULT_APPRAISAL.tokenBounty);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -83,14 +84,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     if (!titleTrim) list.push('Add a quest title');
     if (!descTrim) list.push('Add a description');
     if (!locTrim) list.push('Add a campus location');
-    
-    const parsedMax = parseInt(maxParticipantsStr, 10);
-    if (isNaN(parsedMax) || parsedMax < 1) {
-      list.push('Group size must be at least 1');
-    }
+    if (maxParticipants < 1) list.push('Group size must be at least 1');
 
     return list;
-  }, [category, titleTrim, descTrim, locTrim, maxParticipantsStr]);
+  }, [category, titleTrim, descTrim, locTrim, maxParticipants]);
 
   const isValid = validationIssues.length === 0;
 
@@ -113,6 +110,15 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       const next = v + delta;
       if (next < TOKEN_MIN) return TOKEN_MIN;
       if (next > TOKEN_MAX) return TOKEN_MAX;
+      return next;
+    });
+  }, []);
+
+  const changeMaxParticipants = useCallback((delta: number) => {
+    setMaxParticipants((v) => {
+      const next = v + delta;
+      if (next < 1) return 1;
+      if (next > MAX_PARTICIPANTS_LIMIT) return MAX_PARTICIPANTS_LIMIT;
       return next;
     });
   }, []);
@@ -195,9 +201,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         console.log("Location fetch caught, using default fallback.", locErr.message);
       }
 
-      const parsedMax = parseInt(maxParticipantsStr, 10);
-      const finalMaxParticipants = isNaN(parsedMax) || parsedMax < 1 ? 1 : parsedMax;
-
       const { error } = await supabase.rpc('create_quest_with_bounty', {
         p_category: category?.toLowerCase(),
         p_title: titleTrim,
@@ -207,7 +210,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         p_token_bounty: tokenBounty,
         p_latitude: lat,
         p_longitude: lon,
-        p_max_participants: finalMaxParticipants,
+        p_max_participants: maxParticipants,
         p_is_auto_accept: isAutoAccept,
       });
 
@@ -407,29 +410,53 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
             <View style={styles.section}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>MAX PARTICIPANTS (GROUP SIZE)</Text>
+                <Text style={styles.label}>MAX PARTICIPANTS (HELPERS NEEDED)</Text>
                 <View style={styles.requiredDot} />
               </View>
-              <TextInput
-                style={styles.textInput}
-                keyboardType="number-pad"
-                placeholder="1"
-                placeholderTextColor={COLORS.textSecondary}
-                value={maxParticipantsStr}
-                onChangeText={(t) => setMaxParticipantsStr(t.replace(/[^0-9]/g, ''))}
-                maxLength={3}
-                onBlur={() => {
-                  if (!maxParticipantsStr || parseInt(maxParticipantsStr, 10) < 1) {
-                    setMaxParticipantsStr('1');
-                  }
-                }}
-              />
+              
+              <View style={styles.stepperContainer}>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => changeMaxParticipants(-1)}
+                  disabled={maxParticipants <= 1}
+                  style={({ pressed }) => [
+                    styles.stepperHit,
+                    (pressed || maxParticipants <= 1) && styles.stepperDim,
+                  ]}
+                >
+                  <DecrementBtn width={32} height={32} />
+                </Pressable>
+                
+                <View style={styles.stepperValueContainer}>
+                  <Text style={styles.stepperValue}>{maxParticipants}</Text>
+                </View>
+
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => changeMaxParticipants(1)}
+                  disabled={maxParticipants >= MAX_PARTICIPANTS_LIMIT}
+                  style={({ pressed }) => [
+                    styles.stepperHit,
+                    (pressed || maxParticipants >= MAX_PARTICIPANTS_LIMIT) && styles.stepperDim,
+                  ]}
+                >
+                  <IncrementBtn width={32} height={32} />
+                </Pressable>
+              </View>
+              
+              <Text style={styles.stepperHelper}>
+                {maxParticipants === 1
+                  ? "Requires 1 helper"
+                  : `Requires ${maxParticipants} helpers`}
+              </Text>
 
               <View style={styles.toggleRow}>
                 <View style={styles.toggleTextCol}>
                   <Text style={styles.toggleTitle}>Auto-Accept Applicants</Text>
                   <Text style={styles.toggleSub}>
-                    If off, you will manually review and approve applicants before the quest starts.
+                    {maxParticipants > 3 
+                      ? `Warning: Auto-accepting ${maxParticipants} helpers might fill your quest instantly. Are you sure?`
+                      : "If off, you will manually review and approve applicants before the quest starts."}
                   </Text>
                 </View>
                 <Switch
@@ -438,7 +465,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   trackColor={{ false: COLORS.border, true: COLORS.xp }}
                 />
               </View>
-              <FieldError message="Group size must be at least 1" visible={submitAttempted && (!maxParticipantsStr || parseInt(maxParticipantsStr, 10) < 1)} />
+              <FieldError message="Group size must be at least 1" visible={submitAttempted && maxParticipants < 1} />
             </View>
 
             <View style={styles.section}>
@@ -730,6 +757,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.textPrimary,
     fontFamily: 'DMSans-Regular',
+  },
+  stepperContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 56,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  stepperValueContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValue: {
+    fontSize: 22,
+    fontFamily: 'SpaceMono-Bold',
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  stepperHelper: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontFamily: 'DMSans-Regular',
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 4,
   },
   toggleRow: {
     flexDirection: 'row',
