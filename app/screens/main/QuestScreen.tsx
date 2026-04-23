@@ -162,11 +162,12 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       if (mainErr) console.error('Error fetching main quests:', mainErr);
 
       // 2. Fetch quests where user is a participant (for 1-to-many group quests)
+      // FIX: Ensure 'completed' and 'failed' are included so acceptors don't lose the quest when it resolves
       const { data: partData, error: partErr } = await supabase
         .from('quest_participants')
         .select('quest_id')
         .eq('user_id', user.id)
-        .in('status', ['accepted', 'completed', 'resolved']);
+        .in('status', ['accepted', 'completed', 'failed', 'resolved']);
 
       if (partErr) console.error('Error fetching participations:', partErr);
 
@@ -210,7 +211,9 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
         // Determine if user is an accepter natively (1-on-1) or in group participants
         const isDirectAccepter = q.accepted_by === user.id;
         const participantMe = q.participants?.find((p: any) => p.user_id === user.id);
-        const isParticipantAccepter = participantMe && participantMe.status === 'accepted';
+        
+        // FIX: Acceptor logic now acknowledges post-resolution statuses ('completed', 'failed')
+        const isParticipantAccepter = participantMe && ['accepted', 'completed', 'failed', 'resolved'].includes(participantMe.status);
         
         const isAccepter = isDirectAccepter || isParticipantAccepter;
         const isResolved = q.status === 'completed' || q.status === 'resolved';
