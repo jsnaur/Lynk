@@ -399,9 +399,9 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                         <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
                         <Text style={styles.backText}>Profile</Text>
                     </Pressable>
-                    <Text style={styles.headerTitle}>RANKINGS</Text>
-                    <View style={styles.headerAccent}>
-                        <Ionicons name="trophy" size={18} color={COLORS.token} />
+
+                    <View style={styles.headerTitleContainer} pointerEvents="none">
+                        <Text style={styles.headerTitle}>RANKINGS</Text>
                     </View>
                 </View>
 
@@ -517,12 +517,22 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         paddingHorizontal: 20,
         paddingBottom: 12,
         height: 64,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
+        position: 'relative',
+    },
+    headerTitleContainer: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     backButton: {
         flexDirection: 'row',
@@ -539,16 +549,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLORS.textPrimary,
         letterSpacing: 2,
-    },
-    headerAccent: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: withOpacity(COLORS.token, 0.12),
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: withOpacity(COLORS.token, 0.3),
     },
 
     // ── Podium
