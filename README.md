@@ -87,7 +87,7 @@ We are the creators behind LYNK. Click on our profiles below to see more of our 
 <img src="https://github.com/jsnaur.png" width="100px;" alt="jsnaur" style="border-radius: 50%;"/><br />
 <sub><b>jsnaur</b></sub>
 </a><br />
-<sub>Project Manager | Backend Lead Developer</sub>
+<sub>Project Manager | Fullstack Developer</sub>
 </td>
 <td align="center">
 <a href="https://github.com/aldrich-star">
