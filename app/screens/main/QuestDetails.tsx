@@ -310,32 +310,45 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   const parseReplyEncodedContent = useCallback((text: string) => {
     const raw = (text ?? '').trim();
-    // Supported formats:
-    // - "↪ <name>: <preview>\n<body>"   (new)
-    // - "↪ <preview>\n<body>"          (old)
-    if (raw.startsWith('↪')) {
-      // Remove the arrow and any following whitespace safely (don't assume "↪ ").
-      // Also strip the emoji-variation selector if present (↪️).
-      const withoutArrow = raw.replace(/^↪\uFE0F?\s*/, '');
-      const newLineIdx = withoutArrow.indexOf('\n');
-      if (newLineIdx !== -1) {
-        const header = withoutArrow.slice(0, newLineIdx).trim();
-        const bodyText = withoutArrow.slice(newLineIdx + 1).trim();
-        if (header && bodyText) {
-          // Try to parse "name: preview"
-          const colonIdx = header.indexOf(':');
-          if (colonIdx !== -1) {
-            const repliedToName = header.slice(0, colonIdx).trim();
-            const previewText = header.slice(colonIdx + 1).trim();
-            if (previewText) {
-              return { repliedToName, replyPreview: previewText, body: bodyText };
-            }
-          }
-          return { repliedToName: '', replyPreview: header, body: bodyText };
-        }
+    
+    // Check if it starts with the reply arrow (with or without variation selector)
+    const arrowMatch = raw.match(/^↪\uFE0F?\s*/);
+    if (!arrowMatch) {
+      // Not a reply-encoded message, return as plain body
+      return { repliedToName: '', replyPreview: '', body: raw };
+    }
+    
+    // Remove the arrow prefix
+    const withoutArrow = raw.slice(arrowMatch[0].length);
+    
+    // Find the newline that separates header from body
+    const newLineIdx = withoutArrow.indexOf('\n');
+    if (newLineIdx === -1) {
+      // No newline found - treat entire content as body (malformed reply format)
+      return { repliedToName: '', replyPreview: '', body: raw };
+    }
+    
+    const header = withoutArrow.slice(0, newLineIdx).trim();
+    const bodyText = withoutArrow.slice(newLineIdx + 1).trim();
+    
+    if (!header || !bodyText) {
+      // Empty header or body - return original as body
+      return { repliedToName: '', replyPreview: '', body: raw };
+    }
+    
+    // Try to parse "name: preview" format
+    // Look for the FIRST colon followed by a space to split name from preview
+    const colonSpaceIdx = header.indexOf(': ');
+    if (colonSpaceIdx !== -1 && colonSpaceIdx > 0) {
+      const repliedToName = header.slice(0, colonSpaceIdx).trim();
+      const previewText = header.slice(colonSpaceIdx + 2).trim();
+      if (repliedToName && previewText) {
+        return { repliedToName, replyPreview: previewText, body: bodyText };
       }
     }
-    return { repliedToName: '', replyPreview: '', body: raw };
+    
+    // Fallback: no "name: " pattern found, treat header as preview only
+    return { repliedToName: '', replyPreview: header, body: bodyText };
   }, []);
 
   const toggleArchiveView = () => {
@@ -679,7 +692,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     const trimmed = parseReplyEncodedContent(replyTo.text).body.trim();
     if (trimmed.length <= 90) return trimmed;
     return `${trimmed.slice(0, 90)}…`;
-  }, [replyTo?.text]);
+  }, [replyTo?.text, parseReplyEncodedContent]);
 
   const openCommentActions = (comment: UIComment) => {
     setSelectedComment(comment);
@@ -1480,7 +1493,7 @@ const styles = StyleSheet.create({
   replyBannerClose: { padding: 4, borderRadius: 10 },
   replyQuoteBox: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     gap: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
@@ -1495,11 +1508,8 @@ const styles = StyleSheet.create({
     width: 3,
     borderRadius: 2,
     backgroundColor: withOpacity(COLORS.favor, 0.7),
-    marginTop: 2,
-    marginBottom: 2,
   },
   replyQuoteText: {
-    flex: 1,
     color: COLORS.textSecondary,
     fontSize: 12,
     lineHeight: 16,
