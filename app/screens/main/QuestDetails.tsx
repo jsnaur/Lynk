@@ -10,12 +10,15 @@ import {
   Alert,
   KeyboardAvoidingView, 
   Platform,
+  PanResponder,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Icons
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
-import ShareIcon from '../../../assets/QuestDetailsAssets/Share_Icon.svg';
+// Share icon removed (header simplified)
 import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
@@ -63,6 +66,127 @@ type ProfilePreview = {
   graduationYear?: string | null;
   bio?: string | null;
 };
+
+const SWIPE_REPLY_MAX = 86;
+const SWIPE_REPLY_TRIGGER = 56;
+
+function SwipeReplyCommentRow({
+  comment,
+  onReply,
+  onOpenActions,
+  parse,
+}: {
+  comment: UIComment;
+  onReply: (comment: UIComment) => void;
+  onOpenActions: (comment: UIComment) => void;
+  parse: (text: string) => { repliedToName: string; replyPreview: string; body: string };
+}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const revealed = useRef(false);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_evt, gesture) =>
+          Math.abs(gesture.dx) > 10 && Math.abs(gesture.dy) < 10,
+        onPanResponderMove: (_evt, gesture) => {
+          const clamped = Math.max(0, Math.min(SWIPE_REPLY_MAX, gesture.dx));
+          translateX.setValue(clamped);
+          revealed.current = clamped > 12;
+        },
+        onPanResponderRelease: (_evt, gesture) => {
+          const shouldTrigger = gesture.dx > SWIPE_REPLY_TRIGGER;
+          if (shouldTrigger) {
+            Animated.spring(translateX, {
+              toValue: 0,
+              useNativeDriver: true,
+              speed: 18,
+              bounciness: 0,
+            }).start();
+            onReply(comment);
+            return;
+          }
+
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 18,
+            bounciness: 0,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 18,
+            bounciness: 0,
+          }).start();
+        },
+      }),
+    [comment, onReply, translateX],
+  );
+
+  const actionOpacity = translateX.interpolate({
+    inputRange: [0, 12, SWIPE_REPLY_MAX],
+    outputRange: [0, 0.7, 1],
+    extrapolate: 'clamp',
+  });
+
+  const actionScale = translateX.interpolate({
+    inputRange: [0, 12, SWIPE_REPLY_MAX],
+    outputRange: [0.98, 1, 1.02],
+    extrapolate: 'clamp',
+  });
+
+  const parsed = parse(comment.text);
+
+  return (
+    <View style={styles.swipeRowWrap}>
+      <View style={styles.replyUnderlay}>
+        <Animated.View style={[styles.replyUnderlayPill, { opacity: actionOpacity, transform: [{ scale: actionScale }] }]}>
+          <Ionicons name="return-down-forward" size={16} color={COLORS.bg} />
+          <Text style={styles.replyUnderlayText}>Reply</Text>
+        </Animated.View>
+      </View>
+
+      <Animated.View
+        style={[styles.commentRow, { transform: [{ translateX }] }]}
+        {...panResponder.panHandlers}
+      >
+        <Pressable style={styles.commentAvatarWrap} onPress={() => onOpenActions(comment)} hitSlop={8}>
+          <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
+        </Pressable>
+
+        <View style={styles.commentContent}>
+          <View style={styles.rowBetween}>
+            <Pressable onPress={() => onOpenActions(comment)} hitSlop={8}>
+              <Text style={styles.commentAuthor}>{comment.author}</Text>
+            </Pressable>
+            <Text style={styles.commentTime}>{comment.time}</Text>
+          </View>
+
+          {!!parsed.replyPreview && (
+            <View style={styles.replyQuoteBox}>
+              <View style={styles.replyQuoteBar} />
+              <View style={styles.replyQuoteTextWrap}>
+                {!!parsed.repliedToName && (
+                  <Text style={styles.replyQuoteMeta} numberOfLines={1}>
+                    Reply to {parsed.repliedToName}
+                  </Text>
+                )}
+                <Text style={styles.replyQuoteText} numberOfLines={2}>
+                  {parsed.replyPreview}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <Text style={styles.commentText}>{parsed.body}</Text>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
 
 const CATEGORY_COLORS: Record<FeedCategory, string> = {
   favor: COLORS.favor,
@@ -156,11 +280,13 @@ function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: Laye
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const quest = route?.params?.quest;
   
-  const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState('');
   const [cardExpanded, setCardExpanded] = useState(false);
+  const inputRef = useRef<TextInput | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
   
   const [comments, setComments] = useState<UIComment[]>([]);
+  const [replyTo, setReplyTo] = useState<UIComment | null>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -181,6 +307,36 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   // Use a ref to ensure the realtime subscription always checks against the latest status
   const questStatusRef = useRef(questData?.status || 'open');
+
+  const parseReplyEncodedContent = useCallback((text: string) => {
+    const raw = (text ?? '').trim();
+    // Supported formats:
+    // - "↪ <name>: <preview>\n<body>"   (new)
+    // - "↪ <preview>\n<body>"          (old)
+    if (raw.startsWith('↪')) {
+      // Remove the arrow and any following whitespace safely (don't assume "↪ ").
+      // Also strip the emoji-variation selector if present (↪️).
+      const withoutArrow = raw.replace(/^↪\uFE0F?\s*/, '');
+      const newLineIdx = withoutArrow.indexOf('\n');
+      if (newLineIdx !== -1) {
+        const header = withoutArrow.slice(0, newLineIdx).trim();
+        const bodyText = withoutArrow.slice(newLineIdx + 1).trim();
+        if (header && bodyText) {
+          // Try to parse "name: preview"
+          const colonIdx = header.indexOf(':');
+          if (colonIdx !== -1) {
+            const repliedToName = header.slice(0, colonIdx).trim();
+            const previewText = header.slice(colonIdx + 1).trim();
+            if (previewText) {
+              return { repliedToName, replyPreview: previewText, body: bodyText };
+            }
+          }
+          return { repliedToName: '', replyPreview: header, body: bodyText };
+        }
+      }
+    }
+    return { repliedToName: '', replyPreview: '', body: raw };
+  }, []);
 
   const toggleArchiveView = () => {
     const newState = !viewingArchiveRef.current;
@@ -299,6 +455,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         visibility: newC.visibility,
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
+                      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
                     }
                   });
               }
@@ -419,7 +576,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     const trimmed = message.trim();
     if (!trimmed || !currentUserId || !questData?.id) return;
 
+    // Since we don't have parent_comment_id in DB, we encode reply context into the content.
+    // Format:
+    //   ↪ <replied-to name>: <preview of replied-to comment>\n<actual reply message>
+    // (Keeps it dynamic + readable even without threading.)
+    const replyTargetName = replyTo?.author?.trim() ?? '';
+    const replyTargetBody = replyTo?.text ? parseReplyEncodedContent(replyTo.text).body : '';
+    const replyQuoted = replyTargetBody
+      ? replyTargetBody.trim().replace(/\s+/g, ' ').slice(0, 120)
+      : '';
+    const finalContent =
+      replyQuoted && replyTargetName
+        ? `↪ ${replyTargetName}: ${replyQuoted}\n${trimmed}`
+        : replyQuoted
+          ? `↪ ${replyQuoted}\n${trimmed}`
+          : trimmed;
+
     setMessage('');
+    setReplyTo(null);
     const targetVisibility = questData?.status === 'open' ? 'public' : 'private';
     const tempCommentId = `temp-${Date.now()}`;
     
@@ -427,20 +601,21 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       id: tempCommentId,
       userId: currentUserId,
       author: currentUserProfile?.display_name || 'You', 
-      text: trimmed,
+      text: finalContent,
       time: 'Just now',
       accessories: normalizeAccessories(currentUserProfile?.equipped_accessories),
       visibility: targetVisibility,
     };
 
     setComments((prev) => [...prev, newLocalComment]);
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 
     const { error } = await supabase
       .from('comments')
       .insert([{ 
         quest_id: questData.id, 
         user_id: currentUserId, 
-        content: trimmed,
+        content: finalContent,
         visibility: targetVisibility 
       }]);
       
@@ -450,6 +625,61 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       console.error('Comment error:', error);
     }
   };
+
+  const beginReply = (comment: UIComment) => {
+    if (!currentUserId) return;
+    // Allow replying to yourself too
+    setReplyTo(comment);
+    // animate banner in
+    replyBannerAnim.setValue(0);
+    Animated.timing(replyBannerAnim, {
+      toValue: 1,
+      duration: 160,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const cancelReply = () => {
+    Animated.timing(replyBannerAnim, {
+      toValue: 0,
+      duration: 140,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setReplyTo(null);
+    });
+  };
+
+  const replyBannerAnim = useRef(new Animated.Value(0)).current;
+  const replyBannerStyle = useMemo(
+    () => ({
+      opacity: replyBannerAnim,
+      transform: [
+        {
+          translateY: replyBannerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [8, 0],
+          }),
+        },
+        {
+          scale: replyBannerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.98, 1],
+          }),
+        },
+      ],
+    }),
+    [replyBannerAnim],
+  );
+
+  const replyPreview = useMemo(() => {
+    if (!replyTo?.text) return '';
+    const trimmed = parseReplyEncodedContent(replyTo.text).body.trim();
+    if (trimmed.length <= 90) return trimmed;
+    return `${trimmed.slice(0, 90)}…`;
+  }, [replyTo?.text]);
 
   const openCommentActions = (comment: UIComment) => {
     setSelectedComment(comment);
@@ -550,14 +780,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             <Text style={styles.backText}>Feed</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Quest Details</Text>
-          <Pressable style={styles.iconButton} onPress={() => setLiked((current) => !current)}>
-            <ShareIcon width={22} height={22} />
-            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? COLORS.heart : COLORS.textSecondary} />
-          </Pressable>
+          <View style={styles.headerRightSpacer} />
         </View>
 
         {/* SCROLLABLE CONTENT */}
-        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={(r) => {
+            scrollRef.current = r;
+          }}
+          style={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
           
           {/* MAIN QUEST CARD */}
           {shouldShowCompactCard ? (
@@ -731,24 +964,15 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               </View>
 
               {/* COMMENTS LIST */}
-              {comments.map((comment) => {
-                return (
-                  <View key={comment.id} style={styles.commentRow}>
-                    <Pressable style={styles.commentAvatarWrap} onPress={() => openCommentActions(comment)} hitSlop={8}>
-                      <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
-                    </Pressable>
-                    <View style={styles.commentContent}>
-                      <View style={styles.rowBetween}>
-                        <Pressable onPress={() => openCommentActions(comment)} hitSlop={8}>
-                          <Text style={styles.commentAuthor}>{comment.author}</Text>
-                        </Pressable>
-                        <Text style={styles.commentTime}>{comment.time}</Text>
-                      </View>
-                      <Text style={styles.commentText}>{comment.text}</Text>
-                    </View>
-                  </View>
-                );
-              })}
+              {comments.map((comment) => (
+                <SwipeReplyCommentRow
+                  key={comment.id}
+                  comment={comment}
+                  onReply={beginReply}
+                  onOpenActions={openCommentActions}
+                  parse={parseReplyEncodedContent}
+                />
+              ))}
             </>
           ) : (
             <View style={styles.lockedCommentsBox}>
@@ -761,10 +985,37 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         {/* INPUT BAR (HIDDEN WHEN POSTER IS VIEWING ARCHIVE) */}
         {showComments && !viewingArchive && (
           <View style={styles.inputBar}>
+            {replyTo && (
+              <Animated.View style={[styles.replyBanner, replyBannerStyle]}>
+                <View style={styles.replyBannerLeft}>
+                  <Text style={styles.replyBannerTitle} numberOfLines={1}>
+                    Replying to <Text style={styles.replyBannerName}>{replyTo.author}</Text>
+                  </Text>
+                  {!!replyPreview && (
+                    <Text style={styles.replyBannerPreview} numberOfLines={1}>
+                      {replyPreview}
+                    </Text>
+                  )}
+                </View>
+
+                <Pressable onPress={cancelReply} hitSlop={10} style={styles.replyBannerClose}>
+                  <Ionicons name="close" size={16} color={COLORS.textSecondary} />
+                </Pressable>
+              </Animated.View>
+            )}
             <TextInput
+              ref={(r) => {
+                inputRef.current = r;
+              }}
               value={message}
               onChangeText={setMessage}
-              placeholder={commentsOpen ? "Add a public comment..." : "Message group..."}
+              placeholder={
+                replyTo
+                  ? `Reply to ${replyTo.author}...`
+                  : commentsOpen
+                    ? "Add a public comment..."
+                    : "Message group..."
+              }
               placeholderTextColor={COLORS.textSecondary}
               style={styles.input}
             />
@@ -860,6 +1111,9 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  headerRightSpacer: {
+    minWidth: 72,
   },
   scroll: {
     flex: 1,
@@ -1109,8 +1363,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   commentRow: {
-    marginHorizontal: 16,
-    marginBottom: 10,
+    marginHorizontal: 0,
+    marginBottom: 0,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1118,6 +1372,34 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 10,
     flexDirection: 'row',
+  },
+  swipeRowWrap: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
+  replyUnderlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 14,
+    borderRadius: 12,
+    backgroundColor: withOpacity(COLORS.favor, 0.14),
+    borderWidth: 1,
+    borderColor: withOpacity(COLORS.favor, 0.22),
+  },
+  replyUnderlayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: COLORS.favor,
+  },
+  replyUnderlayText: {
+    color: COLORS.bg,
+    fontSize: 12,
+    fontWeight: '800',
   },
   commentAvatarWrap: {
     width: 28,
@@ -1174,6 +1456,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  replyBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: -36,
+    minHeight: 44,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  replyBannerLeft: { flex: 1, paddingRight: 10 },
+  replyBannerTitle: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '700' },
+  replyBannerName: { color: COLORS.textPrimary, fontWeight: '800' },
+  replyBannerPreview: { color: COLORS.textSecondary, fontSize: 11, marginTop: 2, opacity: 0.9 },
+  replyBannerClose: { padding: 4, borderRadius: 10 },
+  replyQuoteBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: withOpacity(COLORS.textPrimary, 0.04),
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  replyQuoteBar: {
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: withOpacity(COLORS.favor, 0.7),
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  replyQuoteText: {
+    flex: 1,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  replyQuoteTextWrap: {
+    flex: 1,
+  },
+  replyQuoteMeta: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 2,
+    opacity: 0.9,
   },
   input: {
     flex: 1,
