@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
+import NotificationRow from '../../components/rows/NotificationRow';
 
 type Notification = {
     id: string;
@@ -119,36 +120,44 @@ export default function NotificationSheet({
                 .eq('id', item.id);
         }
 
-        // 3. Callback to handle navigation (e.g., go to Quest Detail)
+        // 3. Callback to handle navigation
         onNotificationPress?.(item);
     };
 
     const handleDeleteOne = async (item: Notification) => {
         if (!currentUserId) return;
 
-        // optimistic remove
-        const prev = notifications;
-        setNotifications((cur) => cur.filter((n) => n.id !== item.id));
-        onUnreadCountHint?.(
-            prev.reduce((acc, n) => acc + (n.id !== item.id && !n.is_read ? 1 : 0), 0),
-        );
+        Alert.alert('Delete Notification', 'Remove this notification?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                    const prev = notifications;
+                    setNotifications((cur) => cur.filter((n) => n.id !== item.id));
+                    onUnreadCountHint?.(
+                        prev.reduce((acc, n) => acc + (n.id !== item.id && !n.is_read ? 1 : 0), 0),
+                    );
 
-        const { error } = await supabase
-            .from('notifications')
-            .delete()
-            .eq('id', item.id)
-            .eq('recipient_id', currentUserId);
+                    const { error } = await supabase
+                        .from('notifications')
+                        .delete()
+                        .eq('id', item.id)
+                        .eq('recipient_id', currentUserId);
 
-        if (error) {
-            console.error('delete notification error:', error.message);
-            setNotifications(prev);
-            onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
-            Alert.alert('Error', 'Failed to delete notification.');
-        }
+                    if (error) {
+                        console.error('delete notification error:', error.message);
+                        setNotifications(prev);
+                        onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
+                        Alert.alert('Error', 'Failed to delete notification.');
+                    }
+                }
+            }
+        ]);
     };
 
     const handleClearAll = async () => {
-        if (!currentUserId) return;
+        if (!currentUserId || notifications.length === 0) return;
 
         Alert.alert(
             'Clear notifications',
@@ -197,34 +206,15 @@ export default function NotificationSheet({
     };
 
     const renderItem = ({ item }: { item: Notification }) => (
-        <Pressable
-            style={[styles.notificationItem, !item.is_read && styles.unreadItem]}
+        <NotificationRow
+            type={item.type}
+            state={item.is_read ? 'Read' : 'Unread'}
+            title={item.title}
+            description={item.description}
+            timestamp={timeAgo(item.created_at)}
             onPress={() => handlePress(item)}
             onLongPress={() => handleDeleteOne(item)}
-        >
-            <View style={styles.iconContainer}>
-                <Ionicons
-                    name={item.is_read ? 'notifications-outline' : 'notifications'}
-                    size={20}
-                    color={!item.is_read ? COLORS.favor : COLORS.textSecondary}
-                />
-            </View>
-            <View style={styles.textContainer}>
-                <Text style={styles.notificationTitle}>{item.title}</Text>
-                <Text style={styles.notificationDesc} numberOfLines={2}>{item.description}</Text>
-                <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
-            </View>
-            {!item.is_read && <View style={styles.unreadDot} />}
-            <Pressable
-                onPress={() => handleDeleteOne(item)}
-                hitSlop={10}
-                style={styles.deleteButton}
-                accessibilityRole="button"
-                accessibilityLabel="Delete notification"
-            >
-                <Ionicons name="trash-outline" size={18} color={COLORS.textSecondary} />
-            </Pressable>
-        </Pressable>
+        />
     );
 
     return (
@@ -244,14 +234,14 @@ export default function NotificationSheet({
                             <Pressable onPress={handleClearAll} hitSlop={10} style={styles.clearButton}>
                                 <Text style={styles.clearText}>Clear</Text>
                             </Pressable>
-                            <Pressable onPress={onClose} hitSlop={10}>
-                                <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+                            <Pressable onPress={onClose} hitSlop={10} style={{ marginLeft: 8 }}>
+                                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
                             </Pressable>
                         </View>
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator style={{ padding: 20 }} color={COLORS.favor} />
+                        <ActivityIndicator style={{ padding: 40 }} color={COLORS.favor} />
                     ) : (
                         <FlatList
                             data={notifications}
@@ -260,10 +250,12 @@ export default function NotificationSheet({
                             contentContainerStyle={styles.listContent}
                             refreshing={refreshing}
                             onRefresh={onRefresh}
+                            showsVerticalScrollIndicator={false}
                             ListEmptyComponent={
                                 <View style={styles.emptyState}>
+                                    <Ionicons name="notifications-off-outline" size={40} color={COLORS.border} />
                                     <Text style={styles.emptyText}>
-                                        {errorText ? errorText : 'No notifications yet.'}
+                                        {errorText ? errorText : "You're all caught up!"}
                                     </Text>
                                 </View>
                             }
@@ -278,15 +270,14 @@ export default function NotificationSheet({
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
     bubbleContainer: {
         position: 'absolute',
         top: 85,
         right: 16,
-        width: width * 0.85,
-        maxWidth: 340,
-        maxHeight: 400,
-        // Using transformOrigin to anchor the scale to the top-right
+        width: width * 0.88,
+        maxWidth: 380,
+        height: 480, // Giving it a bit more fixed height for scrollability
         // @ts-ignore
         transformOrigin: 'top right',
     },
@@ -296,41 +287,36 @@ const styles = StyleSheet.create({
         borderLeftColor: 'transparent', borderRightColor: 'transparent',
         borderBottomColor: COLORS.surface,
         alignSelf: 'flex-end',
-        marginRight: 8,
+        marginRight: 12,
     },
     contentBox: {
+        flex: 1,
         backgroundColor: COLORS.surface,
-        borderRadius: 16,
+        borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: COLORS.border,
-        elevation: 5,
+        elevation: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        padding: 16,
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
+        backgroundColor: COLORS.surface,
     },
-    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    clearButton: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 10, backgroundColor: COLORS.surface2 },
-    clearText: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
-    headerTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
-    listContent: { paddingBottom: 10 },
-    notificationItem: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border, alignItems: 'center' },
-    unreadItem: { backgroundColor: 'rgba(239, 68, 68, 0.03)' },
-    iconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    textContainer: { flex: 1 },
-    notificationTitle: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
-    notificationDesc: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
-    timeText: { fontSize: 11, color: COLORS.textSecondary, marginTop: 4 },
-    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.favor, alignSelf: 'center' },
-    deleteButton: { marginLeft: 10, padding: 4, borderRadius: 10 },
-    emptyState: { padding: 30, alignItems: 'center' },
-    emptyText: { color: COLORS.textSecondary },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
+    clearButton: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.surface2 },
+    clearText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
+    headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    listContent: { paddingBottom: 16 },
+    emptyState: { padding: 40, alignItems: 'center', gap: 12 },
+    emptyText: { color: COLORS.textSecondary, fontSize: 14 },
 });

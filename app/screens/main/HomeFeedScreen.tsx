@@ -73,7 +73,6 @@ function timeAgo(dateString: string) {
 const SKELETON_CARD_COUNT = 4;
 
 // --- MODULE LEVEL CACHE ---
-// This prevents the screen from reloading data if the component gets unmounted by the tab navigator.
 let CACHED_QUESTS: any[] = [];
 let CACHED_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {};
 let HAS_FETCHED_INITIALLY = false;
@@ -82,7 +81,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
     
-    // Initialize state instantly from the cache
     const [initialLoading, setInitialLoading] = useState(!HAS_FETCHED_INITIALLY);
     const [quests, setQuests] = useState<any[]>(CACHED_QUESTS); 
     const [currentUserAccessories, setCurrentUserAccessories] = useState<Partial<Record<AvatarSlot, string>>>(CACHED_ACCESSORIES);
@@ -93,7 +91,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     const flatListRef = useRef<FlatList>(null);
 
     const fetchProfile = async (forceRefresh = false) => {
-        // Skip if we already have it in memory, unless forced by refresh
         if (HAS_FETCHED_INITIALLY && !forceRefresh) return;
 
         const { data: { user } } = await supabase.auth.getUser();
@@ -133,7 +130,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     };
 
     const fetchQuests = async (forceRefresh = false) => {
-        // Skip if we already have it in memory, unless forced by refresh
         if (HAS_FETCHED_INITIALLY && !forceRefresh) {
             setInitialLoading(false);
             return;
@@ -151,8 +147,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
                         lat = loc.coords.latitude;
                         lon = loc.coords.longitude;
-                    } else {
-                        console.log("GPS is toggled off on device. Using default CIT location.");
                     }
                 }
             } catch (err: any) {
@@ -236,7 +230,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     }, []);
 
     useEffect(() => {
-        // These will now instantly return if cache exists and we aren't explicitly forcing a refresh
         fetchProfile();
         fetchQuests();
         fetchUnreadNotifCount();
@@ -265,7 +258,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     }, [onTabPress]);
 
     const handleBottomNavPress = useCallback((tab: MainTab) => {
-        // If clicking the Feed tab while already on it, scroll up and force refresh!
         if (tab === 'Feed') {
             flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
             setRefreshing(true);
@@ -437,12 +429,17 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
                             if (!item.reference_id) return;
 
-                            if (
-                                item.type === 'new_quest' ||
-                                item.type === 'comment' ||
-                                item.type === 'quest_accepted' ||
-                                item.type === 'quest_completed'
-                            ) {
+                            // We now check for the new DB Trigger types
+                            const validClickableTypes = [
+                                'quest_applied', 
+                                'applicant_accepted', 
+                                'quest_started', 
+                                'quest_completed', 
+                                'high_bounty_quest', 
+                                'new_comment'
+                            ];
+
+                            if (validClickableTypes.includes(item.type)) {
                                 const { data, error } = await supabase
                                     .from('quests')
                                     .select(`
@@ -455,6 +452,9 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                         bonus_xp,
                                         token_bounty,
                                         accepted_by,
+                                        status,
+                                        max_participants,
+                                        is_auto_accept,
                                         profiles!quests_user_id_fkey(display_name, equipped_accessories)
                                     `)
                                     .eq('id', item.reference_id)
@@ -484,6 +484,10 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                     bonus_xp: data.bonus_xp || 0,
                                     token_bounty: data.token_bounty || 0,
                                     accepted_by: data.accepted_by ?? undefined,
+                                    // Make sure status is included so the details screen knows if it is in progress!
+                                    status: data.status,
+                                    max_participants: data.max_participants,
+                                    is_auto_accept: data.is_auto_accept,
                                 };
 
                                 navigation?.navigate?.('QuestDetail', { quest: questForNav });
