@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
     Animated,
     View,
@@ -10,7 +10,10 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/colors';
+import { darkColors, withOpacity } from '../../constants/colors';
+import { useTheme } from '../../contexts/ThemeContext';
+
+type ThemeColors = Record<keyof typeof darkColors, string>;
 
 const MAJORS = [
     'Computer Engineering',
@@ -42,7 +45,6 @@ type ProfileData = {
 export default function EditProfileModal({
     onClose,
     onSave,
-    // Provide empty string for bio so placeholder works properly
     initialData = {
         displayName: '',
         bio: '',
@@ -50,6 +52,9 @@ export default function EditProfileModal({
         graduationYear: '2027',
     },
 }: EditProfileModalProps) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const slideAnim = useRef(new Animated.Value(36)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -130,7 +135,7 @@ export default function EditProfileModal({
                     <TextInput
                         style={styles.textInput}
                         placeholder="Enter your display name"
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={colors.textSecondary}
                         value={displayName}
                         onChangeText={(text) =>
                             setDisplayName(text.slice(0, 30))
@@ -149,7 +154,7 @@ export default function EditProfileModal({
                     <TextInput
                         style={[styles.textInput, styles.bioInput]}
                         placeholder="Tell your campus a little about yourself..."
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={colors.textSecondary}
                         value={bio}
                         onChangeText={(text) => setBio(text.slice(0, 100))}
                         maxLength={100}
@@ -178,7 +183,7 @@ export default function EditProfileModal({
                                     : 'chevron-down'
                             }
                             size={16}
-                            color={COLORS.textSecondary}
+                            color={colors.textSecondary}
                         />
                     </Pressable>
                     {showMajorDropdown && (
@@ -226,7 +231,7 @@ export default function EditProfileModal({
                                     : 'chevron-down'
                             }
                             size={16}
-                            color={COLORS.textSecondary}
+                            color={colors.textSecondary}
                         />
                     </Pressable>
                     {showYearDropdown && (
@@ -259,7 +264,7 @@ export default function EditProfileModal({
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     container: {
         position: 'absolute',
         top: 0,
@@ -401,9 +406,9 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     nudgeCard: {
-        backgroundColor: 'rgba(0, 245, 255, 0.04)',
+        backgroundColor: withOpacity(COLORS.favor, 0.04),
         borderWidth: 1,
-        borderColor: 'rgba(0, 245, 255, 0.15)',
+        borderColor: withOpacity(COLORS.favor, 0.15),
         borderRadius: 14,
         padding: 16,
         flexDirection: 'row',

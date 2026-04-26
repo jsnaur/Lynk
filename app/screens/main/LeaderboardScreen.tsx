@@ -9,17 +9,20 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
-import { COLORS, withOpacity } from '../../constants/colors';
+import { darkColors, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+type ThemeColors = Record<keyof typeof darkColors, string>;
 
 type LeaderboardEntry = {
     id: string;
@@ -93,6 +96,7 @@ function LayeredAvatar({
     scale?: number;
     translateY?: number;
 }) {
+    const { colors } = useTheme();
     const safeAccessories = normalizeAccessories(accessories);
     return (
         <View
@@ -101,7 +105,7 @@ function LayeredAvatar({
                 height: size,
                 borderRadius: size / 2,
                 overflow: 'hidden',
-                backgroundColor: COLORS.surface2,
+                backgroundColor: colors.surface2,
             }}
         >
             {ALL_SLOTS_Z_ORDER.map((slot) => {
@@ -152,6 +156,7 @@ function calculateLevelFromXP(totalXP: number): number {
 // ─── Components ───────────────────────────────────────────────────────────────
 
 function LoadingDots() {
+    const { colors } = useTheme();
     const dot1 = useRef(new Animated.Value(0)).current;
     const dot2 = useRef(new Animated.Value(0)).current;
     const dot3 = useRef(new Animated.Value(0)).current;
@@ -170,18 +175,14 @@ function LoadingDots() {
     }, []);
 
     return (
-        <View style={loadingStyles.wrap}>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 48 }}>
             {[dot1, dot2, dot3].map((dot, i) => (
-                <Animated.View key={i} style={[loadingStyles.dot, { transform: [{ translateY: dot }] }]} />
+                <Animated.View key={i} style={[{ width: 9, height: 9, borderRadius: 4.5, backgroundColor: colors.favor }, { transform: [{ translateY: dot }] }]} />
             ))}
         </View>
     );
 }
 
-const loadingStyles = StyleSheet.create({
-    wrap: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
-    dot: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: COLORS.favor },
-});
 
 function PodiumCard({
     entry,
@@ -196,6 +197,9 @@ function PodiumCard({
     metric: LeaderboardMetric;
     onPress: (entry: LeaderboardEntry) => void;
 }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const translateY = animValue.interpolate({ inputRange: [0, 1], outputRange: [40, 0] });
     const opacity = animValue.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
@@ -228,7 +232,7 @@ function PodiumCard({
                     <Text style={styles.rankPillText}>{medal.label}</Text>
                 </View>
 
-                <Text style={[styles.podiumName, { color: COLORS.textPrimary }]} numberOfLines={1}>{entry?.display_name ?? '—'}</Text>
+                <Text style={[styles.podiumName, { color: colors.textPrimary }]} numberOfLines={1}>{entry?.display_name ?? '—'}</Text>
                 <Text style={[styles.podiumXP, { color: medal.color }]}>{metricValue}</Text>
 
                 <View style={[styles.podiumBase, { height: medal.podiumHeight, backgroundColor: medal.color + '22', borderTopColor: medal.color + '55' }]}>
@@ -250,7 +254,9 @@ function LeaderboardRow({
     metric: LeaderboardMetric;
     onPress: (entry: LeaderboardEntry) => void;
 }) {
-    const rankColor = item.rank === 1 ? '#FFD700' : item.rank === 2 ? '#C0C0C0' : item.rank === 3 ? '#CD7F32' : COLORS.textSecondary;
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+    const rankColor = item.rank === 1 ? '#FFD700' : item.rank === 2 ? '#C0C0C0' : item.rank === 3 ? '#CD7F32' : colors.textSecondary;
 
     return (
         <Pressable style={[styles.listRow, isMe && styles.listRowMe]} onPress={() => onPress(item)}>
@@ -260,7 +266,7 @@ function LeaderboardRow({
                 <LayeredAvatar accessories={normalizeAccessories(item.equipped_accessories)} size={38} scale={1.45} translateY={3} />
             </View>
 
-            <Text style={[styles.listName, isMe && { color: COLORS.favor }]} numberOfLines={1}>{item.display_name ?? 'Anonymous'}</Text>
+            <Text style={[styles.listName, isMe && { color: colors.favor }]} numberOfLines={1}>{item.display_name ?? 'Anonymous'}</Text>
 
             <View style={styles.xpChip}>
                 <Text style={styles.xpChipText}>{metric === 'xp' ? fmtXP(item.total_xp) : String(item.completed_quests)}</Text>
@@ -273,6 +279,9 @@ function LeaderboardRow({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [userRank, setUserRank] = useState<UserRankData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -420,7 +429,7 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                 {/* Header */}
                 <View style={styles.header}>
                     <Pressable style={styles.backButton} onPress={() => navigation?.goBack?.()} hitSlop={10}>
-                        <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
+                        <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
                         <Text style={styles.backText}>Profile</Text>
                     </Pressable>
                     <View style={styles.headerTitleContainer} pointerEvents="none">
@@ -494,7 +503,7 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
             {/* Sticky User Row */}
             {userRank && (
                 <View style={styles.stickyWrap}>
-                    <LinearGradient colors={['rgba(0,245,255,0.12)', 'rgba(0,245,255,0.04)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stickyGradient}>
+                    <LinearGradient colors={[withOpacity(colors.favor, 0.12), withOpacity(colors.favor, 0.04)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stickyGradient}>
                         <View style={styles.stickyInner}>
                             <Text style={styles.stickyRank}>#{String(userRank.rank).padStart(2, '0')}</Text>
                             <View style={styles.stickyAvatarWrap}>
@@ -526,7 +535,7 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                         <View style={styles.previewHeader}>
                             <Text style={styles.previewTitle}>Profile</Text>
                             <Pressable onPress={() => setProfilePreviewVisible(false)} hitSlop={10}>
-                                <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+                                <Ionicons name="close" size={20} color={colors.textSecondary} />
                             </Pressable>
                         </View>
                         <View style={styles.previewIdentityRow}>
@@ -562,7 +571,7 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     root: { flex: 1, backgroundColor: COLORS.bg },
     safeArea: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 20, paddingBottom: 12, height: 64, borderBottomWidth: 1, borderBottomColor: COLORS.border, position: 'relative' },
@@ -580,7 +589,7 @@ const styles = StyleSheet.create({
     segmentBtnText: { fontFamily: FONTS.display, fontSize: 8, letterSpacing: 1, color: COLORS.textSecondary },
     segmentBtnTextActive: { color: COLORS.favor },
     crown: { fontFamily: FONTS.display, marginBottom: 4 },
-    podiumAvatarWrap: { borderWidth: 2.5, borderRadius: 99, overflow: 'hidden', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 8, marginBottom: 8 },
+    podiumAvatarWrap: { borderWidth: 2.5, borderRadius: 99, overflow: 'hidden', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 8, marginBottom: 8, backgroundColor: COLORS.surface2 },
     rankPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, marginBottom: 6 },
     rankPillText: { fontFamily: FONTS.display, fontSize: 7, color: '#1A1A1F', letterSpacing: 1 },
     podiumName: { fontFamily: FONTS.body, fontWeight: '700', fontSize: 12, marginBottom: 2, paddingHorizontal: 8, textAlign: 'center' },

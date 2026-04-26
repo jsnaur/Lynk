@@ -1,11 +1,13 @@
+import React, { type ComponentType, useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import type { ComponentType } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
-import { COLORS } from '../../constants/colors';
+import { darkColors, withOpacity } from '../../constants/colors';
+import { useTheme } from '../../contexts/ThemeContext';
+
+type ThemeColors = Record<keyof typeof darkColors, string>;
 
 export type ShopSheetItem = {
   id: string;
@@ -38,6 +40,8 @@ export default function ItemsDetailsSheet({
   onPurchase,
   onEquip,
 }: ItemsDetailsSheetProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   if (!item) return null;
 
@@ -61,7 +65,7 @@ export default function ItemsDetailsSheet({
           </View>
 
           <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons name="close" size={26} color={COLORS.textSecondary} />
+            <Ionicons name="close" size={26} color={colors.textSecondary} />
           </Pressable>
 
           <View style={styles.hero}>
@@ -96,7 +100,7 @@ export default function ItemsDetailsSheet({
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{owned ? 'Status' : 'Price'}</Text>
               {owned ? (
-                <Text style={[styles.statValue, { color: equipped ? COLORS.favor : COLORS.item }]}>
+                <Text style={[styles.statValue, { color: equipped ? colors.favor : colors.item }]}>
                   {equipped ? 'Equipped' : 'Owned'}
                 </Text>
               ) : (
@@ -110,7 +114,7 @@ export default function ItemsDetailsSheet({
 
           {!owned && !canAfford && (
             <View style={styles.warnBanner}>
-              <Ionicons name="warning-outline" size={18} color={COLORS.warning} />
+              <Ionicons name="warning-outline" size={18} color={colors.warning} />
               <Text style={styles.warnText}>Not enough tokens. Complete quests to earn more.</Text>
             </View>
           )}
@@ -166,7 +170,7 @@ export default function ItemsDetailsSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
   },
@@ -188,7 +192,7 @@ const styles = StyleSheet.create({
   },
   sheetTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(26,26,34,0.92)',
+    backgroundColor: withOpacity(COLORS.bg, 0.92),
   },
   handleRow: {
     alignItems: 'center',
@@ -299,9 +303,9 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,176,32,0.12)',
+    backgroundColor: withOpacity(COLORS.warning, 0.12),
     borderWidth: 1,
-    borderColor: 'rgba(255,176,32,0.35)',
+    borderColor: withOpacity(COLORS.warning, 0.35),
     marginBottom: 16,
   },
   warnText: {
