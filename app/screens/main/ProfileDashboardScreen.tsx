@@ -190,6 +190,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         editProfileVisible: false,
     });
 
+    // Dynamic quest count states
+    const [activeQuestCount, setActiveQuestCount] = useState<number>(0);
+    const [completedQuestCount, setCompletedQuestCount] = useState<number>(0);
+
     const fetchProfile = useCallback(async () => {
         setProfileLoading(true);
         try {
@@ -210,6 +214,69 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         }
     }, []);
 
+    // Fetch dynamic quest statistics exactly matching QuestScreen.tsx logic
+    const fetchQuestCounts = useCallback(async () => {
+        try {
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) return;
+
+            // 1. Fetch quests posted by the user OR directly accepted by the user
+            const { data: mainQuests } = await supabase
+                .from('quests')
+                .select('id, status')
+                .or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`);
+
+            // 2. Fetch quests where user is a participant (for group quests)
+            const { data: partData } = await supabase
+                .from('quest_participants')
+                .select('quest_id')
+                .eq('user_id', user.id)
+                .in('status', ['accepted', 'completed', 'failed', 'resolved']);
+
+            const partQuestIds = partData?.map((p) => p.quest_id) || [];
+            let extraQuests: any[] = [];
+
+            if (partQuestIds.length > 0) {
+                const existingIds = mainQuests?.map((q) => q.id) || [];
+                const missingIds = partQuestIds.filter((id) => !existingIds.includes(id));
+                
+                if (missingIds.length > 0) {
+                    const { data: extra } = await supabase
+                        .from('quests')
+                        .select('id, status')
+                        .in('id', missingIds);
+                        
+                    if (extra) extraQuests = extra;
+                }
+            }
+
+            const allData = [...(mainQuests || []), ...extraQuests];
+            
+            let activeCount = 0;
+            let completedCount = 0;
+            const seenIds = new Set();
+
+            allData.forEach((q) => {
+                if (seenIds.has(q.id)) return;
+                seenIds.add(q.id);
+
+                // If it's completed or resolved, it belongs in History/Completed
+                const isResolved = q.status === 'completed' || q.status === 'resolved';
+                
+                if (isResolved) {
+                    completedCount++;
+                } else {
+                    activeCount++;
+                }
+            });
+
+            setActiveQuestCount(activeCount);
+            setCompletedQuestCount(completedCount);
+        } catch (error) {
+            console.error('Error fetching quest counts:', error);
+        }
+    }, []);
+
     useEffect(() => {
         const unsubscribe = navigation?.addListener('focus', () => {
             const route = navigation?.getState?.()?.routes?.[navigation?.getState?.()?.index];
@@ -218,15 +285,17 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 navigation.setParams({ openEditProfile: false });
             }
 
-            // Sync the user's latest stats & token balance the moment they land on this tab
+            // Sync the user's latest stats, token balance, and quest counts the moment they land on this tab
             void fetchProfile();
             void refreshBalance();
+            void fetchQuestCounts();
         });
 
         void fetchProfile();
+        void fetchQuestCounts();
 
         return unsubscribe;
-    }, [fetchProfile, refreshBalance, navigation]);
+    }, [fetchProfile, refreshBalance, fetchQuestCounts, navigation]);
 
     useEffect(() => {
         let channel: any;
@@ -399,7 +468,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 <QuestIcon width={26} height={26} />
                                 <View>
                                     <Text style={styles.questsTitle}>My Quests</Text>
-                                    <Text style={styles.questsSubtitle}>3 active · 2 completed</Text>
+                                    {/* Dynamic rendering of Quest stats */}
+                                    <Text style={styles.questsSubtitle}>{activeQuestCount} active · {completedQuestCount} completed</Text>
                                 </View>
                             </View>
                             <Ionicons name="chevron-forward" size={16} color={COLORS.border} />
