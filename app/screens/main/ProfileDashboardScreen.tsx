@@ -181,7 +181,7 @@ function LeaderboardCard({ onPress }: { onPress: () => void }) {
 }
 
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
-    const { balance } = useTokenBalance();
+    const { balance, refreshBalance } = useTokenBalance();
     const [profile, setProfile] = useState<any>(null);
     const [profileLoading, setProfileLoading] = useState<boolean>(true);
     const [totalXP, setTotalXP] = useState<number>(0);
@@ -218,13 +218,15 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 navigation.setParams({ openEditProfile: false });
             }
 
+            // Sync the user's latest stats & token balance the moment they land on this tab
             void fetchProfile();
+            void refreshBalance();
         });
 
         void fetchProfile();
 
         return unsubscribe;
-    }, [fetchProfile, navigation]);
+    }, [fetchProfile, refreshBalance, navigation]);
 
     useEffect(() => {
         let channel: any;
@@ -530,8 +532,8 @@ const styles = StyleSheet.create({
         borderColor: COLORS.border,
         overflow: 'hidden',
         position: 'relative',
-        alignItems: 'center',       // <-- Added to center the avatar horizontally
-        justifyContent: 'center',   // <-- Added to center the avatar vertically
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     loadingAvatarIconWrap: {
         flex: 1,
@@ -686,7 +688,6 @@ const styles = StyleSheet.create({
         color: COLORS.textSecondary,
         fontFamily: 'monospace',
     },
-    // ── Leaderboard Card ──────────────────────────────────────────────────────
     leaderboardCard: {
         height: 64,
         paddingHorizontal: 16,
@@ -733,7 +734,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: COLORS.token,
     },
-    // ─────────────────────────────────────────────────────────────────────────
     tokenCard: {
         height: 64,
         paddingHorizontal: 16,

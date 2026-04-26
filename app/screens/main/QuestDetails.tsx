@@ -28,6 +28,7 @@ import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { COLORS, withOpacity } from '../../constants/colors';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { supabase } from '../../lib/supabase';
+import { useTokenBalance } from '../../contexts/TokenContext';
 
 type QuestDetailParams = {
   quest?: FeedQuest & { 
@@ -279,6 +280,7 @@ function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: Laye
 
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const quest = route?.params?.quest;
+  const { refreshBalance } = useTokenBalance();
   
   const [message, setMessage] = useState('');
   const [cardExpanded, setCardExpanded] = useState(false);
@@ -301,30 +303,23 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
   const [applicantsExpanded, setApplicantsExpanded] = useState(true);
 
-  // Archive Viewer State specifically for the Poster
   const [viewingArchive, setViewingArchiveState] = useState(false);
   const viewingArchiveRef = useRef(false);
 
-  // Use a ref to ensure the realtime subscription always checks against the latest status
   const questStatusRef = useRef(questData?.status || 'open');
 
   const parseReplyEncodedContent = useCallback((text: string) => {
     const raw = (text ?? '').trim();
     
-    // Check if it starts with the reply arrow (with or without variation selector)
     const arrowMatch = raw.match(/^↪\uFE0F?\s*/);
     if (!arrowMatch) {
-      // Not a reply-encoded message, return as plain body
       return { repliedToName: '', replyPreview: '', body: raw };
     }
     
-    // Remove the arrow prefix
     const withoutArrow = raw.slice(arrowMatch[0].length);
-    
-    // Find the newline that separates header from body
     const newLineIdx = withoutArrow.indexOf('\n');
+    
     if (newLineIdx === -1) {
-      // No newline found - treat entire content as body (malformed reply format)
       return { repliedToName: '', replyPreview: '', body: raw };
     }
     
@@ -332,12 +327,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     const bodyText = withoutArrow.slice(newLineIdx + 1).trim();
     
     if (!header || !bodyText) {
-      // Empty header or body - return original as body
       return { repliedToName: '', replyPreview: '', body: raw };
     }
     
-    // Try to parse "name: preview" format
-    // Look for the FIRST colon followed by a space to split name from preview
     const colonSpaceIdx = header.indexOf(': ');
     if (colonSpaceIdx !== -1 && colonSpaceIdx > 0) {
       const repliedToName = header.slice(0, colonSpaceIdx).trim();
@@ -347,7 +339,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       }
     }
     
-    // Fallback: no "name: " pattern found, treat header as preview only
     return { repliedToName: '', replyPreview: header, body: bodyText };
   }, []);
 
@@ -363,18 +354,16 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const fetchQuestData = useCallback(async (userIdToUse?: string) => {
     if (!quest?.id) return;
     
-    // Fetch Quest Details
     const { data: qData } = await supabase.from('quests').select('*').eq('id', quest.id).single();
     if (qData) {
       setQuestData(qData);
-      questStatusRef.current = qData.status; // Update Ref for realtime
+      questStatusRef.current = qData.status;
       if (qData.user_id) {
         const { data: pData } = await supabase.from('profiles').select('*').eq('id', qData.user_id).maybeSingle();
         if (pData) setPosterProfile(pData);
       }
     }
 
-    // Fetch Participants
     const { data: partData } = await supabase
       .from('quest_participants')
       .select('*, profiles(display_name, equipped_accessories)')
@@ -383,10 +372,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setParticipants(partData);
     }
 
-    // Determine which comments to fetch (Respecting the Poster's Archive Toggle)
     const activeVisibility = (qData?.status === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
 
-    // Fetch Comments based on visibility
     const { data: cData } = await supabase
       .from('comments')
       .select(`
@@ -434,7 +421,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         await fetchQuestData(activeUserId!);
       }
 
-      // Setup Realtime Subscription
       if (quest?.id) {
         commentSubscription = supabase
           .channel(`public:comments:quest_id=eq.${quest.id}`)
@@ -446,11 +432,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 const newC = payload.new;
                 if (newC.user_id === activeUserId) return; 
 
-                // Ignore incoming messages that don't match our current view state
                 const expectedVisibility = (questStatusRef.current === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
                 if (newC.visibility !== expectedVisibility) return;
 
-                // Fetch new comment's author profile
                 supabase
                   .from('profiles')
                   .select('display_name, equipped_accessories')
@@ -486,9 +470,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     };
   }, [quest?.id, fetchQuestData]);
 
-  // ==========================================
-  // UPDATED DELETION LOGIC (USING SECURE RPC)
-  // ==========================================
   const handleDeleteQuest = () => {
     Alert.alert(
       "Delete Quest",
@@ -503,14 +484,16 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             try {
               setLoading(true);
 
-              // 1. Call the secure RPC to delete and refund tokens atomically
               const { error } = await supabase.rpc('delete_quest_and_refund', {
                 p_quest_id: questData.id,
               });
 
               if (error) throw error;
 
-              // 2. Force a clean navigation back
+              // Explicitly refresh the global token balance state right away 
+              // to ensure the refund is immediately reflected everywhere.
+              await refreshBalance();
+
               if (navigation?.goBack) {
                 navigation.goBack();
               }
@@ -616,22 +599,16 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const isQuestAccepted = questData?.status === 'in_progress' || questData?.status === 'completed' || questData?.status === 'accepted';
   const shouldShowCompactCard = isQuestAccepted;
 
-  // VISIBILITY LOGIC
   const isParticipant = isPoster || myParticipantStatus === 'accepted';
   const commentsOpen = questData?.status === 'open';
   const showComments = commentsOpen || isParticipant;
   
-  // Only the poster can see the toggle button to view archived comments
   const showArchivedToggle = !commentsOpen && isPoster;
 
   const onSubmitComment = async () => {
     const trimmed = message.trim();
     if (!trimmed || !currentUserId || !questData?.id) return;
 
-    // Since we don't have parent_comment_id in DB, we encode reply context into the content.
-    // Format:
-    //   ↪ <replied-to name>: <preview of replied-to comment>\n<actual reply message>
-    // (Keeps it dynamic + readable even without threading.)
     const replyTargetName = replyTo?.author?.trim() ?? '';
     const replyTargetBody = replyTo?.text ? parseReplyEncodedContent(replyTo.text).body : '';
     const replyQuoted = replyTargetBody
@@ -680,9 +657,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   const beginReply = (comment: UIComment) => {
     if (!currentUserId) return;
-    // Allow replying to yourself too
     setReplyTo(comment);
-    // animate banner in
     replyBannerAnim.setValue(0);
     Animated.timing(replyBannerAnim, {
       toValue: 1,
@@ -825,7 +800,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     >
       <View style={styles.sheet}>
         
-        {/* HEADER MODIFIED WITH DELETE BUTTON */}
         <View style={styles.header}>
           <Pressable style={styles.iconButton} onPress={() => navigation?.goBack?.()}>
             <BackIcon width={18} height={18} />
@@ -846,7 +820,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           )}
         </View>
 
-        {/* SCROLLABLE CONTENT */}
         <ScrollView
           ref={(r) => {
             scrollRef.current = r;
@@ -855,7 +828,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           showsVerticalScrollIndicator={false}
         >
           
-          {/* MAIN QUEST CARD */}
           {shouldShowCompactCard ? (
             <CompactQuestCard
               quest={questData || quest}
@@ -920,7 +892,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           )}
 
-          {/* POSTER VIEW (MANUAL REVIEW) */}
           {isPoster && !isAutoAccept && questData?.status === 'open' && (
             <View style={styles.applicantsCard}>
                <Pressable 
@@ -981,7 +952,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           )}
 
-          {/* NON-POSTER CTA BUTTON */}
           {(!shouldShowCompactCard || myParticipantStatus === 'accepted') && !isPoster && (
              <View style={{ marginTop: 4 }}>
                 {myParticipantStatus === 'applied' ? (
@@ -1006,7 +976,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
           {showComments ? (
             <>
-              {/* COMMENTS HEADER WITH MINIMAL TOGGLE FOR POSTER */}
               <View style={styles.commentsHeader}>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
                   <Text style={styles.commentsTitle}>
@@ -1026,7 +995,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 )}
               </View>
 
-              {/* COMMENTS LIST */}
               {comments.map((comment) => (
                 <SwipeReplyCommentRow
                   key={comment.id}
@@ -1045,7 +1013,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           )}
         </ScrollView>
 
-        {/* INPUT BAR (HIDDEN WHEN POSTER IS VIEWING ARCHIVE) */}
         {showComments && !viewingArchive && (
           <View style={styles.inputBar}>
             {replyTo && (
@@ -1088,7 +1055,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </View>
         )}
 
-        {/* COMMENT ACTION MODAL */}
         <Modal visible={actionsVisible} animationType="fade" transparent onRequestClose={closeCommentActions}>
           <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
             <Pressable style={styles.actionBubble} onPress={() => {}}>
@@ -1105,7 +1071,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </Pressable>
         </Modal>
 
-        {/* PROFILE PREVIEW MODAL */}
         <Modal visible={profilePreviewVisible} animationType="slide" transparent onRequestClose={closeProfilePreview}>
           <Pressable style={styles.previewBackdrop} onPress={closeProfilePreview}>
             <Pressable style={styles.previewCard} onPress={() => {}}>
