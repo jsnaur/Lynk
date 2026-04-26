@@ -486,6 +486,45 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     };
   }, [quest?.id, fetchQuestData]);
 
+  // ==========================================
+  // UPDATED DELETION LOGIC (USING SECURE RPC)
+  // ==========================================
+  const handleDeleteQuest = () => {
+    Alert.alert(
+      "Delete Quest",
+      `Are you sure you want to delete this quest? \n\n${questData?.token_bounty} Tokens will be refunded to your account.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!questData?.id) return;
+            try {
+              setLoading(true);
+
+              // 1. Call the secure RPC to delete and refund tokens atomically
+              const { error } = await supabase.rpc('delete_quest_and_refund', {
+                p_quest_id: questData.id,
+              });
+
+              if (error) throw error;
+
+              // 2. Force a clean navigation back
+              if (navigation?.goBack) {
+                navigation.goBack();
+              }
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "Failed to delete quest.");
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleApplyOrDrop = async () => {
     if (!currentUserId || !questData?.id) return;
     try {
@@ -786,14 +825,25 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     >
       <View style={styles.sheet}>
         
-        {/* HEADER */}
+        {/* HEADER MODIFIED WITH DELETE BUTTON */}
         <View style={styles.header}>
           <Pressable style={styles.iconButton} onPress={() => navigation?.goBack?.()}>
             <BackIcon width={18} height={18} />
             <Text style={styles.backText}>Feed</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Quest Details</Text>
-          <View style={styles.headerRightSpacer} />
+          {isPoster && questData?.status === 'open' ? (
+            <Pressable 
+              style={[styles.iconButton, { justifyContent: 'flex-end', opacity: loading ? 0.5 : 1 }]} 
+              onPress={handleDeleteQuest}
+              disabled={loading}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="trash-outline" size={20} color={COLORS.error || '#FF3B30'} />
+            </Pressable>
+          ) : (
+            <View style={styles.headerRightSpacer} />
+          )}
         </View>
 
         {/* SCROLLABLE CONTENT */}
