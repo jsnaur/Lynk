@@ -14,7 +14,8 @@ import {
   BASE_TRAIT_SLOTS, 
   WEARABLE_SLOTS 
 } from '../../constants/accessories';
-import { COLORS, withOpacity } from '../../constants/colors';
+import { withOpacity } from '../../constants/colors';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type UI_CATEGORY = 'Base' | 'Wearables';
 
@@ -29,6 +30,9 @@ export default function CustomizeScreen({
   initialAppliedAccessories,
   onApplyAccessory,
 }: CustomizeScreenProps) {
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+
   const navigation = useNavigation<any>();
   
   // TESTING OVERRIDE: Automatically set all items as "Owned"
@@ -177,7 +181,7 @@ export default function CustomizeScreen({
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
           <Pressable
@@ -185,7 +189,7 @@ export default function CustomizeScreen({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={styles.backButton}
           >
-            <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </Pressable>
           <Text style={styles.title}>Customize</Text>
           <Pressable
@@ -305,7 +309,7 @@ export default function CustomizeScreen({
                         <Text style={styles.statePillText}>Equipped</Text>
                       </View>
                     ) : selected ? (
-                      <Ionicons name="checkmark-circle" size={22} color={COLORS.item} />
+                      <Ionicons name="checkmark-circle" size={22} color={colors.item} />
                     ) : null}
                   </View>
                 </Pressable>
@@ -340,10 +344,10 @@ export default function CustomizeScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.bg },
+const getStyles = (colors: any, theme: string) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 12 },
   backButton: { padding: 8, marginLeft: -8 },
   saveButton: {
     minWidth: 92,
@@ -351,49 +355,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: COLORS.favor,
-    backgroundColor: withOpacity(COLORS.favor, 0.14),
+    borderColor: colors.favor,
+    backgroundColor: withOpacity(colors.favor, 0.14),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveButtonDisabled: { borderColor: COLORS.border, backgroundColor: COLORS.surface2, opacity: 0.65 },
-  saveButtonText: { fontSize: 13, fontFamily: 'DMSans-Bold', fontWeight: '700', color: COLORS.favor },
-  title: { flex: 1, fontSize: 18, fontFamily: 'DMSans-Bold', fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
-  previewCard: { marginHorizontal: 16, marginTop: 14, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 16 },
-  avatarContainer: { width: 140, height: 140, backgroundColor: COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, position: 'relative', overflow: 'hidden' },
+  saveButtonDisabled: { borderColor: colors.border, backgroundColor: colors.surface2, opacity: 0.65 },
+  saveButtonText: { fontSize: 13, fontFamily: 'DMSans-Bold', fontWeight: '700', color: colors.favor },
+  title: { flex: 1, fontSize: 18, fontFamily: 'DMSans-Bold', fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
+  previewCard: { marginHorizontal: 16, marginTop: 14, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  avatarContainer: { width: 140, height: 140, backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, position: 'relative', overflow: 'hidden' },
   layerAbsolute: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 20 },
   previewContent: { flex: 1, justifyContent: 'space-between', height: 140, paddingVertical: 4 },
   categoryToggleContainer: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  catBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: COLORS.surface2, alignItems: 'center', borderWidth: 1, borderColor: 'transparent' },
-  catBtnActive: { backgroundColor: `${COLORS.favor}15`, borderColor: COLORS.favor },
-  catBtnText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: 'DMSans-Medium' },
-  catBtnTextActive: { color: COLORS.favor, fontFamily: 'DMSans-Bold', fontWeight: '700' },
+  catBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.surface2, alignItems: 'center', borderWidth: 1, borderColor: 'transparent' },
+  catBtnActive: { backgroundColor: withOpacity(colors.favor, 0.15), borderColor: colors.favor },
+  catBtnText: { fontSize: 12, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
+  catBtnTextActive: { color: colors.favor, fontFamily: 'DMSans-Bold', fontWeight: '700' },
   previewTextWrap: { justifyContent: 'flex-end' },
-  previewLabel: { fontSize: 12, color: COLORS.textSecondary, fontFamily: 'DMSans-Medium' },
-  previewName: { marginTop: 4, fontSize: 18, color: COLORS.textPrimary, fontFamily: 'DMSans-Bold', fontWeight: '700' },
-  tabsContainer: { marginTop: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  previewLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
+  previewName: { marginTop: 4, fontSize: 18, color: colors.textPrimary, fontFamily: 'DMSans-Bold', fontWeight: '700' },
+  tabsContainer: { marginTop: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   tabsContent: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
-  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
-  tabActive: { backgroundColor: COLORS.item, borderColor: COLORS.item },
-  tabText: { fontSize: 14, color: COLORS.textSecondary, fontFamily: 'DMSans-Medium' },
+  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  tabActive: { backgroundColor: colors.item, borderColor: colors.item },
+  tabText: { fontSize: 14, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
   tabTextActive: { color: '#102010', fontFamily: 'DMSans-Bold', fontWeight: '700' },
   list: { flex: 1, marginTop: 12 },
   listContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
-  emptyState: { borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, paddingHorizontal: 14, paddingVertical: 16 },
-  emptyStateText: { fontSize: 13, color: COLORS.textSecondary, fontFamily: 'DMSans-Regular' },
-  itemCard: { borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  itemCardSelected: { borderColor: COLORS.favor, backgroundColor: `${COLORS.favor}15` },
+  emptyState: { borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 16 },
+  emptyStateText: { fontSize: 13, color: colors.textSecondary, fontFamily: 'DMSans-Regular' },
+  itemCard: { borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  itemCardSelected: { borderColor: colors.favor, backgroundColor: withOpacity(colors.favor, 0.15) },
   itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  itemSpriteWrap: { width: 52, height: 52, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
-  itemName: { fontSize: 15, color: COLORS.textPrimary, fontFamily: 'DMSans-Bold', fontWeight: '700' },
-  itemMeta: { marginTop: 2, fontSize: 12, color: COLORS.textSecondary, fontFamily: 'DMSans-Regular' },
+  itemSpriteWrap: { width: 52, height: 52, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
+  itemName: { fontSize: 15, color: colors.textPrimary, fontFamily: 'DMSans-Bold', fontWeight: '700' },
+  itemMeta: { marginTop: 2, fontSize: 12, color: colors.textSecondary, fontFamily: 'DMSans-Regular' },
   itemRight: { minWidth: 72, alignItems: 'flex-end' },
-  statePill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(57, 255, 20, 0.14)', borderWidth: 1, borderColor: 'rgba(57, 255, 20, 0.4)' },
-  statePillText: { fontSize: 11, color: COLORS.item, fontFamily: 'DMSans-Bold', fontWeight: '700' },
-  footer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.bg },
-  applyBtn: { height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.item, borderWidth: 1, borderColor: COLORS.item },
-  unequipBtn: { backgroundColor: 'rgba(255, 68, 68, 0.1)', borderColor: 'rgba(255, 68, 68, 0.4)' },
+  statePill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: withOpacity(colors.item, 0.14), borderWidth: 1, borderColor: withOpacity(colors.item, 0.4) },
+  statePillText: { fontSize: 11, color: colors.item, fontFamily: 'DMSans-Bold', fontWeight: '700' },
+  footer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
+  applyBtn: { height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.item, borderWidth: 1, borderColor: colors.item },
+  unequipBtn: { backgroundColor: withOpacity(colors.error, 0.1), borderColor: withOpacity(colors.error, 0.4) },
   applyBtnDisabled: { opacity: 0.5 },
   applyBtnText: { fontSize: 15, color: '#102010', fontFamily: 'DMSans-Bold', fontWeight: '700' },
-  unequipBtnText: { color: '#ff4444' },
+  unequipBtnText: { color: colors.error },
 });

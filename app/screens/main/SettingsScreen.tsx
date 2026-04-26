@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,12 @@ import {
   Linking,
   Modal,
   Switch,
-  Animated,
 } from 'react-native';
-import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS } from '../../constants/colors';
-
+import { withOpacity } from '../../constants/colors';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ============================================================================
 // REUSABLE COMPONENTS
@@ -27,16 +26,21 @@ interface SettingsSectionProps {
   children: React.ReactNode;
 }
 
-const SettingsSection: React.FC<SettingsSectionProps> = ({ label, children }) => (
-  <View style={styles.section}>
-    {label && (
-      <View style={styles.sectionLabelRow}>
-        <Text style={styles.sectionLabel}>{label}</Text>
-      </View>
-    )}
-    <View style={styles.sectionBody}>{children}</View>
-  </View>
-);
+const SettingsSection: React.FC<SettingsSectionProps> = ({ label, children }) => {
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+
+  return (
+    <View style={styles.section}>
+      {label && (
+        <View style={styles.sectionLabelRow}>
+          <Text style={styles.sectionLabel}>{label}</Text>
+        </View>
+      )}
+      <View style={styles.sectionBody}>{children}</View>
+    </View>
+  );
+};
 
 interface SettingsNavRowProps {
   icon: string;
@@ -62,56 +66,46 @@ const SettingsNavRow: React.FC<SettingsNavRowProps> = ({
   isLast = false,
   isDestructive = false,
   onPress,
-}) => (
-  <Pressable
-    style={[styles.navRow, !isLast && styles.navRowBorder]}
-    onPress={onPress}
-  >
-    {/* Icon Frame */}
-    <View style={[styles.iconFrame, { backgroundColor: iconBgColor }]}>
-      <MaterialCommunityIcons name={icon as any} size={16} color={iconColor} />
-    </View>
+}) => {
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
-    {/* Label Block */}
-    <View style={styles.labelBlock}>
-      <Text style={[styles.rowTitle, isDestructive && styles.destructiveText]}>
-        {title}
-      </Text>
-      {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
-    </View>
+  return (
+    <Pressable
+      style={[styles.navRow, !isLast && styles.navRowBorder]}
+      onPress={onPress}
+    >
+      <View style={[styles.iconFrame, { backgroundColor: iconBgColor }]}>
+        <MaterialCommunityIcons name={icon as any} size={16} color={iconColor} />
+      </View>
 
-    {/* Right Slot */}
-    <View style={styles.rightSlot}>
-      {rightContent === 'chevron' && (
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={16}
-          color="#3A3A48"
-        />
-      )}
-      {rightContent === 'value' && (
-        <View style={styles.valueWithChevron}>
-          <Text style={styles.valueLabel}>{rightValue}</Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={16}
-            color="#3A3A48"
-          />
-        </View>
-      )}
-      {rightContent === 'lock' && (
-        <MaterialCommunityIcons
-          name="lock"
-          size={14}
-          color="#3A3A48"
-        />
-      )}
-      {rightContent === 'destructive' && (
-        <Text style={styles.destructiveText}>{rightValue}</Text>
-      )}
-    </View>
-  </Pressable>
-);
+      <View style={styles.labelBlock}>
+        <Text style={[styles.rowTitle, isDestructive && styles.destructiveText]}>
+          {title}
+        </Text>
+        {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
+      </View>
+
+      <View style={styles.rightSlot}>
+        {rightContent === 'chevron' && (
+          <MaterialCommunityIcons name="chevron-right" size={16} color={colors.border} />
+        )}
+        {rightContent === 'value' && (
+          <View style={styles.valueWithChevron}>
+            <Text style={styles.valueLabel}>{rightValue}</Text>
+            <MaterialCommunityIcons name="chevron-right" size={16} color={colors.border} />
+          </View>
+        )}
+        {rightContent === 'lock' && (
+          <MaterialCommunityIcons name="lock" size={14} color={colors.textSecondary} />
+        )}
+        {rightContent === 'destructive' && (
+          <Text style={styles.destructiveText}>{rightValue}</Text>
+        )}
+      </View>
+    </Pressable>
+  );
+};
 
 interface SettingsToggleRowProps {
   icon?: string;
@@ -135,40 +129,45 @@ const SettingsToggleRow: React.FC<SettingsToggleRowProps> = ({
   onToggle,
   isLast = false,
   isSub = false,
-}) => (
-  <View
-    style={[
-      styles.toggleRow,
-      !isLast && styles.toggleRowBorder,
-      isSub && styles.subToggleRow,
-    ]}
-  >
-    {!isSub && (
-      <View style={[styles.iconFrame, { backgroundColor: iconBgColor }]}>
-        <MaterialCommunityIcons name={icon as any} size={16} color={iconColor} />
-      </View>
-    )}
+}) => {
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
-    <View style={[styles.labelBlock, isSub && styles.subLabelBlock]}>
-      <Text style={[styles.rowTitle, isSub && styles.subRowTitle]}>
-        {title}
-      </Text>
-      {subtitle && (
-        <Text style={[styles.rowSubtitle, isSub && styles.subRowSubtitle]}>
-          {subtitle}
-        </Text>
+  return (
+    <View
+      style={[
+        styles.toggleRow,
+        !isLast && styles.toggleRowBorder,
+        isSub && styles.subToggleRow,
+      ]}
+    >
+      {!isSub && (
+        <View style={[styles.iconFrame, { backgroundColor: iconBgColor }]}>
+          <MaterialCommunityIcons name={icon as any} size={16} color={iconColor} />
+        </View>
       )}
-    </View>
 
-    <Switch
-      style={styles.toggleSwitch}
-      value={value}
-      onValueChange={onToggle}
-      trackColor={{ false: '#3A3A48', true: COLORS.favor }}
-      thumbColor="#FFFFFF"
-    />
-  </View>
-);
+      <View style={[styles.labelBlock, isSub && styles.subLabelBlock]}>
+        <Text style={[styles.rowTitle, isSub && styles.subRowTitle]}>
+          {title}
+        </Text>
+        {subtitle && (
+          <Text style={[styles.rowSubtitle, isSub && styles.subRowSubtitle]}>
+            {subtitle}
+          </Text>
+        )}
+      </View>
+
+      <Switch
+        style={styles.toggleSwitch}
+        value={value}
+        onValueChange={onToggle}
+        trackColor={{ false: colors.border, true: colors.favor }}
+        thumbColor="#FFFFFF"
+      />
+    </View>
+  );
+};
 
 // ============================================================================
 // CONFIRMATION MODALS
@@ -190,50 +189,47 @@ const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
   actionLabel,
   onConfirm,
   onCancel,
-}) => (
-  <Modal visible={visible} transparent animationType="fade">
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        {/* Icon */}
-        <View style={styles.modalIconFrame}>
-          <MaterialCommunityIcons
-            name={actionLabel === 'Log Out' ? 'logout' : 'trash-can'}
-            size={24}
-            color="#FF4D4D"
-          />
-        </View>
+}) => {
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
-        {/* Text */}
-        <View style={styles.modalTextBlock}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <Text style={styles.modalBody}>{body}</Text>
-        </View>
-
-        {/* Actions */}
-        <View style={styles.modalActionRow}>
-          <Pressable
-            style={styles.destructiveButton}
-            onPress={onConfirm}
-          >
-            <Text style={styles.destructiveButtonText}>{actionLabel}</Text>
-          </Pressable>
-          <Pressable
-            style={styles.cancelButton}
-            onPress={onCancel}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </Pressable>
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalIconFrame}>
+            <MaterialCommunityIcons
+              name={actionLabel === 'Log Out' ? 'logout' : 'trash-can'}
+              size={24}
+              color={colors.error}
+            />
+          </View>
+          <View style={styles.modalTextBlock}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <Text style={styles.modalBody}>{body}</Text>
+          </View>
+          <View style={styles.modalActionRow}>
+            <Pressable style={styles.destructiveButton} onPress={onConfirm}>
+              <Text style={styles.destructiveButtonText}>{actionLabel}</Text>
+            </Pressable>
+            <Pressable style={styles.cancelButton} onPress={onCancel}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
 // ============================================================================
 // MAIN SETTINGS SCREEN
 // ============================================================================
 
 export default function SettingsScreen({ navigation }: any) {
+  const { theme, toggleTheme, colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+
   const [questActivityEnabled, setQuestActivityEnabled] = useState(true);
   const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [ratingsEnabled, setRatingsEnabled] = useState(true);
@@ -241,12 +237,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(true);
   const [profileVisibilityEnabled, setProfileVisibilityEnabled] = useState(true);
   const [onlineStatusEnabled, setOnlineStatusEnabled] = useState(true);
-  const [appearanceValue, setAppearanceValue] = useState('Dark');
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
-  // Handlers
   const handleLogOut = async () => {
     try {
       await AsyncStorage.removeItem('@lynk/profileDisplayName');
@@ -259,7 +253,6 @@ export default function SettingsScreen({ navigation }: any) {
 
   const handleDeleteAccount = async () => {
     try {
-      // TODO: Implement account deletion with backend
       Alert.alert('Account Deleted', 'Your account has been deleted.');
       setDeleteModalVisible(false);
       await supabase.auth.signOut();
@@ -288,31 +281,29 @@ export default function SettingsScreen({ navigation }: any) {
 
   return (
     <View style={styles.root}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="chevron-left" size={16} color={COLORS.favor} />
+          <MaterialCommunityIcons name="chevron-left" size={16} color={colors.favor} />
           <Text style={styles.backLabel}>Profile</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Scroll Container */}
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         {/* SECTION 1: ACCOUNT */}
         <SettingsSection label="ACCOUNT">
           <SettingsNavRow
             icon="lock"
-            iconBgColor="rgba(0, 245, 255, 0.15)"
-            iconColor={COLORS.favor}
+            iconBgColor={withOpacity(colors.favor, 0.15)}
+            iconColor={colors.favor}
             title="Change Password"
             onPress={() => navigation.navigate('PasswordRecovery')}
           />
           <SettingsNavRow
             icon="shield-check"
-            iconBgColor="rgba(57, 255, 20, 0.12)"
-            iconColor={COLORS.item}
+            iconBgColor={withOpacity(colors.item, 0.12)}
+            iconColor={colors.item}
             title="Verified Email"
             subtitle="your@university.edu"
             rightContent="lock"
@@ -325,15 +316,14 @@ export default function SettingsScreen({ navigation }: any) {
         <SettingsSection label="NOTIFICATIONS">
           <SettingsToggleRow
             icon="bell"
-            iconBgColor="rgba(255, 215, 0, 0.12)"
-            iconColor={COLORS.xp}
+            iconBgColor={withOpacity(colors.xp, 0.12)}
+            iconColor={colors.xp}
             title="Push Notifications"
             subtitle="Allow LYNK to send notifications"
             value={pushNotificationsEnabled}
             onToggle={setPushNotificationsEnabled}
           />
 
-          {/* Sub-toggle group - visible when master toggle is ON */}
           {pushNotificationsEnabled && (
             <>
               <SettingsToggleRow
@@ -377,8 +367,8 @@ export default function SettingsScreen({ navigation }: any) {
         <SettingsSection label="PRIVACY">
           <SettingsToggleRow
             icon="eye"
-            iconBgColor="rgba(138, 138, 154, 0.12)"
-            iconColor={COLORS.textSecondary}
+            iconBgColor={withOpacity(colors.textSecondary, 0.12)}
+            iconColor={colors.textSecondary}
             title="Profile Visibility"
             subtitle={profileVisibilityEnabled ? "Visible to all verified students" : "Limited visibility"}
             value={profileVisibilityEnabled}
@@ -386,8 +376,8 @@ export default function SettingsScreen({ navigation }: any) {
           />
           <SettingsToggleRow
             icon="circle"
-            iconBgColor="rgba(138, 138, 154, 0.12)"
-            iconColor={COLORS.textSecondary}
+            iconBgColor={withOpacity(colors.textSecondary, 0.12)}
+            iconColor={colors.textSecondary}
             title="Show Online Status"
             subtitle="Let others see when you're active"
             value={onlineStatusEnabled}
@@ -399,22 +389,18 @@ export default function SettingsScreen({ navigation }: any) {
         {/* SECTION 4: APP */}
         <SettingsSection label="APP">
           <SettingsNavRow
-            icon="weather-night"
-            iconBgColor="rgba(192, 132, 252, 0.12)"
-            iconColor={COLORS.token}
+            icon={theme === 'dark' ? 'weather-night' : 'weather-sunny'}
+            iconBgColor={withOpacity(colors.token, 0.12)}
+            iconColor={colors.token}
             title="Appearance"
             rightContent="value"
-            rightValue={appearanceValue}
-            onPress={() => {
-              Alert.alert('Appearance', 'Dark mode is currently active. Light mode coming soon.', [
-                { text: 'OK' }
-              ]);
-            }}
+            rightValue={theme === 'dark' ? 'Dark' : 'Light'}
+            onPress={toggleTheme}
           />
           <SettingsNavRow
             icon="office-building"
-            iconBgColor="rgba(57, 255, 20, 0.12)"
-            iconColor={COLORS.item}
+            iconBgColor={withOpacity(colors.item, 0.12)}
+            iconColor={colors.item}
             title="Campus"
             subtitle="State University"
             rightContent="lock"
@@ -427,30 +413,28 @@ export default function SettingsScreen({ navigation }: any) {
         <SettingsSection label="SUPPORT">
           <SettingsNavRow
             icon="message-text-outline"
-            iconBgColor="rgba(0, 245, 255, 0.1)"
-            iconColor={COLORS.favor}
+            iconBgColor={withOpacity(colors.favor, 0.1)}
+            iconColor={colors.favor}
             title="Send Feedback"
             onPress={handleSendFeedback}
           />
           <SettingsNavRow
             icon="alert"
-            iconBgColor="rgba(255, 215, 0, 0.1)"
-            iconColor={COLORS.xp}
+            iconBgColor={withOpacity(colors.xp, 0.1)}
+            iconColor={colors.xp}
             title="Report a Bug"
             onPress={handleReportBug}
           />
           <SettingsNavRow
             icon="information"
-            iconBgColor="rgba(138, 138, 154, 0.12)"
-            iconColor={COLORS.textSecondary}
+            iconBgColor={withOpacity(colors.textSecondary, 0.12)}
+            iconColor={colors.textSecondary}
             title="About LYNK"
             rightContent="value"
             rightValue="v1.0.0"
             isLast
             onPress={() => {
-              Alert.alert('About LYNK', 'Version 1.0.0\n\nLynk Platform', [
-                { text: 'OK' }
-              ]);
+              Alert.alert('About LYNK', 'Version 1.0.0\n\nLynk Platform', [{ text: 'OK' }]);
             }}
           />
         </SettingsSection>
@@ -460,8 +444,8 @@ export default function SettingsScreen({ navigation }: any) {
         <SettingsSection label="">
           <SettingsNavRow
             icon="logout"
-            iconBgColor="rgba(255, 77, 77, 0.12)"
-            iconColor="#FF4D4D"
+            iconBgColor={withOpacity(colors.error, 0.12)}
+            iconColor={colors.error}
             title="Log Out"
             isDestructive
             isLast={false}
@@ -469,8 +453,8 @@ export default function SettingsScreen({ navigation }: any) {
           />
           <SettingsNavRow
             icon="trash-can"
-            iconBgColor="rgba(255, 77, 77, 0.08)"
-            iconColor="#FF4D4D"
+            iconBgColor={withOpacity(colors.error, 0.08)}
+            iconColor={colors.error}
             title="Delete Account"
             isDestructive
             isLast
@@ -478,7 +462,6 @@ export default function SettingsScreen({ navigation }: any) {
           />
         </SettingsSection>
 
-        {/* Bottom padding */}
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -500,21 +483,20 @@ export default function SettingsScreen({ navigation }: any) {
         onConfirm={handleDeleteAccount}
         onCancel={() => setDeleteModalVisible(false)}
       />
-
-
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  // ========== ROOT & LAYOUT ==========
+// ============================================================================
+// DYNAMIC STYLES
+// ============================================================================
+
+const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#1A1A1F',
+    backgroundColor: colors.bg,
     paddingTop: Platform.OS === 'ios' ? 0 : 0,
   },
-
-  // ========== HEADER ==========
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -523,9 +505,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A48',
+    borderBottomColor: colors.border,
   },
-
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -534,61 +515,49 @@ const styles = StyleSheet.create({
     width: 44,
     justifyContent: 'center',
   },
-
   backLabel: {
     fontSize: 16,
     fontWeight: '400',
-    color: COLORS.favor,
+    color: colors.favor,
     fontFamily: 'DM_Sans-Regular',
   },
-
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#F0F0F5',
+    color: colors.textPrimary,
     fontFamily: 'DM_Sans-Bold',
   },
-
   headerSpacer: {
     width: 44,
   },
-
-  // ========== SCROLL CONTAINER ==========
   scrollContainer: {
     flex: 1,
-    backgroundColor: '#1A1A1F',
+    backgroundColor: colors.bg,
     paddingVertical: 20,
   },
-
-  // ========== SECTION COMPONENT ==========
   section: {
     marginHorizontal: 0,
     marginBottom: 8,
   },
-
   sectionLabelRow: {
     paddingHorizontal: 20,
     paddingBottom: 6,
   },
-
   sectionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8A8A9A',
+    color: colors.textSecondary,
     fontFamily: 'DM_Sans-SemiBold',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
-
   sectionBody: {
-    backgroundColor: '#26262E',
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#3A3A48',
+    borderTopColor: colors.border,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A48',
+    borderBottomColor: colors.border,
   },
-
-  // ========== NAV ROW ==========
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -596,12 +565,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 12,
   },
-
   navRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A48',
+    borderBottomColor: colors.border,
   },
-
   iconFrame: {
     width: 32,
     height: 32,
@@ -609,88 +576,71 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   labelBlock: {
     flex: 1,
     gap: 1,
   },
-
   rowTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#F0F0F5',
+    color: colors.textPrimary,
     fontFamily: 'DM_Sans-Medium',
   },
-
   rowSubtitle: {
     fontSize: 12,
     fontWeight: '400',
-    color: '#8A8A9A',
+    color: colors.textSecondary,
     fontFamily: 'DM_Sans-Regular',
   },
-
   destructiveText: {
-    color: '#FF4D4D',
+    color: colors.error,
   },
-
   rightSlot: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-
   valueWithChevron: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-
   valueLabel: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#8A8A9A',
+    color: colors.textSecondary,
     fontFamily: 'DM_Sans-Regular',
   },
-
-  // ========== TOGGLE ROW ==========
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
     gap: 12,
-    backgroundColor: '#26262E',
+    backgroundColor: colors.surface,
   },
-
   toggleRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A48',
+    borderBottomColor: colors.border,
   },
-
   subToggleRow: {
     paddingLeft: 52,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.03)',
   },
-
   subLabelBlock: {
     gap: 0,
   },
-
   subRowTitle: {
     fontSize: 14,
     fontWeight: '400',
   },
-
   subRowSubtitle: {
     fontSize: 12,
     fontWeight: '400',
   },
-
   toggleSwitch: {
     marginLeft: 'auto',
   },
-
-  // ========== MODAL STYLES ==========
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -698,93 +648,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-
   modalContent: {
     width: 320,
-    backgroundColor: '#2A2A35',
+    backgroundColor: colors.surface2,
     borderRadius: 20,
     padding: 24,
     gap: 16,
     alignItems: 'center',
   },
-
   modalIconFrame: {
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 77, 77, 0.12)',
+    backgroundColor: withOpacity(colors.error, 0.12),
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   modalTextBlock: {
     gap: 6,
     alignItems: 'center',
   },
-
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#F0F0F5',
+    color: colors.textPrimary,
     fontFamily: 'DM_Sans-Bold',
     textAlign: 'center',
   },
-
   modalBody: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#8A8A9A',
+    color: colors.textSecondary,
     fontFamily: 'DM_Sans-Regular',
     textAlign: 'center',
     lineHeight: 20,
   },
-
   modalActionRow: {
     width: '100%',
     gap: 8,
   },
-
   destructiveButton: {
     width: '100%',
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#FF4D4D',
+    backgroundColor: colors.error,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   destructiveButtonText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: 'DM_Sans-Bold',
   },
-
   cancelButton: {
     width: '100%',
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#26262E',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#3A3A48',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   cancelButtonText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#F0F0F5',
+    color: colors.textPrimary,
     fontFamily: 'DM_Sans-Medium',
   },
-
-  // ========== ACCOUNT ACTIONS SPACING ==========
   accountActionsGap: {
     height: 24,
-  },
-
-  // ========== TYPOGRAPHY HELPERS ==========
-  textSecondary: {
-    color: '#8A8A9A',
   },
 });

@@ -23,7 +23,7 @@ export const withOpacity = (hex: string, opacity: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 };
 
-export const COLORS = {
+export const darkColors = {
   bg: '#1A1A1F',
   textPrimary: '#F0F0F5',
   textSecondary: '#8A8A9A',
@@ -39,3 +39,23 @@ export const COLORS = {
   warning: '#FFA500',
   heart: '#FF5B8A',
 } as const;
+
+export const lightColors = {
+  bg: '#FFFFFF',
+  textPrimary: '#1A1A1F',
+  textSecondary: '#666666',
+  surface: '#F5F5F7',
+  surface2: '#EBEBEF',
+  border: '#D1D1D6',
+  favor: '#00B0B9', // Darkened slightly for better contrast on light mode
+  study: '#E6155E',
+  item: '#22B007',
+  xp: '#9333EA',
+  token: '#D4AF37',
+  error: '#D10000',
+  warning: '#D68A00',
+  heart: '#E03E6C',
+} as const;
+
+// Fallback for files not yet using the theme context
+export const COLORS = darkColors;

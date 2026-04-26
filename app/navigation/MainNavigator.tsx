@@ -8,9 +8,8 @@ import PostScreen from '../screens/main/PostScreen';
 import ShopScreen from '../screens/main/Shop';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import CustomizeScreen from '../screens/main/CustomizeScreen';
-// Import the upcoming Leaderboard screen
-// import LeaderboardScreen from '../screens/main/LeaderboardScreen'; 
 import { MainTab } from '../components/BottomNav';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,11 +31,9 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
     [activeTab],
   );
 
-  // NEW: Handle incoming tab navigation requests from stack screens (like Leaderboard)
   useEffect(() => {
     if (route?.params?.activeTab) {
       handleTabPress(route.params.activeTab);
-      // Clear the parameter after handling it to prevent getting stuck on this tab
       navigation.setParams({ activeTab: undefined });
     }
   }, [route?.params?.activeTab, handleTabPress, navigation]);
@@ -50,21 +47,11 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
   );
 
   if (activeTab === 'Profile') {
-    return (
-      <ProfileDashboardScreen
-        navigation={navigation}
-        onTabPress={handleTabPress}
-      />
-    );
+    return <ProfileDashboardScreen navigation={navigation} onTabPress={handleTabPress} />;
   }
 
   if (activeTab === 'Quests') {
-    return (
-      <QuestScreen
-        navigation={navigation}
-        onTabPress={handleTabPress}
-      />
-    );
+    return <QuestScreen navigation={navigation} onTabPress={handleTabPress} />;
   }
 
   if (activeTab === 'Post') {
@@ -75,20 +62,17 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
     return <ShopScreen onTabPress={handleTabPress} />;
   }
 
-  return (
-    <HomeFeedScreen
-      navigation={navigation}
-      onTabPress={handleTabPress}
-    />
-  );
+  return <HomeFeedScreen navigation={navigation} onTabPress={handleTabPress} />;
 };
 
 const MainNavigator = () => {
+  const { colors } = useTheme(); // Pull the active theme colors
+
   return (
     <Stack.Navigator 
       screenOptions={{ 
         headerShown: false,
-        contentStyle: { backgroundColor: '#1A1A1F' }
+        contentStyle: { backgroundColor: colors.bg } // Dynamic background!
       }}
     >
       <Stack.Screen name="HomeFeed" component={MainTabsScreen} />
@@ -103,8 +87,6 @@ const MainNavigator = () => {
       />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Customize" component={CustomizeScreen} />
-      
-      {/* NEW: Leaderboard Screen registration */}
       <Stack.Screen 
         name="Leaderboard" 
         getComponent={() => require('../screens/main/LeaderboardScreen').default} 

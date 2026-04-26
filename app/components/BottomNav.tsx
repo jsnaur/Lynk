@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Pressable, StyleSheet, View, Platform } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -13,6 +13,9 @@ import ShopActive from '../../assets/NavAssets/ShopActive.svg';
 import ShopInactive from '../../assets/NavAssets/ShopInactive.svg';
 import ProfileActive from '../../assets/NavAssets/ProfileActive.svg';
 import ProfileInactive from '../../assets/NavAssets/ProfileInactive.svg';
+
+import { useTheme } from '../contexts/ThemeContext';
+import { withOpacity } from '../constants/colors';
 
 export type MainTab = 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
 
@@ -44,6 +47,9 @@ const NAV_ICONS = {
 export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavProps) {
 	const [selectedTab, setSelectedTab] = useState<MainTab>(activeTab);
 	const isFocused = useIsFocused();
+	
+	const { theme, colors } = useTheme();
+	const styles = useMemo(() => getStyles(theme, colors), [theme, colors]);
 
 	useEffect(() => {
 		setSelectedTab(activeTab);
@@ -58,13 +64,13 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 			*/}
 			{isFocused || Platform.OS === 'ios' ? (
 				<BlurView
-					intensity={25}
-					tint="dark"
+					intensity={theme === 'dark' ? 25 : 60}
+					tint={theme === 'dark' ? "dark" : "light"}
 					style={styles.blurLayer}
 					experimentalBlurMethod="dimezisBlurView"
 				/>
 			) : (
-				<View style={[styles.blurLayer, { backgroundColor: 'rgba(22,24,30,0.85)' }]} />
+				<View style={[styles.blurLayer, { backgroundColor: theme === 'dark' ? 'rgba(22,24,30,0.85)' : 'rgba(255,255,255,0.9)' }]} />
 			)}
 			
 			<View pointerEvents="none" style={styles.tintLayer} />
@@ -83,7 +89,7 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 								onTabPress?.(tab);
 							}}
 						>
-							<View style={[styles.iconBox, active && styles.iconBoxActive]}>
+							<View style={[styles.iconBox, active && { backgroundColor: withOpacity(colors.favor, 0.15) }]}>
 								<IconComponent width={56} height={56} />
 							</View>
 						</Pressable>
@@ -94,7 +100,7 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 	);
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: string, colors: any) => StyleSheet.create({
 	wrapper: {
 		position: 'absolute',
 		left: 0,
@@ -102,16 +108,16 @@ const styles = StyleSheet.create({
 		bottom: 0,
 		minHeight: 84,
 		overflow: 'hidden',
-		backgroundColor: 'rgba(22,24,30,0.1)',
+		backgroundColor: theme === 'dark' ? 'rgba(22,24,30,0.1)' : 'rgba(255,255,255,0.4)',
 		borderTopWidth: 1,
-		borderTopColor: 'rgba(255,255,255,0.34)',
+		borderTopColor: colors.border,
 	},
 	blurLayer: {
 		...StyleSheet.absoluteFillObject,
 	},
 	tintLayer: {
 		...StyleSheet.absoluteFillObject,
-		backgroundColor: 'rgba(22,24,30,0.08)',
+		backgroundColor: theme === 'dark' ? 'rgba(22,24,30,0.08)' : 'rgba(255,255,255,0.2)',
 	},
 	row: {
 		height: 58,
@@ -132,8 +138,5 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		alignItems: 'center',
 		justifyContent: 'center',
-	},
-	iconBoxActive: {
-		backgroundColor: 'rgba(0,245,255,0.15)',
 	},
 });

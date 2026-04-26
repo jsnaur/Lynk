@@ -23,9 +23,10 @@ import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
 import { useTokenBalance } from '../../contexts/TokenContext';
-import { COLORS, withOpacity } from '../../constants/colors';
+import { withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
@@ -36,31 +37,28 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 const { GUILD_BASE_XP, TOKEN_MIN, TOKEN_MAX } = APPRAISER_CONSTANTS;
 const MAX_PARTICIPANTS_LIMIT = 50;
 
-const CATEGORY_BG = {
-  favor: withOpacity(COLORS.favor, 0.15),
-  study: withOpacity(COLORS.study, 0.15),
-  item: withOpacity(COLORS.item, 0.15),
-} as const;
-
 type QuestCategory = 'Favor' | 'Study' | 'Item';
 
-const CATEGORIES: { key: QuestCategory; color: string; bg: string }[] = [
-  { key: 'Favor', color: COLORS.favor, bg: CATEGORY_BG.favor },
-  { key: 'Study', color: COLORS.study, bg: CATEGORY_BG.study },
-  { key: 'Item', color: COLORS.item, bg: CATEGORY_BG.item },
-];
-
-function FieldError({ message, visible }: { message: string; visible: boolean }) {
+function FieldError({ message, visible, colors, styles }: { message: string; visible: boolean; colors: any; styles: any }) {
   if (!visible) return null;
   return (
     <View style={styles.fieldErrorRow}>
-      <Ionicons name="alert-circle" size={14} color={COLORS.error} />
+      <Ionicons name="alert-circle" size={14} color={colors.error} />
       <Text style={styles.fieldErrorText}>{message}</Text>
     </View>
   );
 }
 
 export default function PostScreen({ navigation }: { navigation: any }) {
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+
+  const CATEGORIES: { key: QuestCategory; color: string; bg: string }[] = useMemo(() => [
+    { key: 'Favor', color: colors.favor, bg: withOpacity(colors.favor, 0.15) },
+    { key: 'Study', color: colors.study, bg: withOpacity(colors.study, 0.15) },
+    { key: 'Item', color: colors.item, bg: withOpacity(colors.item, 0.15) },
+  ], [colors]);
+
   const { refreshBalance } = useTokenBalance();
   const [category, setCategory] = useState<QuestCategory | null>(null);
   const [title, setTitle] = useState('');
@@ -187,7 +185,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-           // Prevent unsatisfied settings exception
            const servicesEnabled = await Location.hasServicesEnabledAsync();
            if (servicesEnabled) {
               const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -328,20 +325,20 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                       onPress={() => setCategory(key)}
                       style={[
                         styles.categoryChip,
-                        { backgroundColor: COLORS.surface },
+                        { backgroundColor: colors.surface },
                         selected && { borderColor: color, backgroundColor: bg, borderWidth: 2 },
                         !selected && styles.categoryChipIdle,
                       ]}
                     >
                       <View style={[styles.categoryDot, { backgroundColor: color }]} />
-                      <Text style={[styles.categoryLabel, selected && { color: COLORS.textPrimary }]}>
+                      <Text style={[styles.categoryLabel, selected && { color: colors.textPrimary }]}>
                         {key}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
-              <FieldError message="Please select a category" visible={submitAttempted && !category} />
+              <FieldError message="Please select a category" visible={submitAttempted && !category} colors={colors} styles={styles} />
             </View>
 
             <View style={styles.section}>
@@ -357,13 +354,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <TextInput
                 style={styles.textInput}
                 placeholder="What do you need help with?"
-                placeholderTextColor={COLORS.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 value={title}
                 onChangeText={(t) => setTitle(t.slice(0, TITLE_MAX))}
                 maxLength={TITLE_MAX}
                 autoCorrect
               />
-              <FieldError message="Title is required" visible={submitAttempted && !titleTrim} />
+              <FieldError message="Title is required" visible={submitAttempted && !titleTrim} colors={colors} styles={styles} />
             </View>
 
             <View style={styles.section}>
@@ -379,14 +376,14 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <TextInput
                 style={[styles.textInput, styles.textArea]}
                 placeholder="Details, timing, what to bring…"
-                placeholderTextColor={COLORS.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 value={description}
                 onChangeText={(t) => setDescription(t.slice(0, DESC_MAX))}
                 maxLength={DESC_MAX}
                 multiline
                 textAlignVertical="top"
               />
-              <FieldError message="Description is required" visible={submitAttempted && !descTrim} />
+              <FieldError message="Description is required" visible={submitAttempted && !descTrim} colors={colors} styles={styles} />
             </View>
 
             <View style={styles.section}>
@@ -395,17 +392,17 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <View style={styles.requiredDot} />
               </View>
               <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={20} color={COLORS.textSecondary} />
+                <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
                 <TextInput
                   style={styles.locationInput}
                   placeholder="Building, room, or landmark"
-                  placeholderTextColor={COLORS.textSecondary}
+                  placeholderTextColor={colors.textSecondary}
                   value={location}
                   onChangeText={setLocation}
                   autoCorrect
                 />
               </View>
-              <FieldError message="Campus location is required" visible={submitAttempted && !locTrim} />
+              <FieldError message="Campus location is required" visible={submitAttempted && !locTrim} colors={colors} styles={styles} />
             </View>
 
             <View style={styles.section}>
@@ -462,17 +459,17 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <Switch
                   value={isAutoAccept}
                   onValueChange={setIsAutoAccept}
-                  trackColor={{ false: COLORS.border, true: COLORS.xp }}
+                  trackColor={{ false: colors.border, true: colors.xp }}
                 />
               </View>
-              <FieldError message="Group size must be at least 1" visible={submitAttempted && maxParticipants < 1} />
+              <FieldError message="Group size must be at least 1" visible={submitAttempted && maxParticipants < 1} colors={colors} styles={styles} />
             </View>
 
             <View style={styles.section}>
               <View style={styles.appraiserCard}>
                 <View style={styles.appraiserHeader}>
                   <View style={styles.appraiserTitleRow}>
-                    <Ionicons name="sparkles-outline" size={18} color={COLORS.xp} />
+                    <Ionicons name="sparkles-outline" size={18} color={colors.xp} />
                     <Text style={styles.appraiserLabel}>GUILD APPRAISER</Text>
                   </View>
                   <View style={styles.appraiserBadge}>
@@ -489,7 +486,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                     <Text style={styles.appraiserStatLabel}>XP boost</Text>
                   </View>
                   <View style={styles.appraiserStat}>
-                    <Text style={[styles.appraiserStatValue, { color: COLORS.token }]}>
+                    <Text style={[styles.appraiserStatValue, { color: colors.token }]}>
                       {appraisal.tokenBounty}
                     </Text>
                     <Text style={styles.appraiserStatLabel}>Token bounty</Text>
@@ -558,7 +555,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             {submitAttempted && !isValid && (
               <View style={styles.summaryCard}>
                 <View style={styles.summaryHeader}>
-                  <Ionicons name="warning" size={18} color={COLORS.error} />
+                  <Ionicons name="warning" size={18} color={colors.error} />
                   <Text style={styles.summaryTitle}>Complete required fields</Text>
                 </View>
                 {validationIssues.map((msg) => (
@@ -578,17 +575,17 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, theme: string) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.2)', // Overlay backdrop
   },
   flex: {
     flex: 1,
   },
   sheet: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
@@ -602,7 +599,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
   },
   navRow: {
     flexDirection: 'row',
@@ -611,7 +608,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
   },
   navBtn: {
     paddingVertical: 10,
@@ -624,13 +621,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   publishBtn: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: colors.surface2,
     minWidth: 72,
     alignItems: 'center',
   },
@@ -638,11 +635,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.xp,
+    color: colors.xp,
   },
   cancelText: {
     fontSize: 16,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   pressed: {
@@ -683,17 +680,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
   },
   requiredDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.error,
+    backgroundColor: colors.error,
   },
   counter: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   categoryRow: {
@@ -711,7 +708,7 @@ const styles = StyleSheet.create({
   },
   categoryChipIdle: {
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   categoryDot: {
     width: 8,
@@ -722,18 +719,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
   },
   textInput: {
     minHeight: 52,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
     fontFamily: 'DMSans-Regular',
   },
   textArea: {
@@ -746,8 +743,8 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 52,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 14,
   },
@@ -755,7 +752,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 15,
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
     fontFamily: 'DMSans-Regular',
   },
   stepperContainer: {
@@ -764,8 +761,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 56,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -779,11 +776,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: 'SpaceMono-Bold',
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   stepperHelper: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
     textAlign: 'center',
     marginTop: 2,
@@ -798,8 +795,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   toggleTextCol: {
     flex: 1,
@@ -810,12 +807,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   toggleSub: {
     fontSize: 12,
     lineHeight: 16,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   fieldErrorRow: {
@@ -826,7 +823,7 @@ const styles = StyleSheet.create({
   },
   fieldErrorText: {
     fontSize: 12,
-    color: COLORS.error,
+    color: colors.error,
     fontFamily: 'DMSans-Regular',
     flex: 1,
   },
@@ -839,16 +836,16 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
   },
   dividerLabel: {
     fontSize: 8,
     fontFamily: 'PressStart2P-Regular',
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
   },
   hint: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
     textAlign: 'center',
     marginBottom: 8,
@@ -861,8 +858,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     marginTop: 8,
   },
   rewardLeft: {
@@ -880,11 +877,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   rewardSub: {
     fontSize: 11,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   stepper: {
@@ -904,15 +901,15 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'SpaceMono-Bold',
     fontWeight: '700',
-    color: COLORS.token,
+    color: colors.token,
   },
   summaryCard: {
     marginTop: 8,
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,176,32,0.5)',
-    backgroundColor: 'rgba(255,176,32,0.08)',
+    borderColor: withOpacity(colors.warning, 0.5),
+    backgroundColor: withOpacity(colors.warning, 0.08),
     gap: 8,
   },
   summaryHeader: {
@@ -925,7 +922,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   summaryLine: {
     flexDirection: 'row',
@@ -937,18 +934,18 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: COLORS.error,
+    backgroundColor: colors.error,
   },
   summaryText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   appraiserCard: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(192,132,252,0.28)',
-    backgroundColor: 'rgba(192,132,252,0.08)',
+    borderColor: withOpacity(colors.xp, 0.28),
+    backgroundColor: withOpacity(colors.xp, 0.08),
     padding: 14,
     gap: 10,
   },
@@ -966,33 +963,33 @@ const styles = StyleSheet.create({
   appraiserLabel: {
     fontSize: 8,
     fontFamily: 'PressStart2P-Regular',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   appraiserBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   appraiserBadgeText: {
     fontSize: 11,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   appraiserHeadline: {
     fontSize: 15,
     lineHeight: 20,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
   },
   appraiserCopy: {
     fontSize: 12,
     lineHeight: 17,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
   appraiserStatsRow: {
@@ -1004,9 +1001,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 14,
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     alignItems: 'center',
     gap: 2,
   },
@@ -1014,13 +1011,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'DMSans-Bold',
     fontWeight: '600',
-    color: COLORS.xp,
+    color: colors.xp,
     textAlign: 'center',
   },
   appraiserStatLabel: {
     fontSize: 10,
     fontFamily: 'DMSans-Regular',
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 });
