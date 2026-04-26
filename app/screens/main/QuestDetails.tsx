@@ -13,6 +13,7 @@ import {
   PanResponder,
   Animated,
   Easing,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -69,6 +70,19 @@ type ProfilePreview = {
   major?: string | null;
   graduationYear?: string | null;
   bio?: string | null;
+  rank?: number | null;
+  totalXP?: number;
+  completedQuests?: number;
+  badges?: string[];
+  reputation?: string;
+  level?: number;
+};
+
+const PROFILE_BADGE_ASSETS = {
+  badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
+  badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
+  badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
+  experience: require("../../../assets/ProfileAssets/Experience_Pixel.png"),
 };
 
 const SWIPE_REPLY_MAX = 86;
@@ -236,6 +250,43 @@ function formatRelativeTime(dateValue: string | number | Date) {
   if (diffWeeks < 5) return `${diffWeeks}w ago`;
 
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function fmtXP(xp: number): string {
+  if (xp >= 1_000_000) return `${(xp / 1_000_000).toFixed(1)}M`;
+  if (xp >= 1_000) return `${(xp / 1_000).toFixed(1)}K`;
+  return String(xp);
+}
+
+function getBadgeSet(totalXP: number, completedQuests: number): string[] {
+  const badges = ['Guardian'];
+  if (completedQuests >= 5 || totalXP >= 1000) badges.push('Achiever');
+  if (completedQuests >= 15 || totalXP >= 3000) badges.push('Scholar');
+  return badges.slice(0, 3);
+}
+
+function getReputationLabel(totalXP: number): string {
+  if (totalXP >= 30_000) return 'Campus Legend';
+  if (totalXP >= 15_000) return 'Elite Helper';
+  if (totalXP >= 6_000) return 'Trusted Contributor';
+  if (totalXP >= 1_000) return 'Campus Helper';
+  return 'Rising Helper';
+}
+
+const XP_THRESHOLDS = [0, 1000, 3000, 6000, 10000, 15000, 22000, 31000, 42000, 55000];
+
+function calculateLevelFromXP(totalXP: number) {
+  let currentLevel = 1;
+  for (let i = 0; i < XP_THRESHOLDS.length; i++) {
+    if (totalXP >= XP_THRESHOLDS[i]) currentLevel = i + 1;
+    else break;
+  }
+  const currentThreshold = XP_THRESHOLDS[currentLevel - 1] || 0;
+  const nextThreshold = XP_THRESHOLDS[currentLevel] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1] + 5000;
+  const xpInCurrentLevel = totalXP - currentThreshold;
+  const xpNeededForNextLevel = nextThreshold - currentThreshold;
+  const progressPercent = Math.min(1, Math.max(0, xpInCurrentLevel / xpNeededForNextLevel));
+  return { currentLevel, xpInCurrentLevel, xpNeededForNextLevel, progressPercent };
 }
 
 type LayeredAvatarProps = {
@@ -731,8 +782,52 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setProfilePreviewVisible(false);
   };
 
+  const fetchAndSetProfilePreview = async (targetUserId: string) => {
+    const { data: profileData, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, equipped_accessories, major, graduation_year, bio, total_xp')
+      .eq('id', targetUserId)
+      .maybeSingle();
+
+    if (error || !profileData) return;
+
+    const { data: leaderboardData } = await supabase
+      .from('leaderboard')
+      .select('rank, completed_quests, total_xp')
+      .eq('id', targetUserId)
+      .maybeSingle();
+
+    let fallbackRank: number | null = null;
+    if (!leaderboardData) {
+      const { data: rankData } = await supabase.rpc('get_user_leaderboard_rank', { user_id: targetUserId });
+      fallbackRank = rankData?.rank ?? null;
+    }
+
+    const totalXP = Number(leaderboardData?.total_xp ?? profileData.total_xp ?? 0);
+    const completedQuests = Number(leaderboardData?.completed_quests ?? 0);
+    const levelData = calculateLevelFromXP(totalXP);
+
+    setSelectedProfile({
+      id: profileData.id,
+      displayName: profileData.display_name || 'Anonymous',
+      accessories: normalizeAccessories(profileData.equipped_accessories),
+      major: profileData.major,
+      graduationYear: profileData.graduation_year,
+      bio: profileData.bio,
+      rank: leaderboardData?.rank ?? fallbackRank,
+      totalXP,
+      completedQuests,
+      badges: getBadgeSet(totalXP, completedQuests),
+      reputation: getReputationLabel(totalXP),
+      level: levelData.currentLevel,
+    });
+  };
+
   const onViewProfile = async () => {
     if (!selectedComment?.userId) return;
+
+    const initialTotalXP = Number(currentUserProfile?.total_xp ?? 0);
+    const initialLevelData = calculateLevelFromXP(initialTotalXP);
 
     setSelectedProfile({
       id: selectedComment.userId,
@@ -742,32 +837,26 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       accessories: selectedComment.accessories,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
-      bio: currentUserProfile?.bio || null, 
+      bio: currentUserProfile?.bio || null,
+      rank: null,
+      totalXP: initialTotalXP,
+      completedQuests: 0,
+      badges: getBadgeSet(initialTotalXP, 0),
+      reputation: getReputationLabel(initialTotalXP),
+      level: initialLevelData.currentLevel,
     });
     setActionsVisible(false);
     setProfilePreviewVisible(true);
 
-    const { data: profileData, error } = await supabase
-      .from('profiles')
-      .select('id, display_name, equipped_accessories, major, graduation_year, bio') 
-      .eq('id', selectedComment.userId)
-      .maybeSingle();
-
-    if (error || !profileData) return;
-
-    setSelectedProfile({
-      id: profileData.id,
-      displayName: profileData.display_name || 'Anonymous',
-      accessories: normalizeAccessories(profileData.equipped_accessories),
-      major: profileData.major,
-      graduationYear: profileData.graduation_year,
-      bio: profileData.bio,
-    });
+    await fetchAndSetProfilePreview(selectedComment.userId);
   };
 
   const openPosterProfile = async () => {
     const targetUserId = questData?.user_id || quest?.user_id;
     if (!targetUserId) return;
+
+    const initialTotalXP = Number(posterProfile?.total_xp ?? 0);
+    const initialLevelData = calculateLevelFromXP(initialTotalXP);
 
     setSelectedProfile({
       id: targetUserId,
@@ -776,31 +865,25 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       major: posterProfile?.major || null,
       graduationYear: posterProfile?.graduation_year || null,
       bio: posterProfile?.bio || null,
+      rank: null,
+      totalXP: initialTotalXP,
+      completedQuests: 0,
+      badges: getBadgeSet(initialTotalXP, 0),
+      reputation: getReputationLabel(initialTotalXP),
+      level: initialLevelData.currentLevel,
     });
     setProfilePreviewVisible(true);
 
-    const { data: profileData, error } = await supabase
-      .from('profiles')
-      .select('id, display_name, equipped_accessories, major, graduation_year, bio')
-      .eq('id', targetUserId)
-      .maybeSingle();
-
-    if (!error && profileData) {
-      setSelectedProfile({
-        id: profileData.id,
-        displayName: profileData.display_name || 'Anonymous',
-        accessories: normalizeAccessories(profileData.equipped_accessories),
-        major: profileData.major,
-        graduationYear: profileData.graduation_year,
-        bio: profileData.bio,
-      });
-      setPosterProfile(profileData);
-    }
+    await fetchAndSetProfilePreview(targetUserId);
   };
 
   const profileSubtitle = selectedProfile
     ? `${selectedProfile.major || 'Undeclared'}${selectedProfile.graduationYear ? ` · Class of '${selectedProfile.graduationYear.slice(-2)}` : ''}`
     : '';
+  const selectedTotalXP = selectedProfile?.totalXP ?? 0;
+  const levelData = calculateLevelFromXP(selectedTotalXP);
+  const nextLevel = Math.min(levelData.currentLevel + 1, 10);
+  const selectedBadges = selectedProfile?.badges ?? ['Guardian'];
 
   return (
     <KeyboardAvoidingView 
@@ -1101,6 +1184,71 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   <Text style={styles.previewBio}>
                     {selectedProfile?.bio || 'Tell your campus a little about yourself...'}
                   </Text>
+                </View>
+              </View>
+
+              <View style={styles.previewStatsRow}>
+                <View style={styles.previewStatCard}>
+                  <Text style={styles.previewStatValue}>#{selectedProfile?.rank ?? '-'}</Text>
+                  <Text style={styles.previewStatLabel}>Global Rank</Text>
+                </View>
+                <View style={styles.previewStatCard}>
+                  <Text style={styles.previewStatValue}>{selectedProfile?.completedQuests ?? 0}</Text>
+                  <Text style={styles.previewStatLabel}>Quests Completed</Text>
+                </View>
+                <View style={styles.previewStatCard}>
+                  <Text style={styles.previewStatValue}>LVL {selectedProfile?.level ?? levelData.currentLevel}</Text>
+                  <Text style={styles.previewStatLabel}>Level</Text>
+                </View>
+              </View>
+
+              <View style={styles.previewSection}>
+                <View style={styles.previewSectionHeaderRow}>
+                  <Text style={styles.previewSectionTitle}>Badges</Text>
+                </View>
+                <View style={styles.previewBadgeRow}>
+                  <View style={styles.previewBadgeSlot}>
+                    <Image source={PROFILE_BADGE_ASSETS.badgeShield} style={styles.previewBadgeImage} resizeMode="contain" />
+                    <Text style={styles.previewBadgeLabel}>{selectedBadges[0] || 'Guardian'}</Text>
+                  </View>
+                  <View style={styles.previewBadgeSlot}>
+                    <Image source={PROFILE_BADGE_ASSETS.badgeMedal} style={styles.previewBadgeImage} resizeMode="contain" />
+                    <Text style={styles.previewBadgeLabel}>{selectedBadges[1] || 'Achiever'}</Text>
+                  </View>
+                  <View style={styles.previewBadgeSlot}>
+                    <Image source={PROFILE_BADGE_ASSETS.badgeHat} style={styles.previewBadgeImage} resizeMode="contain" />
+                    <Text style={styles.previewBadgeLabel}>{selectedBadges[2] || 'Scholar'}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.previewSection}>
+                <View style={styles.previewSectionHeaderRow}>
+                  <Text style={styles.previewSectionTitle}>Reputation</Text>
+                  <View style={styles.previewRankChip}>
+                    <Text style={styles.previewRankChipText}>{selectedProfile?.reputation || 'Campus Helper'}</Text>
+                  </View>
+                </View>
+                <View style={styles.previewKarmaLabelRow}>
+                  <View style={styles.previewKarmaTitleCluster}>
+                    <Image source={PROFILE_BADGE_ASSETS.experience} style={styles.previewKarmaIcon} />
+                    <Text style={styles.previewKarmaTitle}>EXPERIENCE</Text>
+                  </View>
+                  <Text style={styles.previewKarmaValueText}>{levelData.xpInCurrentLevel} / {levelData.xpNeededForNextLevel}</Text>
+                </View>
+                <View style={styles.previewProgressTrack}>
+                  <View style={[styles.previewProgressFill, { width: `${levelData.progressPercent * 100}%` }]} />
+                </View>
+                <View style={styles.previewLevelRow}>
+                  <Text style={styles.previewLevelRangeText}>LVL {levelData.currentLevel}</Text>
+                  <Text style={styles.previewLevelRangeText}>LVL {nextLevel}</Text>
+                </View>
+              </View>
+
+              <View style={styles.previewStatsRow}>
+                <View style={styles.previewStatCard}>
+                  <Text style={styles.previewStatValue}>{fmtXP(selectedProfile?.totalXP ?? 0)}</Text>
+                  <Text style={styles.previewStatLabel}>Total EXP</Text>
                 </View>
               </View>
             </Pressable>
@@ -1613,68 +1761,180 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
   },
   previewBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+    padding: 16,
   },
   previewCard: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.bg,
-    overflow: 'hidden',
+    backgroundColor: COLORS.surface,
+    padding: 14,
+    gap: 12,
+    marginBottom: 86,
   },
   previewHeader: {
-    height: 54,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   previewTitle: {
     color: COLORS.textPrimary,
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.2,
   },
   previewIdentityRow: {
     flexDirection: 'row',
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    gap: 12,
+    alignItems: 'center',
   },
   previewAvatarFrame: {
-    width: 84,
-    height: 84,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: withOpacity(COLORS.favor, 0.4),
+    borderRadius: 40,
+    padding: 2,
   },
   previewIdentityText: {
     flex: 1,
-    gap: 6,
-    justifyContent: 'center',
+    gap: 4,
   },
   previewName: {
     color: COLORS.textPrimary,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
   },
   previewSubtitle: {
     color: COLORS.textSecondary,
-    fontSize: 13,
+    fontSize: 12,
   },
   previewBio: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontSize: 12,
     lineHeight: 18,
+  },
+  previewStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  previewStatCard: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: withOpacity(COLORS.favor, 0.25),
+    backgroundColor: withOpacity(COLORS.favor, 0.06),
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 2,
+  },
+  previewStatValue: {
+    color: COLORS.favor,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  previewStatLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  previewSection: {
+    gap: 10,
+  },
+  previewSectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  previewSectionTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  previewBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: -4,
+  },
+  previewBadgeSlot: {
+    flex: 1,
+    height: 90,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  previewBadgeImage: {
+    width: 40,
+    height: 40,
+    marginBottom: 5,
+  },
+  previewBadgeLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  previewRankChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: withOpacity(COLORS.favor, 0.08),
+    borderWidth: 1,
+    borderColor: withOpacity(COLORS.favor, 0.2),
+  },
+  previewRankChipText: {
+    color: COLORS.favor,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  previewKarmaLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  previewKarmaTitleCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  previewKarmaIcon: {
+    width: 16,
+    height: 16,
+  },
+  previewKarmaTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  previewKarmaValueText: {
+    color: COLORS.textPrimary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  previewProgressTrack: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.surface2,
+    overflow: 'hidden',
+  },
+  previewProgressFill: {
+    height: '100%',
+    borderRadius: 5,
+    backgroundColor: COLORS.xp,
+  },
+  previewLevelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  previewLevelRangeText: {
+    color: COLORS.textSecondary,
+    fontSize: 9,
+    fontWeight: '700',
   },
 });
