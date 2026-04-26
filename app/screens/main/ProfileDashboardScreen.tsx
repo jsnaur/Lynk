@@ -9,24 +9,22 @@ import {
     Text,
     View,
 } from 'react-native';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCallback, useEffect, useState } from 'react';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
-import { COLORS } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
-// Profile Assets - SVGs
+// Profile Assets
 import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
-import SettingsIcon from "../../../assets/ProfileAssets/Settings_Icon.svg";
 import QuestIcon from "../../../assets/ProfileAssets/Quest_Icon.svg";
 
 import BadgeSelectorModal from './BadgeSelectorModal';
 import EditProfileModal from './EditProfileModal';
 
 const ASSETS = {
-    accessory: require("../../../assets/ProfileAssets/Accessory_Face.png"),
     badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
     badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
     badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
@@ -67,29 +65,13 @@ function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string
 }
 
 function LayeredAvatar({
-    accessories,
-    size,
-    scale = 1.45,
-    translateY = 3,
-}: {
-    accessories?: Partial<Record<AvatarSlot, string>>;
-    size: number;
-    scale?: number;
-    translateY?: number;
-}) {
+    accessories, size, scale = 1.45, translateY = 3
+}: { accessories?: Partial<Record<AvatarSlot, string>>; size: number; scale?: number; translateY?: number; }) {
+    const { colors } = useTheme();
     const safeAccessories = normalizeAccessories(accessories);
 
     return (
-        <View
-            style={{
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-                overflow: 'hidden',
-                backgroundColor: COLORS.surface2,
-                position: 'relative',
-            }}
-        >
+        <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: colors.surface2, position: 'relative' }}>
             {ALL_SLOTS_Z_ORDER.map((slot) => {
                 const accessoryId = safeAccessories[slot];
                 if (!accessoryId) return null;
@@ -98,11 +80,7 @@ function LayeredAvatar({
                 const Sprite = accessory.Sprite;
 
                 return (
-                    <View
-                        key={slot}
-                        pointerEvents="none"
-                        style={{ ...StyleSheet.absoluteFillObject, transform: [{ scale }, { translateY }] }}
-                    >
+                    <View key={slot} pointerEvents="none" style={{ ...StyleSheet.absoluteFillObject, transform: [{ scale }, { translateY }] }}>
                         <Sprite width="100%" height="100%" />
                     </View>
                 );
@@ -111,38 +89,26 @@ function LayeredAvatar({
     );
 }
 
-// XP Thresholds
-const XP_THRESHOLDS = [
-    0, 1000, 3000, 6000, 10000, 15000, 22000, 31000, 42000, 55000,
-];
+const XP_THRESHOLDS = [0, 1000, 3000, 6000, 10000, 15000, 22000, 31000, 42000, 55000];
 
 function calculateLevelFromXP(totalXP: number) {
     let currentLevel = 1;
     for (let i = 0; i < XP_THRESHOLDS.length; i++) {
-        if (totalXP >= XP_THRESHOLDS[i]) {
-            currentLevel = i + 1;
-        } else {
-            break;
-        }
+        if (totalXP >= XP_THRESHOLDS[i]) currentLevel = i + 1;
+        else break;
     }
-
     const currentThreshold = XP_THRESHOLDS[currentLevel - 1] || 0;
     const nextThreshold = XP_THRESHOLDS[currentLevel] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1] + 5000;
-
     const xpInCurrentLevel = totalXP - currentThreshold;
     const xpNeededForNextLevel = nextThreshold - currentThreshold;
     const progressPercent = Math.min(1, xpInCurrentLevel / xpNeededForNextLevel);
 
-    return {
-        currentLevel,
-        xpInCurrentLevel,
-        xpNeededForNextLevel,
-        progressPercent,
-    };
+    return { currentLevel, xpInCurrentLevel, xpNeededForNextLevel, progressPercent };
 }
 
-// Integrated robust container to guarantee rendering
 function BadgeSlot({ image, label }: { image: any; label?: string }) {
+    const { colors, theme } = useTheme();
+    const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
     return (
         <View style={styles.badgeSlot}>
             <Image source={image} style={styles.badgeImage} resizeMode="contain" />
@@ -152,20 +118,14 @@ function BadgeSlot({ image, label }: { image: any; label?: string }) {
 }
 
 function LeaderboardCard({ onPress }: { onPress: () => void }) {
+    const { colors, theme } = useTheme();
+    const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
     return (
-        <Pressable
-            style={({ pressed }) => [styles.leaderboardCard, pressed && { opacity: 0.75 }]}
-            onPress={onPress}
-        >
-            <LinearGradient
-                colors={['rgba(255,215,0,0.13)', 'rgba(192,84,252,0.08)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-            />
+        <Pressable style={({ pressed }) => [styles.leaderboardCard, pressed && { opacity: 0.75 }]} onPress={onPress}>
+            <LinearGradient colors={['rgba(255,215,0,0.13)', 'rgba(192,84,252,0.08)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             <View style={styles.leaderboardLeft}>
                 <View style={styles.leaderboardIconWrap}>
-                    <Ionicons name="trophy" size={20} color={COLORS.token} />
+                    <Ionicons name="trophy" size={20} color={colors.token} />
                 </View>
                 <View>
                     <Text style={styles.leaderboardTitle}>HALL OF FAME</Text>
@@ -174,23 +134,21 @@ function LeaderboardCard({ onPress }: { onPress: () => void }) {
             </View>
             <View style={styles.leaderboardRight}>
                 <Text style={styles.leaderboardCta}>VIEW</Text>
-                <Ionicons name="chevron-forward" size={14} color={COLORS.token} />
+                <Ionicons name="chevron-forward" size={14} color={colors.token} />
             </View>
         </Pressable>
     );
 }
 
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
+    const { theme, colors } = useTheme();
+    const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
     const { balance, refreshBalance } = useTokenBalance();
+    
     const [profile, setProfile] = useState<any>(null);
     const [profileLoading, setProfileLoading] = useState<boolean>(true);
     const [totalXP, setTotalXP] = useState<number>(0);
-    const [state, setState] = useState<ProfileState>({
-        badgeSelectorVisible: false,
-        editProfileVisible: false,
-    });
-
-    // Dynamic quest count states
+    const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false });
     const [activeQuestCount, setActiveQuestCount] = useState<number>(0);
     const [completedQuestCount, setCompletedQuestCount] = useState<number>(0);
 
@@ -199,11 +157,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
+                const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
                 if (data) {
                     setProfile(data);
                     setTotalXP(data.total_xp || 0);
@@ -214,24 +168,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         }
     }, []);
 
-    // Fetch dynamic quest statistics exactly matching QuestScreen.tsx logic
     const fetchQuestCounts = useCallback(async () => {
         try {
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (authError || !user) return;
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
 
-            // 1. Fetch quests posted by the user OR directly accepted by the user
-            const { data: mainQuests } = await supabase
-                .from('quests')
-                .select('id, status')
-                .or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`);
-
-            // 2. Fetch quests where user is a participant (for group quests)
-            const { data: partData } = await supabase
-                .from('quest_participants')
-                .select('quest_id')
-                .eq('user_id', user.id)
-                .in('status', ['accepted', 'completed', 'failed', 'resolved']);
+            const { data: mainQuests } = await supabase.from('quests').select('id, status').or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`);
+            const { data: partData } = await supabase.from('quest_participants').select('quest_id').eq('user_id', user.id).in('status', ['accepted', 'completed', 'failed', 'resolved']);
 
             const partQuestIds = partData?.map((p) => p.quest_id) || [];
             let extraQuests: any[] = [];
@@ -239,19 +182,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
             if (partQuestIds.length > 0) {
                 const existingIds = mainQuests?.map((q) => q.id) || [];
                 const missingIds = partQuestIds.filter((id) => !existingIds.includes(id));
-                
                 if (missingIds.length > 0) {
-                    const { data: extra } = await supabase
-                        .from('quests')
-                        .select('id, status')
-                        .in('id', missingIds);
-                        
+                    const { data: extra } = await supabase.from('quests').select('id, status').in('id', missingIds);
                     if (extra) extraQuests = extra;
                 }
             }
 
             const allData = [...(mainQuests || []), ...extraQuests];
-            
             let activeCount = 0;
             let completedCount = 0;
             const seenIds = new Set();
@@ -259,15 +196,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
             allData.forEach((q) => {
                 if (seenIds.has(q.id)) return;
                 seenIds.add(q.id);
-
-                // If it's completed or resolved, it belongs in History/Completed
-                const isResolved = q.status === 'completed' || q.status === 'resolved';
-                
-                if (isResolved) {
-                    completedCount++;
-                } else {
-                    activeCount++;
-                }
+                if (q.status === 'completed' || q.status === 'resolved') completedCount++;
+                else activeCount++;
             });
 
             setActiveQuestCount(activeCount);
@@ -284,16 +214,12 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 setState(prev => ({ ...prev, editProfileVisible: true }));
                 navigation.setParams({ openEditProfile: false });
             }
-
-            // Sync the user's latest stats, token balance, and quest counts the moment they land on this tab
             void fetchProfile();
             void refreshBalance();
             void fetchQuestCounts();
         });
-
         void fetchProfile();
         void fetchQuestCounts();
-
         return unsubscribe;
     }, [fetchProfile, refreshBalance, fetchQuestCounts, navigation]);
 
@@ -302,23 +228,14 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         const setupRealtime = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-
             channel = supabase.channel('profile_dashboard_changes')
-                .on(
-                    'postgres_changes',
-                    { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
-                    (payload) => {
-                        if (payload.new) {
-                            setProfile((prev: any) => ({ ...prev, ...payload.new }));
-                            if (payload.new.total_xp !== undefined) {
-                                setTotalXP(payload.new.total_xp);
-                            }
-                        }
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, (payload) => {
+                    if (payload.new) {
+                        setProfile((prev: any) => ({ ...prev, ...payload.new }));
+                        if (payload.new.total_xp !== undefined) setTotalXP(payload.new.total_xp);
                     }
-                )
-                .subscribe();
+                }).subscribe();
         };
-
         setupRealtime();
         return () => { if (channel) supabase.removeChannel(channel); };
     }, []);
@@ -327,11 +244,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const currentLevel = levelData.currentLevel;
     const nextLevel = Math.min(currentLevel + 1, 10);
     const karmaProgress = levelData.progressPercent;
-    const xpInLevel = levelData.xpInCurrentLevel;
-    const xpForNextLevel = levelData.xpNeededForNextLevel;
-
+    
     const profileAccessories = normalizeAccessories(profile?.equipped_accessories);
-
     const gradYearDisplay = profile?.graduation_year || profile?.graduationYear || '2027';
     const shortYear = gradYearDisplay.slice(-2);
     const majorDisplay = profile?.major || 'Undeclared';
@@ -340,16 +254,12 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
     return (
         <View style={styles.root}>
-            <StatusBar style="light" />
+            <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Profile</Text>
-                    <Pressable
-                        style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]}
-                        hitSlop={10}
-                        onPress={() => navigation?.navigate('Settings')}
-                    >
-                        <Ionicons name="settings-outline" size={24} color={COLORS.textPrimary} style={styles.settingsIcon} />
+                    <Pressable style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]} hitSlop={10} onPress={() => navigation?.navigate('Settings')}>
+                        <Ionicons name="settings-outline" size={24} color={colors.textPrimary} style={styles.settingsIcon} />
                     </Pressable>
                 </View>
 
@@ -360,7 +270,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 <View style={styles.avatarFrame}>
                                     {profileLoading ? (
                                         <View style={styles.loadingAvatarIconWrap}>
-                                            <Ionicons name="person" size={42} color={COLORS.textPrimary} />
+                                            <Ionicons name="person" size={42} color={colors.textPrimary} />
                                         </View>
                                     ) : (
                                         <LayeredAvatar accessories={profileAccessories} size={72} scale={1.5} translateY={4} />
@@ -375,9 +285,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 </View>
                                 <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
                                 <Text style={styles.bioText}>{bioDisplay}</Text>
-                                <Pressable
-                                    onPress={() => setState({ ...state, editProfileVisible: true })}
-                                >
+                                <Pressable onPress={() => setState({ ...state, editProfileVisible: true })}>
                                     <Text style={styles.editProfileText}>Edit Profile</Text>
                                 </Pressable>
                             </View>
@@ -387,12 +295,9 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     <View style={styles.badgesBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Badges</Text>
-                            <Pressable
-                                style={styles.setLink}
-                                onPress={() => setState({ ...state, badgeSelectorVisible: true })}
-                            >
+                            <Pressable style={styles.setLink} onPress={() => setState({ ...state, badgeSelectorVisible: true })}>
                                 <Text style={styles.setLinkText}>Set</Text>
-                                <Ionicons name="chevron-forward" size={14} color={COLORS.favor} />
+                                <Ionicons name="chevron-forward" size={14} color={colors.favor} />
                             </Pressable>
                         </View>
                         <View style={styles.badgeRow}>
@@ -415,16 +320,11 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 <Image source={ASSETS.experience} style={styles.karmaIcon} />
                                 <Text style={styles.karmaTitle}>EXPERIENCE</Text>
                             </View>
-                            <Text style={styles.karmaValueText}>{xpInLevel} / {xpForNextLevel}</Text>
+                            <Text style={styles.karmaValueText}>{levelData.xpInCurrentLevel} / {levelData.xpNeededForNextLevel}</Text>
                         </View>
 
                         <View style={styles.progressTrack}>
-                            <LinearGradient
-                                colors={[COLORS.xp, COLORS.favor]}
-                                start={{ x: 0, y: 0.5 }}
-                                end={{ x: 1, y: 0.5 }}
-                                style={[styles.progressFill, { width: `${karmaProgress * 100}%` }]}
-                            />
+                            <LinearGradient colors={[colors.xp, colors.favor]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[styles.progressFill, { width: `${karmaProgress * 100}%` }]} />
                         </View>
 
                         <View style={styles.levelRow}>
@@ -432,16 +332,9 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
                         </View>
 
-                        {/* ── Leaderboard Card ── */}
                         <LeaderboardCard onPress={() => navigation?.navigate('Leaderboard')} />
 
-                        <Pressable
-                            style={styles.tokenCard}
-                            onPress={() => {
-                                if (onTabPress) onTabPress('Shop');
-                                else navigation?.navigate('Main', { screen: 'Shop' });
-                            }}
-                        >
+                        <Pressable style={styles.tokenCard} onPress={() => { if (onTabPress) onTabPress('Shop'); else navigation?.navigate('Main', { screen: 'Shop' }); }}>
                             <View style={styles.tokenLeftCluster}>
                                 <Image source={ASSETS.token} style={styles.tokenIcon} />
                                 <View>
@@ -449,30 +342,22 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                     <Text style={styles.tokenSubtitle}>Spend in the Shop</Text>
                                 </View>
                             </View>
-
                             <View style={styles.tokenRightCluster}>
                                 <Text style={styles.tokenValue}>{balance}</Text>
                                 <Text style={styles.tokenUnit}>TKN</Text>
-                                <Ionicons name="chevron-forward" size={16} color={COLORS.token} />
+                                <Ionicons name="chevron-forward" size={16} color={colors.token} />
                             </View>
                         </Pressable>
 
-                        <Pressable
-                            style={styles.questsShortcut}
-                            onPress={() => {
-                                if (onTabPress) onTabPress('Quests');
-                                else navigation?.navigate('Main', { screen: 'Quest' });
-                            }}
-                        >
+                        <Pressable style={styles.questsShortcut} onPress={() => { if (onTabPress) onTabPress('Quests'); else navigation?.navigate('Main', { screen: 'Quest' }); }}>
                             <View style={styles.questsLeftCluster}>
                                 <QuestIcon width={26} height={26} />
                                 <View>
                                     <Text style={styles.questsTitle}>My Quests</Text>
-                                    {/* Dynamic rendering of Quest stats */}
                                     <Text style={styles.questsSubtitle}>{activeQuestCount} active · {completedQuestCount} completed</Text>
                                 </View>
                             </View>
-                            <Ionicons name="chevron-forward" size={16} color={COLORS.border} />
+                            <Ionicons name="chevron-forward" size={16} color={colors.border} />
                         </Pressable>
                     </View>
                 </ScrollView>
@@ -480,60 +365,19 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
             <BottomNav activeTab="Profile" onTabPress={onTabPress} />
 
-            {state.badgeSelectorVisible && (
-                <BadgeSelectorModal
-                    onClose={() => setState({ ...state, badgeSelectorVisible: false })}
-                    onDone={(badges) => {
-                        setState({ ...state, badgeSelectorVisible: false });
-                    }}
-                />
-            )}
-
+            {state.badgeSelectorVisible && <BadgeSelectorModal onClose={() => setState({ ...state, badgeSelectorVisible: false })} onDone={() => setState({ ...state, badgeSelectorVisible: false })} />}
             {state.editProfileVisible && (
                 <EditProfileModal
-                    initialData={{
-                        displayName: displayName === 'Anonymous' ? '' : displayName,
-                        bio: profile?.bio || '',
-                        major: profile?.major || 'Undeclared',
-                        graduationYear: gradYearDisplay,
-                    }}
+                    initialData={{ displayName: displayName === 'Anonymous' ? '' : displayName, bio: profile?.bio || '', major: profile?.major || 'Undeclared', graduationYear: gradYearDisplay }}
                     onClose={() => setState({ ...state, editProfileVisible: false })}
                     onSave={async (data: any) => {
-                        // 1. OPTIMISTIC UPDATE: Instantly change the UI
-                        setProfile((prev: any) => ({
-                            ...prev,
-                            display_name: data.displayName,
-                            bio: data.bio,
-                            major: data.major,
-                            graduation_year: data.graduationYear
-                        }));
-
-                        // 2. Close the modal instantly
+                        setProfile((prev: any) => ({ ...prev, display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear }));
                         setState({ ...state, editProfileVisible: false });
-
-                        // 3. Save to Supabase
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
-                            if (user) {
-                                const { error } = await supabase
-                                    .from('profiles')
-                                    .update({
-                                        display_name: data.displayName,
-                                        bio: data.bio,
-                                        major: data.major,
-                                        graduation_year: data.graduationYear
-                                    })
-                                    .eq('id', user.id);
-
-                                if (error) {
-                                    console.error("Supabase Save Error:", error.message);
-                                }
-                            }
-
+                            if (user) await supabase.from('profiles').update({ display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear }).eq('id', user.id);
                             await fetchProfile();
-                        } catch (e) {
-                            console.error("Error updating profile", e);
-                        }
+                        } catch (e) { console.error("Error updating profile", e); }
                     }}
                 />
             )}
@@ -541,339 +385,63 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     );
 }
 
-const styles = StyleSheet.create({
-    root: {
-        flex: 1,
-        backgroundColor: COLORS.bg,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    header: {
-        paddingHorizontal: 20,
-        paddingBottom: 12,
-        height: 64,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-    },
-    headerTitle: {
-        fontSize: 30,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
-        letterSpacing: 0.2,
-    },
-    settingsButton: {
-        height: 44,
-        width: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    settingsIcon: {
-        width: 24,
-        height: 24,
-    },
-    scrollContent: {
-        paddingBottom: 112,
-    },
-    identityBlock: {
-        paddingHorizontal: 24,
-        paddingVertical: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-    },
-    identityRow: {
-        flexDirection: 'row',
-        gap: 18,
-    },
-    avatarColumn: {
-        alignItems: 'center',
-        gap: 8,
-    },
-    avatarFrame: {
-        width: 100,
-        height: 100,
-        borderRadius: 20,
-        backgroundColor: COLORS.surface2,
-        borderWidth: 2,
-        borderColor: COLORS.border,
-        overflow: 'hidden',
-        position: 'relative',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    loadingAvatarIconWrap: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    identityTextColumn: {
-        flex: 1,
-        gap: 8,
-        justifyContent: 'center',
-    },
-    nameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    nameText: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
-    },
-    verifiedBadge: {
-        width: 18,
-        height: 18,
-    },
-    subtitle: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-    },
-    bioText: {
-        fontSize: 13,
-        color: COLORS.textPrimary,
-        fontWeight: '500',
-    },
-    editProfileText: {
-        fontSize: 12,
-        color: COLORS.favor,
-    },
-    badgesBlock: {
-        paddingHorizontal: 24,
-        paddingVertical: 20,
-        gap: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-    },
-    blockHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    blockTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-    },
-    setLink: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    setLinkText: {
-        fontSize: 14,
-        fontWeight: '400',
-        color: COLORS.favor,
-    },
-    badgeRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginHorizontal: -4,
-    },
-    badgeSlot: {
-        flex: 1,
-        height: 104,
-        borderRadius: 14,
-        backgroundColor: COLORS.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginHorizontal: 4,
-        paddingVertical: 12,
-    },
-    badgeImage: {
-        width: 50,
-        height: 50,
-        marginBottom: 6,
-    },
-    badgeLabelText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-    },
-    reputationBlock: {
-        paddingHorizontal: 24,
-        paddingVertical: 20,
-        gap: 14,
-    },
-    rankChip: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0,245,255,0.08)',
-        borderWidth: 1,
-        borderColor: 'rgba(0,245,255,0.2)',
-    },
-    rankChipText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: COLORS.favor,
-    },
-    karmaLabelRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    karmaTitleCluster: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    karmaIcon: {
-        width: 18,
-        height: 18,
-    },
-    karmaTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-    },
-    karmaValueText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-    },
-    progressTrack: {
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: COLORS.surface2,
-        overflow: 'hidden',
-    },
-    progressFill: {
-        height: '100%',
-        borderRadius: 5,
-    },
-    levelRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 0,
-    },
-    levelRangeText: {
-        fontSize: 8,
-        fontWeight: '700',
-        color: COLORS.textSecondary,
-        fontFamily: 'monospace',
-    },
-    leaderboardCard: {
-        height: 64,
-        paddingHorizontal: 16,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(255,215,0,0.30)',
-        backgroundColor: COLORS.surface,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        overflow: 'hidden',
-    },
-    leaderboardLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    leaderboardIconWrap: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: 'rgba(255,215,0,0.12)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,215,0,0.25)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    leaderboardTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-    },
-    leaderboardSubtitle: {
-        fontSize: 11,
-        color: COLORS.textSecondary,
-    },
-    leaderboardRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    leaderboardCta: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: COLORS.token,
-    },
-    tokenCard: {
-        height: 64,
-        paddingHorizontal: 16,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surface,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    tokenLeftCluster: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    tokenIcon: {
-        width: 26,
-        height: 26,
-    },
-    tokenTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-    },
-    tokenSubtitle: {
-        fontSize: 11,
-        color: COLORS.textSecondary,
-    },
-    tokenRightCluster: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    tokenValue: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: COLORS.token,
-    },
-    tokenUnit: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-    },
-    questsShortcut: {
-        height: 64,
-        paddingHorizontal: 16,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surface,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    questsLeftCluster: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    questIcon: {
-        width: 26,
-        height: 26,
-    },
-    questsTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-    },
-    questsSubtitle: {
-        fontSize: 11,
-        color: COLORS.textSecondary,
-    },
+const getStyles = (colors: any, theme: string) => StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.bg },
+    safeArea: { flex: 1 },
+    header: { paddingHorizontal: 20, paddingBottom: 12, height: 64, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+    headerTitle: { fontSize: 30, fontWeight: '700', color: colors.textPrimary, letterSpacing: 0.2 },
+    settingsButton: { height: 44, width: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    settingsIcon: { width: 24, height: 24 },
+    scrollContent: { paddingBottom: 112 },
+    identityBlock: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
+    identityRow: { flexDirection: 'row', gap: 18 },
+    avatarColumn: { alignItems: 'center', gap: 8 },
+    avatarFrame: { width: 100, height: 100, borderRadius: 20, backgroundColor: colors.surface2, borderWidth: 2, borderColor: colors.border, overflow: 'hidden', position: 'relative', alignItems: 'center', justifyContent: 'center' },
+    loadingAvatarIconWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    identityTextColumn: { flex: 1, gap: 8, justifyContent: 'center' },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    nameText: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+    subtitle: { fontSize: 13, color: colors.textSecondary },
+    bioText: { fontSize: 13, color: colors.textPrimary, fontWeight: '500' },
+    editProfileText: { fontSize: 12, color: colors.favor },
+    badgesBlock: { paddingHorizontal: 24, paddingVertical: 20, gap: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+    blockHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    blockTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    setLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    setLinkText: { fontSize: 14, fontWeight: '400', color: colors.favor },
+    badgeRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -4 },
+    badgeSlot: { flex: 1, height: 104, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginHorizontal: 4, paddingVertical: 12 },
+    badgeImage: { width: 50, height: 50, marginBottom: 6 },
+    badgeLabelText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' },
+    reputationBlock: { paddingHorizontal: 24, paddingVertical: 20, gap: 14 },
+    rankChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: 'rgba(0,245,255,0.08)', borderWidth: 1, borderColor: 'rgba(0,245,255,0.2)' },
+    rankChipText: { fontSize: 12, fontWeight: '600', color: colors.favor },
+    karmaLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    karmaTitleCluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    karmaIcon: { width: 18, height: 18 },
+    karmaTitle: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    karmaValueText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    progressTrack: { height: 10, borderRadius: 5, backgroundColor: colors.surface2, overflow: 'hidden' },
+    progressFill: { height: '100%', borderRadius: 5 },
+    levelRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 },
+    levelRangeText: { fontSize: 8, fontWeight: '700', color: colors.textSecondary, fontFamily: 'monospace' },
+    leaderboardCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,215,0,0.30)', backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' },
+    leaderboardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    leaderboardIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,215,0,0.12)', borderWidth: 1, borderColor: 'rgba(255,215,0,0.25)', alignItems: 'center', justifyContent: 'center' },
+    leaderboardTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    leaderboardSubtitle: { fontSize: 11, color: colors.textSecondary },
+    leaderboardRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    leaderboardCta: { fontSize: 13, fontWeight: '600', color: colors.token },
+    tokenCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    tokenLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    tokenIcon: { width: 26, height: 26 },
+    tokenTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    tokenSubtitle: { fontSize: 11, color: colors.textSecondary },
+    tokenRightCluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    tokenValue: { fontSize: 22, fontWeight: '700', color: colors.token },
+    tokenUnit: { fontSize: 13, color: colors.textSecondary },
+    questsShortcut: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    questsLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    questsTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    questsSubtitle: { fontSize: 11, color: colors.textSecondary },
 });

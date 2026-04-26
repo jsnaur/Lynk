@@ -1,24 +1,40 @@
 import React, { useState } from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { DMSans_400Regular, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
-import { COLORS } from './app/constants/colors';
 
 import AppNavigator from './app/navigation/AppNavigator';
 import AnimatedSplashScreen from './app/screens/AnimatedSplashScreen';
 import { TokenBalanceProvider } from './app/contexts/TokenContext';
+import { ThemeProvider, useTheme } from './app/contexts/ThemeContext';
+import { COLORS } from './app/constants/colors';
 
-const customDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: COLORS.bg,
-  },
-};
+// Separate inner component to consume the ThemeContext
+function MainApp() {
+  const { theme, colors } = useTheme();
+
+  const customTheme = {
+    ...(theme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(theme === 'dark' ? DarkTheme.colors : DefaultTheme.colors),
+      background: colors.bg,
+    },
+  };
+
+  return (
+    <TokenBalanceProvider>
+      <View style={[styles.root, { backgroundColor: colors.bg }]}>
+        <NavigationContainer theme={customTheme}>
+          <AppNavigator />
+        </NavigationContainer>
+      </View>
+    </TokenBalanceProvider>
+  );
+}
 
 export default function App() {
   const [isSplashComplete, setIsSplashComplete] = useState(false);
@@ -26,30 +42,27 @@ export default function App() {
   // Load all required fonts and map them to the exact strings defined in constants/fonts.ts
   const [fontsLoaded] = useFonts({
     DMSans: DMSans_400Regular, 
-    DMSansBold: DMSans_700Bold, // Included bold variant for general UI usage
+    DMSansBold: DMSans_700Bold, 
     PressStart2P: PressStart2P_400Regular,
     SpaceMono: SpaceMono_400Regular,
   });
 
-  // Do not render anything until fonts are loaded to prevent crashing or unstyled text
   if (!fontsLoaded) {
     return null;
   }
 
   return (
     <SafeAreaProvider>
-      <View style={styles.root}>
+      <ThemeProvider>
         {/* Render Splash Screen OR App Navigator, but not both concurrently to prevent load delays */}
         {!isSplashComplete ? (
-          <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
+          <View style={styles.root}>
+            <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
+          </View>
         ) : (
-          <TokenBalanceProvider>
-            <NavigationContainer theme={customDarkTheme}>
-              <AppNavigator />
-            </NavigationContainer>
-          </TokenBalanceProvider>
+          <MainApp />
         )}
-      </View>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -57,6 +70,6 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: COLORS.bg, // Initial fallback before theme is hydrated
   },
 });

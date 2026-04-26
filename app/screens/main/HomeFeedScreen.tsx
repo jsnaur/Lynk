@@ -20,18 +20,12 @@ import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categorie
 import { supabase } from '../../lib/supabase';
 import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
 import NotificationSheet from './NotificationSheet';
-import { COLORS } from '../../constants/colors';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
     navigation?: any; 
-};
-
-const FILTER_ACTIVE_COLORS: Record<FeedCategory, string> = {
-    favor: COLORS.favor,
-    study: COLORS.study,
-    item: COLORS.item,
 };
 
 function withAlpha(hexColor: string, alpha: number) {
@@ -78,6 +72,15 @@ let CACHED_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {};
 let HAS_FETCHED_INITIALLY = false;
 
 export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScreenProps) {
+    const { theme, colors } = useTheme();
+    const styles = useMemo(() => getStyles(colors), [colors]);
+
+    const FILTER_ACTIVE_COLORS: Record<FeedCategory, string> = useMemo(() => ({
+        favor: colors.favor,
+        study: colors.study,
+        item: colors.item,
+    }), [colors]);
+
     const [activeFilter, setActiveFilter] = useState<FeedCategory | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
     
@@ -283,7 +286,8 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
     return (
         <View style={styles.root}>
-            <StatusBar style="light" />
+            {/* Adapts status bar icons based on active theme */}
+            <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <Pressable
@@ -294,7 +298,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     >
                         <View style={styles.avatarChip}>
                             {(!currentUserAccessories || Object.keys(currentUserAccessories).length === 0) ? (
-                                <Ionicons name="person" size={22} color={COLORS.textPrimary} />
+                                <Ionicons name="person" size={22} color={colors.textPrimary} />
                             ) : (
                                 <View style={styles.avatarPreview}>
                                     {ALL_SLOTS_Z_ORDER.map(slot => {
@@ -322,7 +326,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                         hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
                         accessibilityRole="button"
                     >
-                        <Ionicons name="notifications-outline" size={26} color={COLORS.textPrimary} />
+                        <Ionicons name="notifications-outline" size={26} color={colors.textPrimary} />
                         
                         {unreadNotifCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -386,8 +390,8 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                             <RefreshControl 
                                 refreshing={refreshing} 
                                 onRefresh={onRefresh} 
-                                tintColor={COLORS.favor} 
-                                colors={[COLORS.favor]}  
+                                tintColor={colors.favor} 
+                                colors={[colors.favor]}  
                             />
                         }
                         ListEmptyComponent={
@@ -429,7 +433,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
                             if (!item.reference_id) return;
 
-                            // We now check for the new DB Trigger types
                             const validClickableTypes = [
                                 'quest_applied', 
                                 'applicant_accepted', 
@@ -484,7 +487,6 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                     bonus_xp: data.bonus_xp || 0,
                                     token_bounty: data.token_bounty || 0,
                                     accepted_by: data.accepted_by ?? undefined,
-                                    // Make sure status is included so the details screen knows if it is in progress!
                                     status: data.status,
                                     max_participants: data.max_participants,
                                     is_auto_accept: data.is_auto_accept,
@@ -502,23 +504,23 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
     );
 }
 
-const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: COLORS.bg },
+const getStyles = (colors: any) => StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.bg },
     safeArea: { flex: 1 },
-    header: { borderBottomWidth: 1, borderBottomColor: COLORS.border, height: 76, position: 'relative', paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-    avatarChip: { width: 36, height: 36, borderRadius: 18, borderColor: COLORS.border, borderWidth: 1, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    header: { borderBottomWidth: 1, borderBottomColor: colors.border, height: 76, position: 'relative', paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+    avatarChip: { width: 36, height: 36, borderRadius: 18, borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     avatarPreview: { width: 32, height: 32, borderRadius: 16, position: 'relative', overflow: 'hidden' },
     avatarLayer: { ...StyleSheet.absoluteFillObject, transform: [{ scale: 2 }, { translateY: 1 }] },
     profileButton: { borderRadius: 24, position: 'relative', zIndex: 3, elevation: 3 },
-    logo: { color: COLORS.textPrimary, fontSize: 27, letterSpacing: 3, lineHeight: 30, position: 'absolute', left: 0, right: 0, bottom: 12, textAlign: 'center' },
-    filterBar: { borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-    filterChip: { flex: 1, minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-    filterChipText: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '500' },
+    logo: { color: colors.textPrimary, fontSize: 27, letterSpacing: 3, lineHeight: 30, position: 'absolute', left: 0, right: 0, bottom: 12, textAlign: 'center' },
+    filterBar: { borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    filterChip: { flex: 1, minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+    filterChipText: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
     feedContent: { padding: 16, gap: 12, paddingBottom: 112 },
     emptyStateContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64 },
-    emptyStateTitle: { fontSize: 18, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8 },
-    emptyStateSubtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
+    emptyStateTitle: { fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 },
+    emptyStateSubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
     notificationWrapper: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-    notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: COLORS.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.bg, paddingHorizontal: 4, zIndex: 2 },
-    notificationBadgeText: { color: COLORS.textPrimary, fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
+    notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: colors.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.bg, paddingHorizontal: 4, zIndex: 2 },
+    notificationBadgeText: { color: colors.textPrimary, fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
 });
