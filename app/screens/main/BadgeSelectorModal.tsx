@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
     View,
     Text,
@@ -10,7 +10,10 @@ import {
     PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/colors';
+import { darkColors, withOpacity } from '../../constants/colors';
+import { useTheme } from '../../contexts/ThemeContext';
+
+type ThemeColors = Record<keyof typeof darkColors, string>;
 
 // Badge Assets
 const BADGE_ASSETS = {
@@ -97,26 +100,29 @@ const getBadgeImage = (id: string) => {
 };
 
 function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) => void }) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const isDefault = badge.state === 'default';
     const isSelected = badge.state === 'selected';
     const isDisabled = badge.state === 'disabled';
 
     const containerBg = isSelected
-        ? 'rgba(0, 245, 255, 0.1)'
+        ? withOpacity(colors.favor, 0.1)
         : isDefault
-          ? COLORS.surface2
-          : COLORS.surface;
+          ? colors.surface2
+          : colors.surface;
 
     const borderColor = isSelected
-        ? COLORS.favor
-        : COLORS.border;
+        ? colors.favor
+        : colors.border;
 
     const borderWidth = isSelected ? 2 : 1;
     const labelColor = isSelected
-        ? COLORS.favor
+        ? colors.favor
         : isDisabled
-          ? COLORS.border
-          : COLORS.textSecondary;
+          ? colors.border
+          : colors.textSecondary;
 
     const badgeImage = getBadgeImage(badge.id);
 
@@ -140,7 +146,7 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
                 <Image source={badgeImage} style={styles.badgeImage} resizeMode="contain" />
                 {isSelected && (
                     <View style={styles.checkBadge}>
-                        <Ionicons name="checkmark" size={10} color={COLORS.bg} />
+                        <Ionicons name="checkmark" size={10} color={colors.bg} />
                     </View>
                 )}
             </View>
@@ -159,6 +165,9 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
 }
 
 export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3 }: BadgeSelectorModalProps) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const [badges, setBadges] = useState(BADGE_DATA);
     const panY = useRef(new Animated.Value(0)).current;
     const selectedCount = badges.filter((b) => b.state === 'selected').length;
@@ -280,7 +289,7 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3 }: B
 
                 {selectedCount === maxBadges && (
                     <View style={styles.toast}>
-                        <Ionicons name="information-circle" size={14} color={COLORS.textSecondary} />
+                        <Ionicons name="information-circle" size={14} color={colors.textSecondary} />
                         <Text style={styles.toastText}>Deselect a badge to swap it</Text>
                     </View>
                 )}
@@ -289,7 +298,7 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3 }: B
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     overlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',

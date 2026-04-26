@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
     Modal,
     View,
@@ -12,9 +12,12 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/colors';
+import { darkColors } from '../../constants/colors';
+import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import NotificationRow from '../../components/rows/NotificationRow';
+
+type ThemeColors = Record<keyof typeof darkColors, string>;
 
 type Notification = {
     id: string;
@@ -39,6 +42,9 @@ export default function NotificationSheet({
     onNotificationPress,
     onUnreadCountHint,
 }: NotificationSheetProps) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -235,13 +241,13 @@ export default function NotificationSheet({
                                 <Text style={styles.clearText}>Clear</Text>
                             </Pressable>
                             <Pressable onPress={onClose} hitSlop={10} style={{ marginLeft: 8 }}>
-                                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+                                <Ionicons name="close" size={24} color={colors.textSecondary} />
                             </Pressable>
                         </View>
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator style={{ padding: 40 }} color={COLORS.favor} />
+                        <ActivityIndicator style={{ padding: 40 }} color={colors.favor} />
                     ) : (
                         <FlatList
                             data={notifications}
@@ -253,7 +259,7 @@ export default function NotificationSheet({
                             showsVerticalScrollIndicator={false}
                             ListEmptyComponent={
                                 <View style={styles.emptyState}>
-                                    <Ionicons name="notifications-off-outline" size={40} color={COLORS.border} />
+                                    <Ionicons name="notifications-off-outline" size={40} color={colors.border} />
                                     <Text style={styles.emptyText}>
                                         {errorText ? errorText : "You're all caught up!"}
                                     </Text>
@@ -269,7 +275,7 @@ export default function NotificationSheet({
 
 const { width } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
     bubbleContainer: {
         position: 'absolute',

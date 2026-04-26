@@ -25,10 +25,13 @@ import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.
 
 import CompactQuestCard from '../../components/cards/CompactQuestCard';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
-import { COLORS, withOpacity } from '../../constants/colors';
+import { darkColors, withOpacity } from '../../constants/colors';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { useTheme } from '../../contexts/ThemeContext';
+
+type ThemeColors = Record<keyof typeof darkColors, string>;
 
 type QuestDetailParams = {
   quest?: FeedQuest & { 
@@ -82,6 +85,9 @@ function SwipeReplyCommentRow({
   onOpenActions: (comment: UIComment) => void;
   parse: (text: string) => { repliedToName: string; replyPreview: string; body: string };
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const translateX = useRef(new Animated.Value(0)).current;
   const revealed = useRef(false);
 
@@ -145,7 +151,7 @@ function SwipeReplyCommentRow({
     <View style={styles.swipeRowWrap}>
       <View style={styles.replyUnderlay}>
         <Animated.View style={[styles.replyUnderlayPill, { opacity: actionOpacity, transform: [{ scale: actionScale }] }]}>
-          <Ionicons name="return-down-forward" size={16} color={COLORS.bg} />
+          <Ionicons name="return-down-forward" size={16} color={colors.bg} />
           <Text style={styles.replyUnderlayText}>Reply</Text>
         </Animated.View>
       </View>
@@ -188,12 +194,6 @@ function SwipeReplyCommentRow({
     </View>
   );
 }
-
-const CATEGORY_COLORS: Record<FeedCategory, string> = {
-  favor: COLORS.favor,
-  study: COLORS.study,
-  item: COLORS.item,
-};
 
 const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
   Body: 'body-masc-a',
@@ -246,6 +246,7 @@ type LayeredAvatarProps = {
 };
 
 function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: LayeredAvatarProps) {
+  const { colors } = useTheme();
   const safeAccessories = normalizeAccessories(accessories);
 
   return (
@@ -255,7 +256,7 @@ function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: Laye
         height: size,
         borderRadius: size / 2,
         overflow: 'hidden',
-        backgroundColor: COLORS.surface2,
+        backgroundColor: colors.surface2,
       }}
     >
       {ALL_SLOTS_Z_ORDER.map((slot) => {
@@ -279,6 +280,15 @@ function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: Laye
 }
 
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const CATEGORY_COLORS: Record<FeedCategory, string> = useMemo(() => ({
+    favor: colors.favor,
+    study: colors.study,
+    item: colors.item,
+  }), [colors]);
+
   const quest = route?.params?.quest;
   const { refreshBalance } = useTokenBalance();
   
@@ -813,7 +823,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               disabled={loading}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="trash-outline" size={20} color={COLORS.error || '#FF3B30'} />
+              <Ionicons name="trash-outline" size={20} color={colors.error || '#FF3B30'} />
             </Pressable>
           ) : (
             <View style={styles.headerRightSpacer} />
@@ -838,7 +848,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           ) : (
             <View style={styles.card}>
               <View style={styles.rowBetween}>
-                <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}26` }]}>
+                <View style={[styles.categoryBadge, { backgroundColor: withOpacity(categoryColor, 0.15) }]}>
                   <View style={[styles.dot, { backgroundColor: categoryColor }]} />
                   <Text style={[styles.categoryText, { color: categoryColor }]}>{category.toUpperCase()}</Text>
                 </View>
@@ -899,13 +909,13 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                  onPress={() => setApplicantsExpanded(!applicantsExpanded)}
                >
                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-                   <Ionicons name="people" size={18} color={COLORS.textPrimary} />
+                   <Ionicons name="people" size={18} color={colors.textPrimary} />
                    <Text style={styles.applicantsTitle}>Review Applicants</Text>
                    <View style={styles.countChip}>
                      <Text style={styles.countText}>{appliedParticipants.length}</Text>
                    </View>
                  </View>
-                 <Ionicons name={applicantsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.textSecondary} />
+                 <Ionicons name={applicantsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
                </Pressable>
 
                {applicantsExpanded && (
@@ -955,11 +965,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           {(!shouldShowCompactCard || myParticipantStatus === 'accepted') && !isPoster && (
              <View style={{ marginTop: 4 }}>
                 {myParticipantStatus === 'applied' ? (
-                  <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}>
+                  <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
                     <Text style={styles.acceptText}>Application Pending</Text>
                   </View>
                 ) : myParticipantStatus === 'accepted' ? (
-                  <Pressable style={[styles.acceptButton, { backgroundColor: COLORS.error }, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
+                  <Pressable style={[styles.acceptButton, { backgroundColor: colors.error || '#FF3B30' }, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
                     <Text style={styles.acceptText}>Drop Quest</Text>
                   </Pressable>
                 ) : questData?.status === 'open' ? (
@@ -967,7 +977,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                     <Text style={styles.acceptText}>{isAutoAccept ? 'Accept Quest' : 'Apply for Quest'}</Text>
                   </Pressable>
                 ) : (
-                  <View style={[styles.acceptButton, { backgroundColor: COLORS.textSecondary }]}>
+                  <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
                     <Text style={styles.acceptText}>Quest Unavailable</Text>
                   </View>
                 )}
@@ -1007,7 +1017,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </>
           ) : (
             <View style={styles.lockedCommentsBox}>
-              <Ionicons name="lock-closed" size={24} color={COLORS.textSecondary} />
+              <Ionicons name="lock-closed" size={24} color={colors.textSecondary} />
               <Text style={styles.lockedCommentsText}>This quest is currently in progress.{"\n"}Comments are closed to the public.</Text>
             </View>
           )}
@@ -1029,7 +1039,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 </View>
 
                 <Pressable onPress={cancelReply} hitSlop={10} style={styles.replyBannerClose}>
-                  <Ionicons name="close" size={16} color={COLORS.textSecondary} />
+                  <Ionicons name="close" size={16} color={colors.textSecondary} />
                 </Pressable>
               </Animated.View>
             )}
@@ -1046,11 +1056,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                     ? "Add a public comment..."
                     : "Message group..."
               }
-              placeholderTextColor={COLORS.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />
             <Pressable style={styles.sendButton} onPress={onSubmitComment}>
-              <Ionicons name="send" size={16} color={COLORS.bg} />
+              <Ionicons name="send" size={16} color={colors.bg} />
             </Pressable>
           </View>
         )}
@@ -1059,12 +1069,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
             <Pressable style={styles.actionBubble} onPress={() => {}}>
               <Pressable style={styles.actionRow} onPress={onViewProfile}>
-                <Ionicons name="person-circle-outline" size={18} color={COLORS.favor} />
+                <Ionicons name="person-circle-outline" size={18} color={colors.favor} />
                 <Text style={styles.actionText}>View Profile</Text>
               </Pressable>
               <View style={styles.actionDivider} />
               <View style={styles.actionRowDisabled}>
-                <Ionicons name="flag-outline" size={18} color={COLORS.textSecondary} />
+                <Ionicons name="flag-outline" size={18} color={colors.textSecondary} />
                 <Text style={styles.actionTextDisabled}>Report (Soon)</Text>
               </View>
             </Pressable>
@@ -1077,7 +1087,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               <View style={styles.previewHeader}>
                 <Text style={styles.previewTitle}>Profile</Text>
                 <Pressable onPress={closeProfilePreview} hitSlop={10}>
-                  <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
                 </Pressable>
               </View>
 
@@ -1102,7 +1112,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.52)',
@@ -1213,7 +1223,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: COLORS.surface2 || '#ececec',
+    backgroundColor: COLORS.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1434,7 +1444,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: COLORS.surface2 || '#ececec',
+    backgroundColor: COLORS.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1643,7 +1653,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.surface2 || COLORS.surface,
+    backgroundColor: COLORS.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
