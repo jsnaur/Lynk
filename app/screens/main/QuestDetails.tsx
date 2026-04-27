@@ -16,10 +16,12 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
+import 'react-native-url-polyfill/auto';
 
 // Icons
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
-// Share icon removed (header simplified)
 import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
@@ -61,6 +63,7 @@ type UIComment = {
   time: string;
   accessories?: Partial<Record<AvatarSlot, string>>;
   visibility?: string;
+  image_url?: string | null;
 };
 
 type ProfilePreview = {
@@ -200,6 +203,14 @@ function SwipeReplyCommentRow({
                 </Text>
               </View>
             </View>
+          )}
+
+          {comment.image_url && (
+            <Image 
+              source={{ uri: comment.image_url }} 
+              style={styles.commentImage} 
+              resizeMode="cover"
+            />
           )}
 
           <Text style={styles.commentText}>{parsed.body}</Text>
@@ -345,6 +356,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   
   const [message, setMessage] = useState('');
   const [cardExpanded, setCardExpanded] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const inputRef = useRef<TextInput | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
   
@@ -457,6 +470,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         time: formatRelativeTime(c.created_at),
         accessories: normalizeAccessories(c.profiles?.equipped_accessories),
         visibility: c.visibility,
+        image_url: c.image_url,
       }));
       setComments(formattedComments);
     }
@@ -511,6 +525,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         time: formatRelativeTime(newC.created_at),
                         accessories: normalizeAccessories(profileData?.equipped_accessories),
                         visibility: newC.visibility,
+                        image_url: newC.image_url,
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
                       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
@@ -531,6 +546,41 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     };
   }, [quest?.id, fetchQuestData]);
 
+  // Image Picking & Uploading Logic (BASE64 Fix applied)
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.2,
+      base64: true, // Added base64 extraction
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null); // Save base64 string
+    }
+  };
+
+  const uploadImage = async (base64Str: string) => {
+    const fileName = `${Date.now()}-${currentUserId}.jpg`;
+    const filePath = `comment_photos/${fileName}`;
+
+    // Upload directly using base64 decode bypasses the React Native fetch bug
+    const { data, error } = await supabase.storage
+      .from('quest-attachments') 
+      .upload(filePath, decode(base64Str), {
+        contentType: 'image/jpeg',
+      });
+
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('quest-attachments')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   const handleDeleteQuest = () => {
     Alert.alert(
       "Delete Quest",
@@ -544,20 +594,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             if (!questData?.id) return;
             try {
               setLoading(true);
-
               const { error } = await supabase.rpc('delete_quest_and_refund', {
                 p_quest_id: questData.id,
               });
-
               if (error) throw error;
-
-              // Explicitly refresh the global token balance state right away 
-              // to ensure the refund is immediately reflected everywhere.
               await refreshBalance();
-
-              if (navigation?.goBack) {
-                navigation.goBack();
-              }
+              if (navigation?.goBack) navigation.goBack();
             } catch (error: any) {
               Alert.alert("Error", error.message || "Failed to delete quest.");
             } finally {
@@ -584,9 +626,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       } else {
         const { data: newStatus, error } = await supabase.rpc('apply_for_quest', { p_quest_id: questData.id });
         if (error) throw error;
-        
         await fetchQuestData(currentUserId); 
-
         if (newStatus === 'accepted') {
           Alert.alert('Quest Accepted', 'You have successfully joined the quest!');
         } else {
@@ -668,51 +708,47 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   const onSubmitComment = async () => {
     const trimmed = message.trim();
-    if (!trimmed || !currentUserId || !questData?.id) return;
+    if ((!trimmed && !selectedImage) || !currentUserId || !questData?.id) return;
 
-    const replyTargetName = replyTo?.author?.trim() ?? '';
-    const replyTargetBody = replyTo?.text ? parseReplyEncodedContent(replyTo.text).body : '';
-    const replyQuoted = replyTargetBody
-      ? replyTargetBody.trim().replace(/\s+/g, ' ').slice(0, 120)
-      : '';
-    const finalContent =
-      replyQuoted && replyTargetName
-        ? `↪ ${replyTargetName}: ${replyQuoted}\n${trimmed}`
-        : replyQuoted
-          ? `↪ ${replyQuoted}\n${trimmed}`
+    setLoading(true);
+    try {
+      let uploadedUrl = null;
+      if (selectedImage && imageBase64) {
+        uploadedUrl = await uploadImage(imageBase64);
+      }
+
+      const replyTargetName = replyTo?.author?.trim() ?? '';
+      const replyTargetBody = replyTo?.text ? parseReplyEncodedContent(replyTo.text).body : '';
+      const replyQuoted = replyTargetBody ? replyTargetBody.trim().replace(/\s+/g, ' ').slice(0, 120) : '';
+      
+      const finalContent = replyQuoted && replyTargetName
+          ? `↪ ${replyTargetName}: ${replyQuoted}\n${trimmed}`
           : trimmed;
 
-    setMessage('');
-    setReplyTo(null);
-    const targetVisibility = questData?.status === 'open' ? 'public' : 'private';
-    const tempCommentId = `temp-${Date.now()}`;
-    
-    const newLocalComment: UIComment = {
-      id: tempCommentId,
-      userId: currentUserId,
-      author: currentUserProfile?.display_name || 'You', 
-      text: finalContent,
-      time: 'Just now',
-      accessories: normalizeAccessories(currentUserProfile?.equipped_accessories),
-      visibility: targetVisibility,
-    };
+      const targetVisibility = questData?.status === 'open' ? 'public' : 'private';
 
-    setComments((prev) => [...prev, newLocalComment]);
-    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+      const { error } = await supabase
+        .from('comments')
+        .insert([{ 
+          quest_id: questData.id, 
+          user_id: currentUserId, 
+          content: finalContent,
+          image_url: uploadedUrl,
+          visibility: targetVisibility 
+        }]);
+        
+      if (error) throw error;
 
-    const { error } = await supabase
-      .from('comments')
-      .insert([{ 
-        quest_id: questData.id, 
-        user_id: currentUserId, 
-        content: finalContent,
-        visibility: targetVisibility 
-      }]);
-      
-    if (error) {
-      Alert.alert('Error', 'Failed to post comment. Please try again.');
-      setComments((prev) => prev.filter(c => c.id !== tempCommentId));
-      console.error('Comment error:', error);
+      // Clear all states after successful send
+      setMessage('');
+      setSelectedImage(null);
+      setImageBase64(null); 
+      setReplyTo(null);
+      fetchQuestData(currentUserId);
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to post: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1120,29 +1156,42 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                     </Text>
                   )}
                 </View>
-
                 <Pressable onPress={cancelReply} hitSlop={10} style={styles.replyBannerClose}>
                   <Ionicons name="close" size={16} color={colors.textSecondary} />
                 </Pressable>
               </Animated.View>
             )}
-            <TextInput
-              ref={(r) => {
-                inputRef.current = r;
-              }}
-              value={message}
-              onChangeText={setMessage}
-              placeholder={
-                replyTo
-                  ? `Reply to ${replyTo.author}...`
-                  : commentsOpen
-                    ? "Add a public comment..."
-                    : "Message group..."
-              }
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <Pressable style={styles.sendButton} onPress={onSubmitComment}>
+
+            <Pressable onPress={pickImage} style={{ paddingHorizontal: 8 }}>
+              <Ionicons name="camera" size={28} color="#FF3B30" />
+            </Pressable>
+
+            <View style={{ flex: 1 }}>
+              {selectedImage && (
+                <View style={styles.selectedImagePreview}>
+                  <Image source={{ uri: selectedImage }} style={styles.miniPreview} />
+                  <Pressable 
+                    onPress={() => { 
+                      setSelectedImage(null); 
+                      setImageBase64(null); 
+                    }} 
+                    style={styles.removeImageBtn}
+                  >
+                    <Ionicons name="close-circle" size={18} color="red" />
+                  </Pressable>
+                </View>
+              )}
+              <TextInput
+                ref={(r) => { inputRef.current = r; }}
+                value={message}
+                onChangeText={setMessage}
+                placeholder={replyTo ? `Reply to ${replyTo.author}...` : "Message..."}
+                placeholderTextColor={colors.textSecondary}
+                style={styles.input}
+              />
+            </View>
+
+            <Pressable style={[styles.sendButton, loading && {opacity: 0.5}]} onPress={onSubmitComment} disabled={loading}>
               <Ionicons name="send" size={16} color={colors.bg} />
             </Pressable>
           </View>
@@ -1613,6 +1662,13 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 13,
   },
+  commentImage: {
+    width: '100%', 
+    height: 180, 
+    borderRadius: 10, 
+    marginVertical: 8,
+    backgroundColor: '#1E1E1E'
+  },
   lockedCommentsBox: {
     marginHorizontal: 16,
     marginVertical: 24,
@@ -1706,6 +1762,23 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     backgroundColor: COLORS.surface,
     paddingHorizontal: 14,
     color: COLORS.textPrimary,
+  },
+  selectedImagePreview: {
+    marginBottom: 8,
+    position: 'relative',
+    width: 60,
+  },
+  miniPreview: {
+    width: 60, 
+    height: 60, 
+    borderRadius: 8
+  },
+  removeImageBtn: {
+    position: 'absolute', 
+    top: -5, 
+    right: -5, 
+    backgroundColor: 'white', 
+    borderRadius: 10
   },
   sendButton: {
     width: 42,
