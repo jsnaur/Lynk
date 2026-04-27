@@ -45,6 +45,7 @@
     "@types/jest": "29.5.14",
     "@types/react": "~19.1.0",
     "@types/react-native": "^0.72.8",
+    "supabase": "^2.95.5",
     "typescript": "~5.9.2"
   },
   "private": true
