@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -18,7 +18,8 @@ export type NotificationType =
     | 'quest_completed'
     | 'high_bounty_quest'
     | 'new_comment'
-    | 'moderation_warning';
+    | 'moderation_warning'
+    | 'moderator_warning';
 
 export type NotificationState = 'Unread' | 'Read';
 
@@ -29,9 +30,21 @@ export interface NotificationRowProps {
     title?: string;
     description?: string;
     onPress?: () => void;
+    onMarkAsRead?: (isRead: boolean) => void;
     onLongPress?: () => void;
     style?: ViewStyle;
 }
+
+const isModeratorWarningType = (type: string) =>
+    type === 'moderator_warning' || type === 'moderation_warning';
+
+const getWarningDescription = (description: string): string => {
+    const trimmed = description.trim();
+    if (!trimmed) {
+        return 'Auto-Moderator flagged your recent content for violating community guidelines.';
+    }
+    return `Auto-Moderator warning: ${trimmed}`;
+};
 
 const getNotificationIcon = (
     type: string
@@ -48,8 +61,9 @@ const getNotificationIcon = (
             return { name: 'checkmark-circle', color: COLORS.favor };
         case 'new_comment':
             return { name: 'chatbubble', color: COLORS.favor };
+        case 'moderator_warning':
         case 'moderation_warning':
-            return { name: 'warning', color: COLORS.error || '#ff4d4f' };
+            return { name: 'shield', color: COLORS.error || '#ff4d4f' };
         default:
             return { name: 'notifications', color: COLORS.textSecondary };
     }
@@ -72,6 +86,7 @@ const getBackgroundColor = (
         case 'applicant_accepted':
         case 'new_comment':
             return withOpacity(COLORS.favor, 0.12);
+        case 'moderator_warning':
         case 'moderation_warning':
             return withOpacity(COLORS.error || '#ff4d4f', 0.16);
         default:
@@ -86,15 +101,38 @@ export default function NotificationRow({
     title = 'New Notification',
     description = 'You have a new update.',
     onPress,
+    onMarkAsRead,
     onLongPress,
     style,
 }: NotificationRowProps) {
+    const [internalState, setInternalState] = useState<NotificationState>(state);
+
+    useEffect(() => {
+        setInternalState(state);
+    }, [state]);
+
+    const displayState = state ?? internalState;
+    const isControlled = state !== undefined;
     const icon = getNotificationIcon(type);
-    const backgroundColor = getBackgroundColor(type, state);
+    const backgroundColor = getBackgroundColor(type, displayState);
+    const displayDescription = useMemo(
+        () => (isModeratorWarningType(type) ? getWarningDescription(description) : description),
+        [type, description],
+    );
+
+    const handlePress = () => {
+        if (displayState !== 'Read') {
+            if (!isControlled) {
+                setInternalState('Read');
+            }
+            onMarkAsRead?.(true);
+        }
+        onPress?.();
+    };
 
     return (
         <Pressable
-            onPress={onPress}
+            onPress={handlePress}
             onLongPress={onLongPress}
             delayLongPress={300}
             style={({ pressed }) => [
@@ -124,7 +162,7 @@ export default function NotificationRow({
                     style={styles.description}
                     numberOfLines={2}
                 >
-                    {description}
+                    {displayDescription}
                 </Text>
                 <Text style={styles.timestamp}>
                     {timestamp}
@@ -132,7 +170,7 @@ export default function NotificationRow({
             </View>
 
             {/* Unread Indicator */}
-            {state === 'Unread' && <View style={styles.unreadDot} />}
+            {displayState === 'Unread' && <View style={styles.unreadDot} />}
         </Pressable>
     );
 }
