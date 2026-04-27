@@ -1,23 +1,25 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-type CommentRecord = {
+type ModeratedTable = "comments" | "quests";
+
+type WebhookRecord = {
   id?: string;
+  user_id?: string | null;
+  title?: string | null;
+  description?: string | null;
   content?: string | null;
-  moderation_status?: string | null;
+  visibility?: string | null;
 };
 
 type RequestPayload = {
-  content?: string;
-  commentId?: string;
   table?: string;
   type?: string;
-  record?: CommentRecord;
-  old_record?: CommentRecord;
+  record?: WebhookRecord;
+  old_record?: WebhookRecord;
 };
 
 type ModerationDecision = {
   flagged: boolean;
-  label: "safe" | "flagged";
   confidence: number;
   reason: string;
 };
@@ -34,7 +36,6 @@ const GEMINI_API_URL =
 
 const DEFAULT_RESPONSE: ModerationDecision = {
   flagged: false,
-  label: "safe",
   confidence: 0,
   reason: "No moderation decision available.",
 };
@@ -51,34 +52,59 @@ function normalizeModerationResponse(
 ): ModerationDecision {
   return {
     flagged: Boolean(data.flagged ?? DEFAULT_RESPONSE.flagged),
-    label: data.flagged ? "flagged" : "safe",
     confidence: Math.min(1, Math.max(0, data.confidence ?? 0)),
     reason: data.reason?.trim() || DEFAULT_RESPONSE.reason,
   };
 }
 
 function extractTarget(payload: RequestPayload) {
-  const isWebhook = payload.table === "comments" && !!payload.record;
-
-  if (isWebhook) {
-    return {
-      source: "webhook" as const,
-      commentId: payload.record?.id,
-      content: payload.record?.content ?? "",
-      status: payload.record?.moderation_status ?? null,
-      oldContent: payload.old_record?.content ?? null,
-      eventType: payload.type ?? "",
-    };
-  }
+  const table = payload.table as ModeratedTable | undefined;
+  const isSupportedTable = table === "comments" || table === "quests";
 
   return {
-    source: "direct" as const,
-    commentId: payload.commentId,
-    content: payload.content ?? "",
-    status: null,
-    oldContent: null,
-    eventType: "",
+    table,
+    isSupportedTable,
+    recordId: payload.record?.id,
+    userId: payload.record?.user_id ?? null,
+    eventType: payload.type ?? "",
+    visibility: payload.record?.visibility ?? null,
+    oldVisibility: payload.old_record?.visibility ?? null,
+    content: table === "comments"
+      ? (payload.record?.content ?? "")
+      : `${payload.record?.title ?? ""}\n${payload.record?.description ?? ""}`
+        .trim(),
+    oldContent: table === "comments"
+      ? (payload.old_record?.content ?? null)
+      : `${payload.old_record?.title ?? ""}\n${
+        payload.old_record?.description ?? ""
+      }`.trim() || null,
   };
+}
+
+async function createWarningNotification(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  table: ModeratedTable,
+  referenceId: string,
+  reason: string,
+) {
+  const friendlyType = table === "comments" ? "comment" : "quest";
+
+  const { error } = await admin.from("notifications").insert({
+    recipient_id: userId,
+    type: "moderation_warning",
+    title: `${friendlyType[0].toUpperCase()}${friendlyType.slice(1)} Hidden`,
+    description: `Your ${friendlyType} was hidden by moderation. ${reason}`,
+    reference_id: referenceId,
+    is_read: false,
+  });
+
+  if (error) {
+    console.warn(
+      "Failed to insert moderation warning notification:",
+      error.message,
+    );
+  }
 }
 
 Deno.serve(async (req) => {
@@ -94,45 +120,60 @@ Deno.serve(async (req) => {
     const payload = (await req.json()) as RequestPayload;
     const target = extractTarget(payload);
 
+    if (!target.isSupportedTable || !target.table) {
+      return safeJsonResponse({
+        skipped: true,
+        reason: "Table not supported.",
+      });
+    }
+
     if (
-      target.source === "webhook" &&
-      target.eventType &&
-      target.eventType !== "INSERT" &&
+      target.eventType && target.eventType !== "INSERT" &&
       target.eventType !== "UPDATE"
     ) {
       return safeJsonResponse({ skipped: true, reason: "Event type ignored." });
     }
 
-    const commentId = target.commentId;
+    const recordId = target.recordId;
     const content = (target.content ?? "").trim();
+    const userId = target.userId;
 
-    if (!commentId) {
-      return safeJsonResponse({ skipped: true, reason: "Missing comment id." });
+    if (!recordId) {
+      return safeJsonResponse({ skipped: true, reason: "Missing record id." });
     }
 
     if (!content) {
       return safeJsonResponse({
         skipped: true,
-        reason: "Missing comment content.",
+        reason: "Missing content.",
       });
     }
 
-    const status = (target.status ?? "").toLowerCase();
+    const visibility = (target.visibility ?? "").toLowerCase();
+    const oldVisibility = (target.oldVisibility ?? "").toLowerCase();
     const contentChanged = target.oldContent !== null &&
       target.oldContent !== target.content;
-    const isFinalStatus = status === "approved" || status === "flagged" ||
-      status === "error";
-    const isUnderReview = status === "under_review";
 
-    // Prevent recursive UPDATE webhook loops from our own status writes.
+    // Prevent recursive loops when our own UPDATE sets visibility to hidden.
     if (
-      target.source === "webhook" && !contentChanged &&
-      (isFinalStatus || isUnderReview)
+      target.eventType === "UPDATE" && !contentChanged &&
+      visibility === "hidden"
     ) {
       return safeJsonResponse({
         skipped: true,
-        reason: `Already moderated (${status}).`,
-        commentId,
+        reason: "Already hidden by moderation.",
+        recordId,
+      });
+    }
+
+    if (
+      target.eventType === "UPDATE" && oldVisibility === "hidden" &&
+      !contentChanged
+    ) {
+      return safeJsonResponse({
+        skipped: true,
+        reason: "No new text changes to moderate.",
+        recordId,
       });
     }
 
@@ -145,7 +186,7 @@ Deno.serve(async (req) => {
       return safeJsonResponse({
         skipped: true,
         reason: "AI_API_KEY missing",
-        commentId,
+        recordId,
       });
     }
 
@@ -154,29 +195,15 @@ Deno.serve(async (req) => {
       return safeJsonResponse({
         skipped: true,
         reason: "Service role missing",
-        commentId,
+        recordId,
       });
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
-    if (target.source === "webhook") {
-      // Mark as under_review before AI call to show pending state in UI.
-      await admin
-        .from("comments")
-        .update({ moderation_status: "under_review" })
-        .eq("id", commentId)
-        .in("moderation_status", [
-          "pending",
-          "under_review",
-          "approved",
-          "flagged",
-          "error",
-        ]);
-    }
-
-    const prompt = `You are a content moderator for a campus app.
-Classify whether this message is safe or should be flagged.
+    const prompt = `You are a university community content moderator.
+Review this user-generated text under campus guidelines.
+Detect hate speech, bullying/harassment, explicit sexual content, or severe profanity.
 Return ONLY valid JSON (no markdown) in this exact shape:
 {
   "flagged": boolean,
@@ -184,9 +211,10 @@ Return ONLY valid JSON (no markdown) in this exact shape:
   "reason": "short reason"
 }
 
-Flag content that is harassment, hate, explicit sexual content, credible threats, doxxing, or severe abuse.
+If text is unsafe, set flagged=true.
+If safe, set flagged=false.
 
-Message: "${content}"`;
+Text: "${content}"`;
 
     const aiResponse = await fetch(`${GEMINI_API_URL}?key=${aiApiKey}`, {
       method: "POST",
@@ -211,33 +239,44 @@ Message: "${content}"`;
     >;
     const normalized = normalizeModerationResponse(parsed);
 
-    const nextStatus = normalized.flagged ? "flagged" : "approved";
-
-    const { error: updateError } = await admin
-      .from("comments")
-      .update({
-        moderation_status: nextStatus,
-        moderation_reason: normalized.reason,
-        moderation_confidence: normalized.confidence,
-        moderated_at: new Date().toISOString(),
-      })
-      .eq("id", commentId);
-
-    if (updateError) {
-      console.error(
-        "Failed to update moderation columns:",
-        updateError.message,
-      );
+    if (!normalized.flagged) {
       return safeJsonResponse({
-        error: "Failed to update moderation status",
-        commentId,
+        ...normalized,
+        table: target.table,
+        recordId,
+        action: "none",
+      });
+    }
+
+    const { error: hideError } = await admin
+      .from(target.table)
+      .update({ visibility: "hidden" })
+      .eq("id", recordId);
+
+    if (hideError) {
+      console.error("Failed to hide flagged content:", hideError.message);
+      return safeJsonResponse({
+        error: "Failed to hide flagged content",
+        table: target.table,
+        recordId,
       }, 500);
+    }
+
+    if (userId) {
+      await createWarningNotification(
+        admin,
+        userId,
+        target.table,
+        recordId,
+        normalized.reason,
+      );
     }
 
     return safeJsonResponse({
       ...normalized,
-      moderation_status: nextStatus,
-      commentId,
+      table: target.table,
+      recordId,
+      action: "hidden",
     });
   } catch (error) {
     console.error("ai-moderator function failed:", error);

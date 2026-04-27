@@ -520,6 +520,28 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               }
             }
           )
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'comments', filter: `quest_id=eq.${quest.id}` },
+            (payload) => {
+              if (!mounted) return;
+
+              const updated = payload.new as any;
+              const previous = payload.old as any;
+
+              if (updated?.visibility !== 'hidden' || previous?.visibility === 'hidden') return;
+
+              if (updated?.user_id === activeUserId) {
+                setComments((prev) => prev.filter((c) => c.id !== updated.id));
+                Alert.alert(
+                  'Content Moderated',
+                  'Your recent comment was hidden for violating community guidelines.',
+                );
+              } else {
+                setComments((prev) => prev.filter((c) => c.id !== updated.id));
+              }
+            }
+          )
           .subscribe();
       }
     };
