@@ -31,6 +31,7 @@ import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { moderateCommentContent } from '../../services/ModerationService';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -710,6 +711,15 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         : replyQuoted
           ? `↪ ${replyQuoted}\n${trimmed}`
           : trimmed;
+
+    const localModeration = await moderateCommentContent(finalContent);
+    if (localModeration.flagged) {
+      Alert.alert(
+        'Content Moderated',
+        'This comment contains language that violates community guidelines. Please edit and try again.',
+      );
+      return;
+    }
 
     setMessage('');
     setReplyTo(null);
