@@ -18,7 +18,7 @@ const DEFAULT_DECISION: ModerationDecision = {
 
 const PROFANITY_PATTERNS = [
     // ==========================================
-    // ENGLISH
+    // ENGLISH - Core & Expanded
     // ==========================================
     /\bsh[i1!l][t7+]\b/i, // shit
     /\bf[uuv][ckx]+\b/i, // fuck, fuk, fux
@@ -33,34 +33,53 @@ const PROFANITY_PATTERNS = [
     /\bp[uuv][s5$]{2}y\b/i, // pussy
     /\bsl[uuv][t7+]\b/i, // slut
     /\bwh[o0]r[e3]\b/i, // whore
+    /\bb[a@4]st[a@4]rd\b/i, // bastard
+    /\btw[a@4][t7+]\b/i, // twat
+    /\bw[a@4]nk[e3]r\b/i, // wanker
+    /\bpr[i1!l]ck\b/i, // prick
+    /\bd[o0][uuv]ch[e3]\b/i, // douche
 
     // ==========================================
-    // TAGALOG
+    // TAGALOG - Core & Expanded
     // ==========================================
     /\b(p[uuv]t[a@4]ng?[i1!l]n[a@4]|t[a@4]ng[i1!l]n[a@4])\b/i, // putangina, tangina
     /\bg[a@4]g[o0]\b/i, // gago
-    /\b[bv][o0u][bv][o0u]\b/i, // bobo
     /\bp[uuv]t[a@4]\b/i, // puta
     /\b[uuv]l[o0]l\b/i, // ulol
     /\bt[a@4]r[a@4]nt[a@4]d[o0]\b/i, // tarantado
-    /\bk[a@4]nt[o0][t7+]\b/i, // kantot
+    /\bk[a@4]nt[o0][t7+]\b/i, // kantot (to fuck)
     /\bs[i1!l]r[a@4][uuv]l[o0]\b/i, // siraulo
-    /\bt[i1!l]t[i1!l]\b/i, // titi
-    /\bp[uuv]k[e3]\b/i, // puke
+    /\bt[i1!l]t[i1!l]\b/i, // titi (penis)
+    /\bp[uuv]k[e3]\b/i, // puke (vagina)
+    /\bh[i1!l]nd[o0][t7+]\b/i, // hindot (fuck/insult)
+    /\bp[o0]kp[o0]k\b/i, // pokpok (whore)
+    /\bk[uuv]p[a@4]l\b/i, // kupal (smegma/jerk)
+    /\bb[uuv]r[a@4][t7+]\b/i, // burat (dick)
+    /\bj[a@4]k[o0]l\b/i, // jakol (masturbate)
+    /\bs[uuv]p[o0][t7+]\b/i, // supot (uncircumcised/insult)
+    /\bp[e3]p[e3]\b/i, // pepe (vagina)
+    /\bl[i1!l]nt[i1!l]k\b/i, // lintik (damn/lightning)
 
     // ==========================================
-    // BISAYA / CEBUANO
+    // BISAYA / CEBUANO - Core & Expanded
     // ==========================================
-    /\by[a@4]w[a@4]\b/i, // yawa
-    /\bg[i1!l][a@4]t[a@4]y\b/i, // giatay
-    /\bp[i1!l]st[e3i1!l]\b/i, // piste / pisti
-    /\bb[i1!l]l[a@4][t7+]\b/i, // bilat
-    /\bb[o0]t[o0]\b/i, // boto
-    /\b[o0]t[e3][nñ]\b/i, // oten
-    /\bb[uuv]r[i1!l]k[a@4][t7+]\b/i, // burikat
-    /\bb[uuv][a@4]ng\b/i, // buang
-    /\bk[a@4]gw[a@4]ng\b/i, // kagwang
-    /\bl[i1!l]t[e3]ch\b/i, // litech / letse (also used in Tagalog)
+    /\by[a@4]w[a@4]\b/i, // yawa (devil)
+    /\bg[i1!l][a@4]t[a@4]y\b/i, // giatay (damn/ruined)
+    /\bp[i1!l]st[e3i1!l]\b/i, // piste / pisti (pest/damn)
+    /\bb[i1!l]l[a@4][t7+]\b/i, // bilat (vagina)
+    /\bb[o0]t[o0]\b/i, // boto (vagina)
+    /\b[o0]t[e3][nñ]\b/i, // oten (penis)
+    /\bb[uuv]r[i1!l]k[a@4][t7+]\b/i, // burikat (whore)
+    /\bb[uuv][a@4]ng\b/i, // buang (crazy/fool)
+    /\bk[a@4]gw[a@4]ng\b/i, // kagwang (flying lemur/idiot)
+    /\bl[i1!l]t[e3]ch\b/i, // litech / letse (damn)
+    /\bk[a@4]y[a@4]t[a@4]?\b/i, // kayat / kayata (fuck)
+    /\b[i1!l]y[o0][t7+]\b/i, // iyot (fuck)
+    /\bj[e3]rj[e3]r\b/i, // jerjer (to have sex)
+    /\bk[i1!l]gw[a@4]\b/i, // kigwa (parasite/restless)
+    /\bp[i1!l]s[o0][t7+]\b/i, // pisot (uncircumcised/insult)
+    /\bb[uuv]t[a@4]k[a@4]l\b/i, // butakal (boar/sexually aggressive)
+    /\bh[a@4]ng[a@4]w\b/i, // hangaw (stupid/empty-headed)
 ];
 
 function normalizeForCheck(value: string): string {
