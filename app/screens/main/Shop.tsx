@@ -13,6 +13,7 @@ import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
+import { FONTS } from '../../constants/fonts';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
@@ -112,7 +113,6 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <Ionicons name="storefront" size={20} color={colors.textPrimary} />
             <Text style={styles.title}>Shop</Text>
           </View>
           <View style={styles.balanceChip}>
@@ -139,7 +139,6 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
           <View style={styles.previewTextBlock}>
             <Text style={styles.previewTitle}>Your Avatar</Text>
-            <Text style={styles.previewEquipped}>Manage inventory via Customize</Text>
           </View>
 
           <Pressable onPress={() => navigation.navigate('Customize')} style={styles.customizeButton}>
@@ -204,7 +203,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   safe: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { fontSize: 22, fontFamily: 'DMSans-Bold', fontWeight: '700', color: colors.textPrimary },
+  title: { fontSize: 22, fontFamily: FONTS.display, color: colors.textPrimary },
   balanceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.45)', backgroundColor: withOpacity(colors.token, 0.18) },
   balanceText: { fontSize: 15, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: colors.token },
   previewCard: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
@@ -213,7 +212,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   customizeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 },
   customizeButtonText: { fontSize: 13, fontFamily: 'DMSans-Medium', fontWeight: '500', color: colors.textPrimary },
   previewTextBlock: { flex: 1, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 2 },
-  previewTitle: { fontSize: 14, fontFamily: 'DMSans-Bold', fontWeight: '600', color: colors.textPrimary },
+  previewTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
   previewEquipped: { fontSize: 12, fontFamily: 'DMSans-Regular', fontWeight: '400', color: colors.textSecondary },
   filterRow: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.bg },
   filterScroll: { flexGrow: 0 },
