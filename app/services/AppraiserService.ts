@@ -1,22 +1,22 @@
-import type { FeedCategory } from '../constants/categories';
+import type { FeedCategory } from "../constants/categories";
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 export type GuildAppraisal = {
   bonusXp: number;
   tokenBounty: number;
   totalXp: number;
-  tier: 'Scout' | 'Knight' | 'Champion';
+  tier: "Scout" | "Knight" | "Champion";
   confidence: string;
   rationale: string;
   aiEnhanced?: boolean;
-  aiQuality?: 'poor' | 'fair' | 'good' | 'excellent';
+  aiQuality?: "poor" | "fair" | "good" | "excellent";
   aiFeedback?: string;
 };
 
 type AiAppraisalResponse = {
-  complexity: 'low' | 'medium' | 'high';
+  complexity: "low" | "medium" | "high";
   urgency: boolean;
-  quality: 'poor' | 'fair' | 'good' | 'excellent';
+  quality: "poor" | "fair" | "good" | "excellent";
   feedback: string;
   difficultyBoost: number;
 };
@@ -25,7 +25,8 @@ const GUILD_BASE_XP = 50;
 const BONUS_XP_MAX = 200;
 const TOKEN_MIN = 0;
 const TOKEN_MAX = 10;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -37,43 +38,46 @@ function countWords(text: string) {
   return trimmed.split(/\s+/).length;
 }
 
-function scoreDifficultySignals(description: string, category: FeedCategory | null) {
+function scoreDifficultySignals(
+  description: string,
+  category: FeedCategory | null,
+) {
   const text = description.toLowerCase();
 
   const highDifficultySignals = [
-    'multi-step',
-    'complex',
-    'difficult',
-    'advanced',
-    'project',
-    'research',
-    'presentation',
-    'exam',
-    'assignment',
-    'deadline',
+    "multi-step",
+    "complex",
+    "difficult",
+    "advanced",
+    "project",
+    "research",
+    "presentation",
+    "exam",
+    "assignment",
+    "deadline",
   ];
 
   const mediumDifficultySignals = [
-    'help',
-    'assist',
-    'tutor',
-    'organize',
-    'deliver',
-    'set up',
-    'assemble',
-    'review',
-    'prepare',
+    "help",
+    "assist",
+    "tutor",
+    "organize",
+    "deliver",
+    "set up",
+    "assemble",
+    "review",
+    "prepare",
   ];
 
   const easyDifficultySignals = [
-    'quick',
-    'simple',
-    'small',
-    'borrow',
-    'pickup',
-    'pick up',
-    'drop off',
-    'lend',
+    "quick",
+    "simple",
+    "small",
+    "borrow",
+    "pickup",
+    "pick up",
+    "drop off",
+    "lend",
   ];
 
   const categoryBase: Record<FeedCategory, number> = {
@@ -82,15 +86,22 @@ function scoreDifficultySignals(description: string, category: FeedCategory | nu
     item: 10,
   };
 
-  const highHits = highDifficultySignals.filter((signal) => text.includes(signal)).length;
-  const mediumHits = mediumDifficultySignals.filter((signal) => text.includes(signal)).length;
-  const easyHits = easyDifficultySignals.filter((signal) => text.includes(signal)).length;
-  const structureSignals = /\b(and|then|after|before|with|plus|including|across|around)\b/i.test(description)
-    ? 3
-    : 0;
+  const highHits =
+    highDifficultySignals.filter((signal) => text.includes(signal)).length;
+  const mediumHits =
+    mediumDifficultySignals.filter((signal) => text.includes(signal)).length;
+  const easyHits =
+    easyDifficultySignals.filter((signal) => text.includes(signal)).length;
+  const structureSignals =
+    /\b(and|then|after|before|with|plus|including|across|around)\b/i.test(
+        description,
+      )
+      ? 3
+      : 0;
 
   const baseScore = category ? categoryBase[category] : 10;
-  const weightedScore = baseScore + highHits * 7 + mediumHits * 4 + structureSignals - easyHits * 2;
+  const weightedScore = baseScore + highHits * 7 + mediumHits * 4 +
+    structureSignals - easyHits * 2;
 
   return clamp(weightedScore, 0, 34);
 }
@@ -107,16 +118,17 @@ async function callGeminiAPI(
   if (!GEMINI_API_KEY) {
     // Fallback to default if no API key
     return {
-      complexity: 'medium',
+      complexity: "medium",
       urgency: false,
-      quality: 'fair',
-      feedback: '',
+      quality: "fair",
+      feedback: "",
       difficultyBoost: 0,
     };
   }
 
   try {
-    const prompt = `You are a quest difficulty evaluator. Analyze the actual effort, complexity, and urgency of this ${category} quest and respond ONLY with valid JSON (no markdown, no extra text).
+    const prompt =
+      `You are a quest difficulty evaluator. Analyze the actual effort, complexity, and urgency of this ${category} quest and respond ONLY with valid JSON (no markdown, no extra text).
 
   Do not use title wording, title length, or description length as a reward signal. Focus on the task difficulty, the number of steps involved, and how demanding the work is.
 
@@ -135,45 +147,50 @@ Quality guidelines: poor=vague/incomplete, fair=basic info, good=clear/organized
 Boost 0=low difficulty, 6=medium difficulty, 15=high difficulty`;
 
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
       }),
     });
 
     if (!response.ok) {
-      console.warn('Gemini API error:', response.statusText);
+      console.warn("Gemini API error:", response.statusText);
       return {
-        complexity: 'medium',
+        complexity: "medium",
         urgency: false,
-        quality: 'fair',
-        feedback: '',
+        quality: "fair",
+        feedback: "",
         difficultyBoost: 0,
       };
     }
 
     const data = await response.json();
-    const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
 
     // Extract JSON from response (handle potential markdown wrapping)
     const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-    const aiResponse = JSON.parse(jsonMatch ? jsonMatch[0] : '{}') as AiAppraisalResponse;
+    const aiResponse = JSON.parse(
+      jsonMatch ? jsonMatch[0] : "{}",
+    ) as AiAppraisalResponse;
 
     return {
-      complexity: aiResponse.complexity || 'medium',
+      complexity: aiResponse.complexity || "medium",
       urgency: aiResponse.urgency ?? false,
-      quality: aiResponse.quality || 'fair',
-      feedback: aiResponse.feedback || '',
-      difficultyBoost: Math.min(15, Math.max(0, aiResponse.difficultyBoost || 0)),
+      quality: aiResponse.quality || "fair",
+      feedback: aiResponse.feedback || "",
+      difficultyBoost: Math.min(
+        15,
+        Math.max(0, aiResponse.difficultyBoost || 0),
+      ),
     };
   } catch (error) {
-    console.warn('AI appraisal failed:', error);
+    console.warn("AI appraisal failed:", error);
     return {
-      complexity: 'medium',
+      complexity: "medium",
       urgency: false,
-      quality: 'fair',
-      feedback: '',
+      quality: "fair",
+      feedback: "",
       difficultyBoost: 0,
     };
   }
@@ -199,14 +216,17 @@ export function appraiseQuest({
       bonusXp: 0,
       tokenBounty: 0,
       totalXp: GUILD_BASE_XP,
-      tier: 'Scout',
-      confidence: 'Light',
-      rationale: 'Add a description to get a reward recommendation.',
+      tier: "Scout",
+      confidence: "Light",
+      rationale: "Add a description to get a reward recommendation.",
     };
   }
 
   const locationWords = countWords(location);
-  const urgentSignal = /urgent|asap|today|tonight|deadline|soon|before|by\s+\w+/i.test(description);
+  const urgentSignal =
+    /urgent|asap|today|tonight|deadline|soon|before|by\s+\w+/i.test(
+      description,
+    );
 
   const categoryWeights: Record<FeedCategory, number> = {
     favor: 16,
@@ -215,19 +235,27 @@ export function appraiseQuest({
   };
 
   const difficultyScore = scoreDifficultySignals(description, category);
-  const locationScore = clamp(locationWords >= 3 ? 12 : locationWords >= 2 ? 8 : 5, 0, 12);
+  const locationScore = clamp(
+    locationWords >= 3 ? 12 : locationWords >= 2 ? 8 : 5,
+    0,
+    12,
+  );
   const urgencyScore = urgentSignal ? 18 : 0;
-  const categoryScore = category ? categoryWeights[category as FeedCategory] : 10;
+  const categoryScore = category
+    ? categoryWeights[category as FeedCategory]
+    : 10;
 
   const totalXp = clamp(
-    GUILD_BASE_XP + categoryScore + difficultyScore + locationScore + urgencyScore,
+    GUILD_BASE_XP + categoryScore + difficultyScore + locationScore +
+      urgencyScore,
     GUILD_BASE_XP,
     220,
   );
 
   const bonusXp = clamp(totalXp - GUILD_BASE_XP, 0, BONUS_XP_MAX);
   // Keep token rewards conservative: easy quests should be ~1, hard quests cap at 7-10.
-  const effortSignal = difficultyScore + (urgentSignal ? 6 : 0) + (category === 'study' ? 2 : 0);
+  const effortSignal = difficultyScore + (urgentSignal ? 6 : 0) +
+    (category === "study" ? 2 : 0);
   let tokenBounty = 1;
 
   if (effortSignal >= 40) tokenBounty = 10;
@@ -239,14 +267,21 @@ export function appraiseQuest({
 
   tokenBounty = clamp(tokenBounty, 1, TOKEN_MAX);
 
-  const tier = totalXp >= 170 ? 'Champion' : totalXp >= 120 ? 'Knight' : 'Scout';
-  const confidence = difficultyScore >= 22 ? 'Strong' : difficultyScore >= 12 ? 'Good' : 'Light';
-  const rationale =
-    category === 'study'
-      ? 'Study quests usually demand more effort, so the appraiser leans higher on XP.'
-      : category === 'item'
-        ? 'Item quests usually stay straightforward, so the appraiser balances XP with a token push.'
-        : 'Favor quests are priced around effort and urgency, with a modest XP bump and token reward.';
+  const tier = totalXp >= 170
+    ? "Champion"
+    : totalXp >= 120
+    ? "Knight"
+    : "Scout";
+  const confidence = difficultyScore >= 22
+    ? "Strong"
+    : difficultyScore >= 12
+    ? "Good"
+    : "Light";
+  const rationale = category === "study"
+    ? "Study quests usually demand more effort, so the appraiser leans higher on XP."
+    : category === "item"
+    ? "Item quests usually stay straightforward, so the appraiser balances XP with a token push."
+    : "Favor quests are priced around effort and urgency, with a modest XP bump and token reward.";
 
   return {
     bonusXp,
@@ -260,9 +295,9 @@ export function appraiseQuest({
 
 export const DEFAULT_APPRAISAL = appraiseQuest({
   category: null,
-  title: '',
-  description: '',
-  location: '',
+  title: "",
+  description: "",
+  location: "",
 });
 
 /**
@@ -297,25 +332,44 @@ export async function getAIEnhancedAppraisal({
   const aiAnalysis = await callGeminiAPI(title, description, category);
 
   // Calculate AI-enhanced rewards
-  const aiDifficultyBoost = aiAnalysis.complexity === 'high' ? 12 : aiAnalysis.complexity === 'medium' ? 6 : 0;
-  const aiXpBoost = Math.round((Math.max(aiDifficultyBoost, aiAnalysis.difficultyBoost) * baseAppraisal.bonusXp) / 15);
-  const enhancedBonusXp = clamp(baseAppraisal.bonusXp + aiXpBoost, 0, BONUS_XP_MAX);
+  const aiDifficultyBoost = aiAnalysis.complexity === "high"
+    ? 12
+    : aiAnalysis.complexity === "medium"
+    ? 6
+    : 0;
+  const aiXpBoost = Math.round(
+    (Math.max(aiDifficultyBoost, aiAnalysis.difficultyBoost) *
+      baseAppraisal.bonusXp) / 15,
+  );
+  const enhancedBonusXp = clamp(
+    baseAppraisal.bonusXp + aiXpBoost,
+    0,
+    BONUS_XP_MAX,
+  );
   const enhancedTokenBounty = clamp(
-    baseAppraisal.tokenBounty + (aiAnalysis.quality === 'excellent' ? 2 : aiAnalysis.quality === 'good' ? 1 : 0),
+    baseAppraisal.tokenBounty +
+      (aiAnalysis.quality === "excellent"
+        ? 2
+        : aiAnalysis.quality === "good"
+        ? 1
+        : 0),
     TOKEN_MIN,
     TOKEN_MAX,
   );
 
   const enhancedTotalXp = GUILD_BASE_XP + enhancedBonusXp;
-  const enhancedTier =
-    enhancedTotalXp >= 170 ? 'Champion' : enhancedTotalXp >= 120 ? 'Knight' : 'Scout';
+  const enhancedTier = enhancedTotalXp >= 170
+    ? "Champion"
+    : enhancedTotalXp >= 120
+    ? "Knight"
+    : "Scout";
 
   return {
     bonusXp: enhancedBonusXp,
     tokenBounty: enhancedTokenBounty,
     totalXp: enhancedTotalXp,
     tier: enhancedTier,
-    confidence: 'AI-Verified',
+    confidence: "AI-Verified",
     rationale: aiAnalysis.feedback || baseAppraisal.rationale,
     aiEnhanced: true,
     aiQuality: aiAnalysis.quality,
