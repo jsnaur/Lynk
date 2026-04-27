@@ -195,7 +195,7 @@ async function createWarningNotification(
 
   const { error } = await admin.from("notifications").insert({
     recipient_id: userId,
-    type: "moderation_warning",
+    type: "moderator_warning",
     title: `${friendlyType[0].toUpperCase()}${friendlyType.slice(1)} Hidden`,
     description: `Your ${friendlyType} was hidden by moderation. ${reason}`,
     reference_id: referenceId,

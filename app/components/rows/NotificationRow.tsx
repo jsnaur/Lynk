@@ -96,7 +96,7 @@ const getBackgroundColor = (
 
 export default function NotificationRow({
     type = 'unknown',
-    state = 'Unread',
+    state,
     timestamp = 'Just now',
     title = 'New Notification',
     description = 'You have a new update.',
@@ -105,10 +105,12 @@ export default function NotificationRow({
     onLongPress,
     style,
 }: NotificationRowProps) {
-    const [internalState, setInternalState] = useState<NotificationState>(state);
+    const [internalState, setInternalState] = useState<NotificationState>(state ?? 'Unread');
 
     useEffect(() => {
-        setInternalState(state);
+        if (state !== undefined) {
+            setInternalState(state);
+        }
     }, [state]);
 
     const displayState = state ?? internalState;
