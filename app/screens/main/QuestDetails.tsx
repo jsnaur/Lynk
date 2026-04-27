@@ -684,7 +684,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           : trimmed;
 
     const moderation = await moderateCommentContent(finalContent);
-    if (moderation.flagged) {
+    if (moderation.flagged && moderation.confidence >= 0.75) {
       Alert.alert('Comment blocked', moderation.reason || 'Please edit your message and try again.');
       return;
     }

@@ -15,6 +15,7 @@ const DEFAULT_DECISION: ModerationDecision = {
 };
 
 const MODERATION_FUNCTION_NAME = "ai-moderator";
+const MODERATION_TIMEOUT_MS = 2500;
 
 export async function moderateCommentContent(
     content: string,
@@ -23,12 +24,29 @@ export async function moderateCommentContent(
     if (!trimmed) return DEFAULT_DECISION;
 
     try {
-        const { data, error } = await supabase.functions.invoke(
+        const invokePromise = supabase.functions.invoke(
             MODERATION_FUNCTION_NAME,
             {
                 body: { content: trimmed },
             },
         );
+
+        const timeoutPromise = new Promise<{
+            data: null;
+            error: Error;
+        }>((resolve) => {
+            setTimeout(() => {
+                resolve({
+                    data: null,
+                    error: new Error("Moderation timeout"),
+                });
+            }, MODERATION_TIMEOUT_MS);
+        });
+
+        const { data, error } = await Promise.race([
+            invokePromise,
+            timeoutPromise,
+        ]);
 
         if (error) {
             console.warn("Comment moderation invoke failed:", error.message);
