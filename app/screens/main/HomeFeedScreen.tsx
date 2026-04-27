@@ -156,35 +156,22 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                 console.log("Silent fallback to CIT location due to:", err.message);
             }
 
-            const formatQuests = (rawQuests: any[]) => {
-                return rawQuests.map((q: any) => ({
-                    id: q.id,
-                    category: q.category.toLowerCase() as FeedCategory,
-                    ago: timeAgo(q.created_at),
-                    title: q.title,
-                    preview: q.description,
-                    posterName: q.poster_name || 'Anonymous',
-                    posterAccessories: q.equipped_accessories || {},
-                    xp: 50 + (q.bonus_xp || 0), 
-                    token: q.token_bounty,
-                }));
-            };
+            // --- UPDATED AI FETCH LOGIC ---
+            // Call our new Instant Vector Search Service directly
+            const aiSortedQuests = await getPersonalizedFeed(lat, lon);
 
-            const aiSortedQuests = await getPersonalizedFeed(
-                lat, 
-                lon, 
-                undefined, 
-                (fastQuests) => {
-                    const formatted = formatQuests(fastQuests);
-                    CACHED_QUESTS = formatted;
-                    HAS_FETCHED_INITIALLY = true;
-                    setQuests(formatted);
-                    setInitialLoading(false);
-                    setRefreshing(false); 
-                }
-            );
+            const finalFormatted = aiSortedQuests.map((q: any) => ({
+                id: q.id,
+                category: q.category.toLowerCase() as FeedCategory,
+                ago: timeAgo(q.created_at),
+                title: q.title,
+                preview: q.description,
+                posterName: q.poster_name || 'Anonymous',
+                posterAccessories: q.equipped_accessories || {},
+                xp: 50 + (q.bonus_xp || 0), 
+                token: q.token_bounty,
+            }));
 
-            const finalFormatted = formatQuests(aiSortedQuests);
             CACHED_QUESTS = finalFormatted;
             HAS_FETCHED_INITIALLY = true;
             setQuests(finalFormatted);

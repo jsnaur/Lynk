@@ -24,5 +24,14 @@
         "titleBar.inactiveBackground": "#83256199",
         "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "peacock.color": "#832561"
+    "peacock.color": "#832561",
+    
+    // --- NEW: Deno Workspace Configuration ---
+    // This tells VS Code to ONLY use Deno for the Edge Functions directory, 
+    // preserving Node.js/React Native intelligence for the rest of the app.
+    "deno.enablePaths": [
+        "supabase/functions"
+    ],
+    "deno.lint": true,
+    "deno.unstable": true
 }
