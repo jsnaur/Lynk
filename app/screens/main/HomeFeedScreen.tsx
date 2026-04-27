@@ -167,6 +167,9 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                     posterAccessories: q.equipped_accessories || {},
                     xp: 50 + (q.bonus_xp || 0), 
                     token: q.token_bounty,
+                    location: q.location || '',
+                    status: q.status || 'open',
+                    user_id: q.user_id || undefined,
                 }));
             };
 
@@ -451,6 +454,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                         category,
                                         title,
                                         description,
+                                        location,
                                         created_at,
                                         bonus_xp,
                                         token_bounty,
@@ -484,6 +488,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
                                     token: data.token_bounty || 0,
                                     user_id: data.user_id,
                                     description: data.description,
+                                    location: (data as any).location || '',
                                     bonus_xp: data.bonus_xp || 0,
                                     token_bounty: data.token_bounty || 0,
                                     accepted_by: data.accepted_by ?? undefined,
