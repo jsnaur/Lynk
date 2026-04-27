@@ -12,7 +12,9 @@ import {
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNav, { MainTab } from '../../components/BottomNav';
+import ProfileSkeleton from '../../components/cards/ProfileSkeleton';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
+import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -71,7 +73,7 @@ function LayeredAvatar({
     const safeAccessories = normalizeAccessories(accessories);
 
     return (
-        <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: colors.surface2, position: 'relative' }}>
+        <View style={{ width: size, height: size, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.surface2, position: 'relative' }}>
             {ALL_SLOTS_Z_ORDER.map((slot) => {
                 const accessoryId = safeAccessories[slot];
                 if (!accessoryId) return null;
@@ -89,7 +91,7 @@ function LayeredAvatar({
     );
 }
 
-const XP_THRESHOLDS = [0, 1000, 3000, 6000, 10000, 15000, 22000, 31000, 42000, 55000];
+const XP_THRESHOLDS = [0, 200, 400, 600, 800, 1000, 1500, 2500, 3000, 50000];
 
 function calculateLevelFromXP(totalXP: number) {
     let currentLevel = 1;
@@ -146,14 +148,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const { balance, refreshBalance } = useTokenBalance();
     
     const [profile, setProfile] = useState<any>(null);
-    const [profileLoading, setProfileLoading] = useState<boolean>(true);
+    const [initialLoading, setInitialLoading] = useState<boolean>(true);
     const [totalXP, setTotalXP] = useState<number>(0);
     const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false });
     const [activeQuestCount, setActiveQuestCount] = useState<number>(0);
     const [completedQuestCount, setCompletedQuestCount] = useState<number>(0);
 
     const fetchProfile = useCallback(async () => {
-        setProfileLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
@@ -164,7 +165,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 }
             }
         } finally {
-            setProfileLoading(false);
+            setInitialLoading(false);
         }
     }, []);
 
@@ -264,16 +265,20 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 </View>
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    {initialLoading ? (
+                        <ProfileSkeleton />
+                    ) : (
+                        <>
                     <View style={styles.identityBlock}>
                         <View style={styles.identityRow}>
                             <View style={styles.avatarColumn}>
                                 <View style={styles.avatarFrame}>
-                                    {profileLoading ? (
+                                    {!profile ? (
                                         <View style={styles.loadingAvatarIconWrap}>
                                             <Ionicons name="person" size={42} color={colors.textPrimary} />
                                         </View>
                                     ) : (
-                                        <LayeredAvatar accessories={profileAccessories} size={72} scale={1.5} translateY={4} />
+                                        <LayeredAvatar accessories={profileAccessories} size={95} scale={1} translateY={0} />
                                     )}
                                 </View>
                             </View>
@@ -357,9 +362,11 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                     <Text style={styles.questsSubtitle}>{activeQuestCount} active · {completedQuestCount} completed</Text>
                                 </View>
                             </View>
-                            <Ionicons name="chevron-forward" size={16} color={colors.border} />
+                            <Ionicons name="chevron-forward" size={16} color={colors.token} />
                         </Pressable>
                     </View>
+                        </>
+                    )}
                 </ScrollView>
             </SafeAreaView>
 
@@ -389,14 +396,14 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.bg },
     safeArea: { flex: 1 },
     header: { paddingHorizontal: 20, paddingBottom: 12, height: 64, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-    headerTitle: { fontSize: 30, fontWeight: '700', color: colors.textPrimary, letterSpacing: 0.2 },
-    settingsButton: { height: 44, width: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { fontSize: 20, fontFamily: FONTS.display, color: colors.textPrimary, letterSpacing: 0.2 },
+    settingsButton: { height: 25, width: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     settingsIcon: { width: 24, height: 24 },
     scrollContent: { paddingBottom: 112 },
     identityBlock: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
     identityRow: { flexDirection: 'row', gap: 18 },
     avatarColumn: { alignItems: 'center', gap: 8 },
-    avatarFrame: { width: 100, height: 100, borderRadius: 20, backgroundColor: colors.surface2, borderWidth: 2, borderColor: colors.border, overflow: 'hidden', position: 'relative', alignItems: 'center', justifyContent: 'center' },
+    avatarFrame: { width: 100, height: 100, borderRadius: 14, backgroundColor: colors.surface2, borderWidth: 2, borderColor: colors.border, overflow: 'hidden', position: 'relative', alignItems: 'center', justifyContent: 'center' },
     loadingAvatarIconWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     identityTextColumn: { flex: 1, gap: 8, justifyContent: 'center' },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -406,7 +413,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     editProfileText: { fontSize: 12, color: colors.favor },
     badgesBlock: { paddingHorizontal: 24, paddingVertical: 20, gap: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
     blockHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    blockTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    blockTitle: { fontSize: 12, fontFamily: FONTS.display, color: colors.textPrimary },
     setLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     setLinkText: { fontSize: 14, fontWeight: '400', color: colors.favor },
     badgeRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -4 },
@@ -419,7 +426,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     karmaLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     karmaTitleCluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     karmaIcon: { width: 18, height: 18 },
-    karmaTitle: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    karmaTitle: { fontSize: 9, fontFamily: FONTS.display, color: colors.textPrimary },
     karmaValueText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
     progressTrack: { height: 10, borderRadius: 5, backgroundColor: colors.surface2, overflow: 'hidden' },
     progressFill: { height: '100%', borderRadius: 5 },
@@ -428,20 +435,20 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     leaderboardCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,215,0,0.30)', backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' },
     leaderboardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     leaderboardIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,215,0,0.12)', borderWidth: 1, borderColor: 'rgba(255,215,0,0.25)', alignItems: 'center', justifyContent: 'center' },
-    leaderboardTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    leaderboardTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
     leaderboardSubtitle: { fontSize: 11, color: colors.textSecondary },
     leaderboardRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     leaderboardCta: { fontSize: 13, fontWeight: '600', color: colors.token },
     tokenCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     tokenLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     tokenIcon: { width: 26, height: 26 },
-    tokenTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    tokenTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
     tokenSubtitle: { fontSize: 11, color: colors.textSecondary },
     tokenRightCluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     tokenValue: { fontSize: 22, fontWeight: '700', color: colors.token },
     tokenUnit: { fontSize: 13, color: colors.textSecondary },
     questsShortcut: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     questsLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    questsTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    questsTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
     questsSubtitle: { fontSize: 11, color: colors.textSecondary },
 });

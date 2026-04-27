@@ -560,13 +560,6 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                 </View>
             )}
 
-            <BottomNav 
-                activeTab="Profile" 
-                onTabPress={(tab) => {
-                    if (onTabPress) onTabPress(tab);
-                    else if (navigation) navigation.navigate('HomeFeed', { activeTab: tab });
-                }} 
-            />
 
             {/* Profile Modal */}
             <Modal visible={profilePreviewVisible} animationType="slide" transparent onRequestClose={() => setProfilePreviewVisible(false)}>
