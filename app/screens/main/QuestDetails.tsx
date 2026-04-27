@@ -364,6 +364,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
   const [applicantsExpanded, setApplicantsExpanded] = useState(true);
+  const moderatedAlertedIdsRef = useRef<Set<string>>(new Set());
 
   const [viewingArchive, setViewingArchiveState] = useState(false);
   const viewingArchiveRef = useRef(false);
@@ -532,6 +533,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               if (updated?.visibility !== 'hidden' || previous?.visibility === 'hidden') return;
 
               if (updated?.user_id === activeUserId) {
+                if (updated?.id && moderatedAlertedIdsRef.current.has(updated.id)) return;
+                if (updated?.id) moderatedAlertedIdsRef.current.add(updated.id);
                 setComments((prev) => prev.filter((c) => c.id !== updated.id));
                 Alert.alert(
                   'Content Moderated',
@@ -726,19 +729,54 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setComments((prev) => [...prev, newLocalComment]);
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 
-    const { error } = await supabase
+    const { data: insertedComment, error } = await supabase
       .from('comments')
       .insert([{ 
         quest_id: questData.id, 
         user_id: currentUserId, 
         content: finalContent,
         visibility: targetVisibility 
-      }]);
+      }])
+      .select('id, visibility')
+      .single();
       
     if (error) {
       Alert.alert('Error', 'Failed to post comment. Please try again.');
       setComments((prev) => prev.filter(c => c.id !== tempCommentId));
       console.error('Comment error:', error);
+      return;
+    }
+
+    if (insertedComment?.id) {
+      const realCommentId = insertedComment.id;
+
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === tempCommentId
+            ? { ...c, id: realCommentId, visibility: insertedComment.visibility ?? c.visibility }
+            : c
+        )
+      );
+
+      // Fallback path when realtime update events are delayed or dropped.
+      setTimeout(async () => {
+        if (moderatedAlertedIdsRef.current.has(realCommentId)) return;
+
+        const { data: latest } = await supabase
+          .from('comments')
+          .select('id, visibility')
+          .eq('id', realCommentId)
+          .maybeSingle();
+
+        if (latest?.visibility === 'hidden') {
+          moderatedAlertedIdsRef.current.add(realCommentId);
+          setComments((prev) => prev.filter((c) => c.id !== realCommentId));
+          Alert.alert(
+            'Content Moderated',
+            'Your recent comment was hidden for violating community guidelines.',
+          );
+        }
+      }, 2500);
     }
   };
 
