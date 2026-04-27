@@ -23,3 +23,34 @@ create index if not exists comments_moderation_status_idx
 update public.comments
 set moderation_status = coalesce(moderation_status, 'approved')
 where moderation_status is null;
+
+-- Normalize any notification rows that would fail the stricter type check.
+update public.notifications
+set type = 'moderation_warning'
+where type is null
+   or type not in (
+     'quest_applied',
+     'applicant_accepted',
+     'quest_started',
+     'quest_completed',
+     'high_bounty_quest',
+     'new_comment',
+     'moderation_warning'
+   );
+
+alter table if exists public.notifications
+  drop constraint if exists notifications_type_check;
+
+alter table if exists public.notifications
+  add constraint notifications_type_check
+  check (
+    type in (
+      'quest_applied',
+      'applicant_accepted',
+      'quest_started',
+      'quest_completed',
+      'high_bounty_quest',
+      'new_comment',
+      'moderation_warning'
+    )
+  );
