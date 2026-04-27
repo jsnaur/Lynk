@@ -17,7 +17,8 @@ export type NotificationType =
     | 'quest_started'
     | 'quest_completed'
     | 'high_bounty_quest'
-    | 'new_comment';
+    | 'new_comment'
+    | 'moderation_warning';
 
 export type NotificationState = 'Unread' | 'Read';
 
@@ -47,6 +48,8 @@ const getNotificationIcon = (
             return { name: 'checkmark-circle', color: COLORS.favor };
         case 'new_comment':
             return { name: 'chatbubble', color: COLORS.favor };
+        case 'moderation_warning':
+            return { name: 'warning', color: COLORS.error || '#ff4d4f' };
         default:
             return { name: 'notifications', color: COLORS.textSecondary };
     }
@@ -69,6 +72,8 @@ const getBackgroundColor = (
         case 'applicant_accepted':
         case 'new_comment':
             return withOpacity(COLORS.favor, 0.12);
+        case 'moderation_warning':
+            return withOpacity(COLORS.error || '#ff4d4f', 0.16);
         default:
             return withOpacity(COLORS.surface2, 0.5);
     }
