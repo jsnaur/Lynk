@@ -1,15 +1,18 @@
 // app/services/FeedAlgorithmService.ts
-import { supabase } from '../lib/supabase';
+import { supabase } from "../lib/supabase";
 
 // Standardized structure for the data we send to/receive from the DB
 export interface NearbyQuest {
   id: string;
+  user_id?: string;
   title: string;
   description: string;
+  location?: string;
   category: string;
   token_bounty: number;
-  bonus_xp: number;         
-  poster_name: string;      
+  bonus_xp: number;
+  status?: string;
+  poster_name: string;
   equipped_accessories: Record<string, string>; // Replaced avatar_index
   created_at: string;
   distance_km: number;
@@ -21,8 +24,10 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 function heuristicSort(quests: NearbyQuest[]): NearbyQuest[] {
   return [...quests].sort((a, b) => {
     // Arbitrary weights: Bounty is highly valued, Distance penalizes
-    const scoreA = (a.token_bounty * 10) + (a.bonus_xp * 2) - (a.distance_km * 20);
-    const scoreB = (b.token_bounty * 10) + (b.bonus_xp * 2) - (b.distance_km * 20);
+    const scoreA = (a.token_bounty * 10) + (a.bonus_xp * 2) -
+      (a.distance_km * 20);
+    const scoreB = (b.token_bounty * 10) + (b.bonus_xp * 2) -
+      (b.distance_km * 20);
     return scoreB - scoreA;
   });
 }
@@ -30,16 +35,16 @@ function heuristicSort(quests: NearbyQuest[]): NearbyQuest[] {
 export async function getPersonalizedFeed(
   userLat: number,
   userLon: number,
-  userProfileText: string = "A busy college student looking to help out locally.",
-  onFastResult?: (quests: NearbyQuest[]) => void
+  userProfileText: string =
+    "A busy college student looking to help out locally.",
+  onFastResult?: (quests: NearbyQuest[]) => void,
 ): Promise<NearbyQuest[]> {
-  
   // STEP 1: Fetch nearby quests from Database
   const { data, error } = await supabase
-    .rpc('get_nearby_quests', {
+    .rpc("get_nearby_quests", {
       user_lat: userLat,
       user_lon: userLon,
-      max_results: 30
+      max_results: 30,
     });
 
   if (error) {
@@ -92,7 +97,7 @@ export async function getPersonalizedFeed(
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.1, 
+            temperature: 0.1,
             responseMimeType: "application/json",
             // Forces the model to only output the array natively
             responseSchema: {
@@ -115,9 +120,9 @@ export async function getPersonalizedFeed(
 
     if (!rawText) {
        console.warn("Gemini returned empty payload.");
-       return nearbyQuests; 
+       return nearbyQuests;
     }
-    
+
     // Parse the strictly formatted JSON natively
     const sortedIds: string[] = JSON.parse(rawText);
 

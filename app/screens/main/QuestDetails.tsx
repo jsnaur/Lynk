@@ -40,6 +40,7 @@ type QuestDetailParams = {
     id?: string; 
     user_id?: string; 
     description?: string; 
+    location?: string;
     bonus_xp?: number; 
     token_bounty?: number; 
     accepted_by?: string;
@@ -636,10 +637,13 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const categoryColor = CATEGORY_COLORS[category];
   const title = questData?.title ?? quest?.title ?? 'Need help around campus today';
   const preview = questData?.description ?? quest?.preview ?? 'Looking for someone nearby to help with a quick request before 5PM.';
-  const posterName = quest?.posterName ?? 'Anonymous User';
+  const posterName = posterProfile?.display_name ?? quest?.posterName ?? 'Anonymous User';
+  const posterAccessories = normalizeAccessories(posterProfile?.equipped_accessories ?? quest?.posterAccessories);
+  const locationText = (questData?.location ?? quest?.location ?? '').trim() || 'Location not specified';
   const ago = quest?.ago ?? 'Just now';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
   const token = questData?.token_bounty ?? quest?.token ?? 25;
+  const resolvedQuestStatus = (questData?.status ?? quest?.status ?? 'open') as string;
   
   const isPoster = currentUserId === questData?.user_id;
   const isAutoAccept = questData?.is_auto_accept ?? true;
@@ -654,15 +658,15 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const commentCount = useMemo(() => comments.length, [comments]);
 
   let statusText = 'Open';
-  if (questData?.status === 'in_progress') statusText = 'In Progress';
-  if (questData?.status === 'completed') statusText = 'Completed';
-  if (questData?.status === 'accepted') statusText = 'In Progress';
+  if (resolvedQuestStatus === 'in_progress') statusText = 'In Progress';
+  if (resolvedQuestStatus === 'completed') statusText = 'Completed';
+  if (resolvedQuestStatus === 'accepted') statusText = 'In Progress';
 
-  const isQuestAccepted = questData?.status === 'in_progress' || questData?.status === 'completed' || questData?.status === 'accepted';
+  const isQuestAccepted = resolvedQuestStatus === 'in_progress' || resolvedQuestStatus === 'completed' || resolvedQuestStatus === 'accepted';
   const shouldShowCompactCard = isQuestAccepted;
 
   const isParticipant = isPoster || myParticipantStatus === 'accepted';
-  const commentsOpen = questData?.status === 'open';
+  const commentsOpen = resolvedQuestStatus === 'open';
   const showComments = commentsOpen || isParticipant;
   
   const showArchivedToggle = !commentsOpen && isPoster;
@@ -691,7 +695,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
     setMessage('');
     setReplyTo(null);
-    const targetVisibility = questData?.status === 'open' ? 'public' : 'private';
+    const targetVisibility = commentsOpen ? 'public' : 'private';
     const tempCommentId = `temp-${Date.now()}`;
     
     const newLocalComment: UIComment = {
@@ -906,7 +910,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             <Text style={styles.backText}>Feed</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Quest Details</Text>
-          {isPoster && questData?.status === 'open' ? (
+          {isPoster && commentsOpen ? (
             <Pressable 
               style={[styles.iconButton, { justifyContent: 'flex-end', opacity: loading ? 0.5 : 1 }]} 
               onPress={handleDeleteQuest}
@@ -958,7 +962,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 >
                   <View style={styles.posterAvatarWrap}>
                     <LayeredAvatar 
-                      accessories={normalizeAccessories(posterProfile?.equipped_accessories)} 
+                      accessories={posterAccessories} 
                       size={32} 
                       scale={1.4} 
                       translateY={2} 
@@ -972,7 +976,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 
                 <View style={styles.locationChip}>
                   <LocationIcon width={14} height={14} />
-                  <Text style={styles.locationText}>GLE Building, Room 605</Text>
+                  <Text style={styles.locationText}>{locationText}</Text>
                 </View>
               </View>
 
@@ -992,7 +996,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </View>
           )}
 
-          {isPoster && !isAutoAccept && questData?.status === 'open' && (
+          {isPoster && !isAutoAccept && commentsOpen && (
             <View style={styles.applicantsCard}>
                <Pressable 
                  style={styles.applicantsHeader} 
@@ -1062,7 +1066,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   <Pressable style={[styles.acceptButton, { backgroundColor: colors.error || '#FF3B30' }, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
                     <Text style={styles.acceptText}>Drop Quest</Text>
                   </Pressable>
-                ) : questData?.status === 'open' ? (
+                ) : commentsOpen ? (
                   <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
                     <Text style={styles.acceptText}>{isAutoAccept ? 'Accept Quest' : 'Apply for Quest'}</Text>
                   </Pressable>
