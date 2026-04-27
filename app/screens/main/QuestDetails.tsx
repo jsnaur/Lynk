@@ -29,6 +29,7 @@ import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { supabase } from '../../lib/supabase';
+import { moderateCommentContent } from '../../services/ModerationService';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -681,6 +682,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         : replyQuoted
           ? `↪ ${replyQuoted}\n${trimmed}`
           : trimmed;
+
+    const moderation = await moderateCommentContent(finalContent);
+    if (moderation.flagged) {
+      Alert.alert('Comment blocked', moderation.reason || 'Please edit your message and try again.');
+      return;
+    }
 
     setMessage('');
     setReplyTo(null);
