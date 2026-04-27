@@ -30,6 +30,8 @@ const PROFANITY_PATTERNS = [
     /\bm[o0]th[e3]rf[uuv][ckx]+[e3]r\b/i, // motherfucker
     /\bd[i1!l][ck]+\b/i, // dick
     /\bc[uuv]n[t7+]\b/i, // cunt
+    /\bn[i1!l]gg[e3]r\b/i, // nigger
+    /\bn[i1!l]gg[a@4]\b/i, // nigga
     /\bp[uuv][s5$]{2}y\b/i, // pussy
     /\bsl[uuv][t7+]\b/i, // slut
     /\bwh[o0]r[e3]\b/i, // whore
