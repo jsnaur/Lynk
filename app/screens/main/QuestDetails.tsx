@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
   Alert,
-  KeyboardAvoidingView, 
+  KeyboardAvoidingView,
   Platform,
   PanResponder,
   Animated,
@@ -16,10 +16,12 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
+import 'react-native-url-polyfill/auto';
 
 // Icons
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
-// Share icon removed (header simplified)
 import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
 import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
@@ -36,13 +38,13 @@ import { moderateCommentContent } from '../../services/ModerationService';
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
 type QuestDetailParams = {
-  quest?: FeedQuest & { 
-    id?: string; 
-    user_id?: string; 
-    description?: string; 
+  quest?: FeedQuest & {
+    id?: string;
+    user_id?: string;
+    description?: string;
     location?: string;
-    bonus_xp?: number; 
-    token_bounty?: number; 
+    bonus_xp?: number;
+    token_bounty?: number;
     accepted_by?: string;
     is_auto_accept?: boolean;
     max_participants?: number;
@@ -63,6 +65,7 @@ type UIComment = {
   time: string;
   accessories?: Partial<Record<AvatarSlot, string>>;
   visibility?: string;
+  image_url?: string | null;
 };
 
 type ProfilePreview = {
@@ -81,10 +84,10 @@ type ProfilePreview = {
 };
 
 const PROFILE_BADGE_ASSETS = {
-  badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
-  badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
-  badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
-  experience: require("../../../assets/ProfileAssets/Experience_Pixel.png"),
+  badgeHat: require('../../../assets/ProfileAssets/BadgeHat.png'),
+  badgeMedal: require('../../../assets/ProfileAssets/BadgeMedal.png'),
+  badgeShield: require('../../../assets/ProfileAssets/BadgeShield.png'),
+  experience: require('../../../assets/ProfileAssets/Experience_Pixel.png'),
 };
 
 const SWIPE_REPLY_MAX = 86;
@@ -129,7 +132,6 @@ function SwipeReplyCommentRow({
             onReply(comment);
             return;
           }
-
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
@@ -166,7 +168,12 @@ function SwipeReplyCommentRow({
   return (
     <View style={styles.swipeRowWrap}>
       <View style={styles.replyUnderlay}>
-        <Animated.View style={[styles.replyUnderlayPill, { opacity: actionOpacity, transform: [{ scale: actionScale }] }]}>
+        <Animated.View
+          style={[
+            styles.replyUnderlayPill,
+            { opacity: actionOpacity, transform: [{ scale: actionScale }] },
+          ]}
+        >
           <Ionicons name="return-down-forward" size={16} color={colors.bg} />
           <Text style={styles.replyUnderlayText}>Reply</Text>
         </Animated.View>
@@ -176,7 +183,11 @@ function SwipeReplyCommentRow({
         style={[styles.commentRow, { transform: [{ translateX }] }]}
         {...panResponder.panHandlers}
       >
-        <Pressable style={styles.commentAvatarWrap} onPress={() => onOpenActions(comment)} hitSlop={8}>
+        <Pressable
+          style={styles.commentAvatarWrap}
+          onPress={() => onOpenActions(comment)}
+          hitSlop={8}
+        >
           <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
         </Pressable>
 
@@ -202,6 +213,14 @@ function SwipeReplyCommentRow({
                 </Text>
               </View>
             </View>
+          )}
+
+          {comment.image_url && (
+            <Image
+              source={{ uri: comment.image_url }}
+              style={styles.commentImage}
+              resizeMode="cover"
+            />
           )}
 
           <Text style={styles.commentText}>{parsed.body}</Text>
@@ -284,7 +303,8 @@ function calculateLevelFromXP(totalXP: number) {
     else break;
   }
   const currentThreshold = XP_THRESHOLDS[currentLevel - 1] || 0;
-  const nextThreshold = XP_THRESHOLDS[currentLevel] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1] + 5000;
+  const nextThreshold =
+    XP_THRESHOLDS[currentLevel] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1] + 5000;
   const xpInCurrentLevel = totalXP - currentThreshold;
   const xpNeededForNextLevel = nextThreshold - currentThreshold;
   const progressPercent = Math.min(1, Math.max(0, xpInCurrentLevel / xpNeededForNextLevel));
@@ -335,29 +355,34 @@ function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: Laye
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  const CATEGORY_COLORS: Record<FeedCategory, string> = useMemo(() => ({
-    favor: colors.favor,
-    study: colors.study,
-    item: colors.item,
-  }), [colors]);
+
+  const CATEGORY_COLORS: Record<FeedCategory, string> = useMemo(
+    () => ({
+      favor: colors.favor,
+      study: colors.study,
+      item: colors.item,
+    }),
+    [colors],
+  );
 
   const quest = route?.params?.quest;
   const { refreshBalance } = useTokenBalance();
-  
+
   const [message, setMessage] = useState('');
   const [cardExpanded, setCardExpanded] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const inputRef = useRef<TextInput | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
-  
+
   const [comments, setComments] = useState<UIComment[]>([]);
   const [replyTo, setReplyTo] = useState<UIComment | null>(null);
   const [participants, setParticipants] = useState<any[]>([]);
-  
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [posterProfile, setPosterProfile] = useState<any>(null);
-  
+
   const [questData, setQuestData] = useState<any>(quest);
   const [loading, setLoading] = useState(false);
   const [selectedComment, setSelectedComment] = useState<UIComment | null>(null);
@@ -374,26 +399,26 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   const parseReplyEncodedContent = useCallback((text: string) => {
     const raw = (text ?? '').trim();
-    
+
     const arrowMatch = raw.match(/^↪\uFE0F?\s*/);
     if (!arrowMatch) {
       return { repliedToName: '', replyPreview: '', body: raw };
     }
-    
+
     const withoutArrow = raw.slice(arrowMatch[0].length);
     const newLineIdx = withoutArrow.indexOf('\n');
-    
+
     if (newLineIdx === -1) {
       return { repliedToName: '', replyPreview: '', body: raw };
     }
-    
+
     const header = withoutArrow.slice(0, newLineIdx).trim();
     const bodyText = withoutArrow.slice(newLineIdx + 1).trim();
-    
+
     if (!header || !bodyText) {
       return { repliedToName: '', replyPreview: '', body: raw };
     }
-    
+
     const colonSpaceIdx = header.indexOf(': ');
     if (colonSpaceIdx !== -1 && colonSpaceIdx > 0) {
       const repliedToName = header.slice(0, colonSpaceIdx).trim();
@@ -402,7 +427,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         return { repliedToName, replyPreview: previewText, body: bodyText };
       }
     }
-    
+
     return { repliedToName: '', replyPreview: header, body: bodyText };
   }, []);
 
@@ -415,55 +440,69 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     }
   };
 
-  const fetchQuestData = useCallback(async (userIdToUse?: string) => {
-    if (!quest?.id) return;
-    
-    const { data: qData } = await supabase.from('quests').select('*').eq('id', quest.id).single();
-    if (qData) {
-      setQuestData(qData);
-      questStatusRef.current = qData.status;
-      if (qData.user_id) {
-        const { data: pData } = await supabase.from('profiles').select('*').eq('id', qData.user_id).maybeSingle();
-        if (pData) setPosterProfile(pData);
+  const fetchQuestData = useCallback(
+    async (userIdToUse?: string) => {
+      if (!quest?.id) return;
+
+      const { data: qData } = await supabase
+        .from('quests')
+        .select('*')
+        .eq('id', quest.id)
+        .single();
+      if (qData) {
+        setQuestData(qData);
+        questStatusRef.current = qData.status;
+        if (qData.user_id) {
+          const { data: pData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', qData.user_id)
+            .maybeSingle();
+          if (pData) setPosterProfile(pData);
+        }
       }
-    }
 
-    const { data: partData } = await supabase
-      .from('quest_participants')
-      .select('*, profiles(display_name, equipped_accessories)')
-      .eq('quest_id', quest.id);
-    if (partData) {
-      setParticipants(partData);
-    }
+      const { data: partData } = await supabase
+        .from('quest_participants')
+        .select('*, profiles(display_name, equipped_accessories)')
+        .eq('quest_id', quest.id);
+      if (partData) {
+        setParticipants(partData);
+      }
 
-    const activeVisibility = (qData?.status === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
+      const activeVisibility =
+        qData?.status === 'open' || viewingArchiveRef.current ? 'public' : 'private';
 
-    const { data: cData } = await supabase
-      .from('comments')
-      .select(`
-        *,
-        profiles (
-          display_name,
-          equipped_accessories
-        )
-      `)
-      .eq('quest_id', quest.id)
-      .eq('visibility', activeVisibility)
-      .order('created_at', { ascending: true }); 
+      const { data: cData } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          profiles (
+            display_name,
+            equipped_accessories
+          )
+        `)
+        .eq('quest_id', quest.id)
+        .eq('visibility', activeVisibility)
+        .order('created_at', { ascending: true });
 
-    if (cData) {
-      const formattedComments = cData.map((c: any) => ({
-        id: c.id,
-        userId: c.user_id,
-        author: c.user_id === userIdToUse ? 'You' : (c.profiles?.display_name || 'Unknown User'),
-        text: c.content,
-        time: formatRelativeTime(c.created_at),
-        accessories: normalizeAccessories(c.profiles?.equipped_accessories),
-        visibility: c.visibility,
-      }));
-      setComments(formattedComments);
-    }
-  }, [quest?.id]);
+      if (cData) {
+        const formattedComments = cData.map((c: any) => ({
+          id: c.id,
+          userId: c.user_id,
+          author:
+            c.user_id === userIdToUse ? 'You' : c.profiles?.display_name || 'Unknown User',
+          text: c.content,
+          time: formatRelativeTime(c.created_at),
+          accessories: normalizeAccessories(c.profiles?.equipped_accessories),
+          visibility: c.visibility,
+          image_url: c.image_url,
+        }));
+        setComments(formattedComments);
+      }
+    },
+    [quest?.id],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -472,11 +511,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     const initData = async () => {
       let activeUserId = currentUserId;
       if (!activeUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (mounted && user) {
           activeUserId = user.id;
           setCurrentUserId(user.id);
-          const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
           if (mounted && profile) setCurrentUserProfile(profile);
         }
       }
@@ -490,13 +535,21 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           .channel(`public:comments:quest_id=eq.${quest.id}`)
           .on(
             'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'comments', filter: `quest_id=eq.${quest.id}` },
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'comments',
+              filter: `quest_id=eq.${quest.id}`,
+            },
             (payload) => {
               if (mounted) {
                 const newC = payload.new;
-                if (newC.user_id === activeUserId) return; 
+                if (newC.user_id === activeUserId) return;
 
-                const expectedVisibility = (questStatusRef.current === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
+                const expectedVisibility =
+                  questStatusRef.current === 'open' || viewingArchiveRef.current
+                    ? 'public'
+                    : 'private';
                 if (newC.visibility !== expectedVisibility) return;
 
                 supabase
@@ -509,22 +562,31 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                       const newFormattedComment = {
                         id: newC.id,
                         userId: newC.user_id,
-                        author: profileData?.display_name || `User ${newC.user_id.substring(0, 4)}`,
+                        author:
+                          profileData?.display_name || `User ${newC.user_id.substring(0, 4)}`,
                         text: newC.content,
                         time: formatRelativeTime(newC.created_at),
                         accessories: normalizeAccessories(profileData?.equipped_accessories),
                         visibility: newC.visibility,
+                        image_url: newC.image_url,
                       };
                       setComments((prev) => [...prev, newFormattedComment]);
-                      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+                      requestAnimationFrame(() =>
+                        scrollRef.current?.scrollToEnd({ animated: true }),
+                      );
                     }
                   });
               }
-            }
+            },
           )
           .on(
             'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'comments', filter: `quest_id=eq.${quest.id}` },
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'comments',
+              filter: `quest_id=eq.${quest.id}`,
+            },
             (payload) => {
               if (!mounted) return;
 
@@ -544,7 +606,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               } else {
                 setComments((prev) => prev.filter((c) => c.id !== updated.id));
               }
-            }
+            },
           )
           .subscribe();
       }
@@ -558,41 +620,68 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     };
   }, [quest?.id, fetchQuestData]);
 
+  // Image Picking & Uploading Logic (BASE64 Fix applied)
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.2,
+      base64: true, // Added base64 extraction
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null); // Save base64 string
+    }
+  };
+
+  const uploadImage = async (base64Str: string) => {
+    const fileName = `${Date.now()}-${currentUserId}.jpg`;
+    const filePath = `comment_photos/${fileName}`;
+
+    // Upload directly using base64 decode — bypasses the React Native fetch bug
+    const { data, error } = await supabase.storage
+      .from('quest-attachments')
+      .upload(filePath, decode(base64Str), {
+        contentType: 'image/jpeg',
+      });
+
+    if (error) throw error;
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('quest-attachments').getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   const handleDeleteQuest = () => {
     Alert.alert(
-      "Delete Quest",
+      'Delete Quest',
       `Are you sure you want to delete this quest? \n\n${questData?.token_bounty} Tokens will be refunded to your account.`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Delete",
-          style: "destructive",
+          text: 'Delete',
+          style: 'destructive',
           onPress: async () => {
             if (!questData?.id) return;
             try {
               setLoading(true);
-
               const { error } = await supabase.rpc('delete_quest_and_refund', {
                 p_quest_id: questData.id,
               });
-
               if (error) throw error;
-
-              // Explicitly refresh the global token balance state right away 
-              // to ensure the refund is immediately reflected everywhere.
               await refreshBalance();
-
-              if (navigation?.goBack) {
-                navigation.goBack();
-              }
+              if (navigation?.goBack) navigation.goBack();
             } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to delete quest.");
+              Alert.alert('Error', error.message || 'Failed to delete quest.');
             } finally {
               setLoading(false);
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -607,13 +696,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           .eq('quest_id', questData.id)
           .eq('user_id', currentUserId);
         if (error) throw error;
-        setParticipants(prev => prev.map(p => p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p));
+        setParticipants((prev) =>
+          prev.map((p) =>
+            p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p,
+          ),
+        );
       } else {
-        const { data: newStatus, error } = await supabase.rpc('apply_for_quest', { p_quest_id: questData.id });
+        const { data: newStatus, error } = await supabase.rpc('apply_for_quest', {
+          p_quest_id: questData.id,
+        });
         if (error) throw error;
-        
-        await fetchQuestData(currentUserId); 
-
+        await fetchQuestData(currentUserId);
         if (newStatus === 'accepted') {
           Alert.alert('Quest Accepted', 'You have successfully joined the quest!');
         } else {
@@ -621,7 +714,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         }
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update quest.");
+      Alert.alert('Error', error.message || 'Failed to update quest.');
     } finally {
       setLoading(false);
     }
@@ -636,9 +729,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         .eq('quest_id', questData.id)
         .eq('user_id', applicantId);
       if (error) throw error;
-      await fetchQuestData(currentUserId!); 
+      await fetchQuestData(currentUserId!);
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
     }
@@ -649,10 +742,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setLoading(true);
       const { error } = await supabase.rpc('start_manual_quest', { p_quest_id: questData.id });
       if (error) throw error;
-      Alert.alert("Quest Started", "The quest is now in progress!");
+      Alert.alert('Quest Started', 'The quest is now in progress!');
       await fetchQuestData(currentUserId!);
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
     }
@@ -661,24 +754,30 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const category = (questData?.category ?? quest?.category ?? 'favor') as FeedCategory;
   const categoryColor = CATEGORY_COLORS[category];
   const title = questData?.title ?? quest?.title ?? 'Need help around campus today';
-  const preview = questData?.description ?? quest?.preview ?? 'Looking for someone nearby to help with a quick request before 5PM.';
+  const preview =
+    questData?.description ??
+    quest?.preview ??
+    'Looking for someone nearby to help with a quick request before 5PM.';
   const posterName = posterProfile?.display_name ?? quest?.posterName ?? 'Anonymous User';
-  const posterAccessories = normalizeAccessories(posterProfile?.equipped_accessories ?? quest?.posterAccessories);
-  const locationText = (questData?.location ?? quest?.location ?? '').trim() || 'Location not specified';
+  const posterAccessories = normalizeAccessories(
+    posterProfile?.equipped_accessories ?? quest?.posterAccessories,
+  );
+  const locationText =
+    (questData?.location ?? quest?.location ?? '').trim() || 'Location not specified';
   const ago = quest?.ago ?? 'Just now';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
   const token = questData?.token_bounty ?? quest?.token ?? 25;
   const resolvedQuestStatus = (questData?.status ?? quest?.status ?? 'open') as string;
-  
+
   const isPoster = currentUserId === questData?.user_id;
   const isAutoAccept = questData?.is_auto_accept ?? true;
   const maxParticipants = questData?.max_participants ?? 1;
 
-  const myParticipantRow = participants.find(p => p.user_id === currentUserId);
+  const myParticipantRow = participants.find((p) => p.user_id === currentUserId);
   const myParticipantStatus = myParticipantRow?.status;
 
-  const appliedParticipants = participants.filter(p => p.status === 'applied');
-  const acceptedParticipants = participants.filter(p => p.status === 'accepted');
+  const appliedParticipants = participants.filter((p) => p.status === 'applied');
+  const acceptedParticipants = participants.filter((p) => p.status === 'accepted');
 
   const commentCount = useMemo(() => comments.length, [comments]);
 
@@ -687,106 +786,129 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   if (resolvedQuestStatus === 'completed') statusText = 'Completed';
   if (resolvedQuestStatus === 'accepted') statusText = 'In Progress';
 
-  const isQuestAccepted = resolvedQuestStatus === 'in_progress' || resolvedQuestStatus === 'completed' || resolvedQuestStatus === 'accepted';
+  const isQuestAccepted =
+    resolvedQuestStatus === 'in_progress' ||
+    resolvedQuestStatus === 'completed' ||
+    resolvedQuestStatus === 'accepted';
   const shouldShowCompactCard = isQuestAccepted;
 
   const isParticipant = isPoster || myParticipantStatus === 'accepted';
   const commentsOpen = resolvedQuestStatus === 'open';
   const showComments = commentsOpen || isParticipant;
-  
+
   const showArchivedToggle = !commentsOpen && isPoster;
 
   const onSubmitComment = async () => {
     const trimmed = message.trim();
-    if (!trimmed || !currentUserId || !questData?.id) return;
+    if ((!trimmed && !selectedImage) || !currentUserId || !questData?.id) return;
 
-    const replyTargetName = replyTo?.author?.trim() ?? '';
-    const replyTargetBody = replyTo?.text ? parseReplyEncodedContent(replyTo.text).body : '';
-    const replyQuoted = replyTargetBody
-      ? replyTargetBody.trim().replace(/\s+/g, ' ').slice(0, 120)
-      : '';
-    const finalContent =
-      replyQuoted && replyTargetName
-        ? `↪ ${replyTargetName}: ${replyQuoted}\n${trimmed}`
-        : replyQuoted
-          ? `↪ ${replyQuoted}\n${trimmed}`
+    setLoading(true);
+    try {
+      let uploadedUrl = null;
+      if (selectedImage && imageBase64) {
+        uploadedUrl = await uploadImage(imageBase64);
+      }
+
+      const replyTargetName = replyTo?.author?.trim() ?? '';
+      const replyTargetBody = replyTo?.text
+        ? parseReplyEncodedContent(replyTo.text).body
+        : '';
+      const replyQuoted = replyTargetBody
+        ? replyTargetBody.trim().replace(/\s+/g, ' ').slice(0, 120)
+        : '';
+
+      const finalContent =
+        replyQuoted && replyTargetName
+          ? `↪ ${replyTargetName}: ${replyQuoted}\n${trimmed}`
           : trimmed;
 
-    const localModeration = await moderateCommentContent(finalContent);
-    if (localModeration.flagged) {
-      Alert.alert(
-        'Content Moderated',
-        'This comment contains language that violates community guidelines. Please edit and try again.',
-      );
-      return;
-    }
+      // Run local AI moderation before posting
+      const localModeration = await moderateCommentContent(finalContent);
+      if (localModeration.flagged) {
+        Alert.alert(
+          'Content Moderated',
+          'This comment contains language that violates community guidelines. Please edit and try again.',
+        );
+        setLoading(false);
+        return;
+      }
 
-    setMessage('');
-    setReplyTo(null);
-    const targetVisibility = commentsOpen ? 'public' : 'private';
-    const tempCommentId = `temp-${Date.now()}`;
-    
-    const newLocalComment: UIComment = {
-      id: tempCommentId,
-      userId: currentUserId,
-      author: currentUserProfile?.display_name || 'You', 
-      text: finalContent,
-      time: 'Just now',
-      accessories: normalizeAccessories(currentUserProfile?.equipped_accessories),
-      visibility: targetVisibility,
-    };
+      const targetVisibility = commentsOpen ? 'public' : 'private';
+      const tempCommentId = `temp-${Date.now()}`;
 
-    setComments((prev) => [...prev, newLocalComment]);
-    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+      // Optimistically add the comment to the UI immediately
+      const newLocalComment: UIComment = {
+        id: tempCommentId,
+        userId: currentUserId,
+        author: currentUserProfile?.display_name || 'You',
+        text: finalContent,
+        time: 'Just now',
+        accessories: normalizeAccessories(currentUserProfile?.equipped_accessories),
+        visibility: targetVisibility,
+        image_url: uploadedUrl,
+      };
+      setComments((prev) => [...prev, newLocalComment]);
+      setMessage('');
+      setReplyTo(null);
+      setSelectedImage(null);
+      setImageBase64(null);
+      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 
-    const { data: insertedComment, error } = await supabase
-      .from('comments')
-      .insert([{ 
-        quest_id: questData.id, 
-        user_id: currentUserId, 
-        content: finalContent,
-        visibility: targetVisibility 
-      }])
-      .select('id, visibility')
-      .single();
-      
-    if (error) {
-      Alert.alert('Error', 'Failed to post comment. Please try again.');
-      setComments((prev) => prev.filter(c => c.id !== tempCommentId));
-      console.error('Comment error:', error);
-      return;
-    }
+      const { data: insertedComment, error } = await supabase
+        .from('comments')
+        .insert([{
+          quest_id: questData.id,
+          user_id: currentUserId,
+          content: finalContent,
+          image_url: uploadedUrl,
+          visibility: targetVisibility,
+        }])
+        .select('id, visibility')
+        .single();
 
-    if (insertedComment?.id) {
-      const realCommentId = insertedComment.id;
+      if (error) {
+        Alert.alert('Error', 'Failed to post comment. Please try again.');
+        setComments((prev) => prev.filter((c) => c.id !== tempCommentId));
+        console.error('Comment error:', error);
+        return;
+      }
 
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === tempCommentId
-            ? { ...c, id: realCommentId, visibility: insertedComment.visibility ?? c.visibility }
-            : c
-        )
-      );
+      if (insertedComment?.id) {
+        const realCommentId = insertedComment.id;
 
-      // Fallback path when realtime update events are delayed or dropped.
-      setTimeout(async () => {
-        if (moderatedAlertedIdsRef.current.has(realCommentId)) return;
+        // Replace the temp optimistic comment with the real persisted one
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === tempCommentId
+              ? { ...c, id: realCommentId, visibility: insertedComment.visibility ?? c.visibility }
+              : c,
+          ),
+        );
 
-        const { data: latest } = await supabase
-          .from('comments')
-          .select('id, visibility')
-          .eq('id', realCommentId)
-          .maybeSingle();
+        // Fallback poll — catches moderation events that arrive late or are dropped by realtime
+        setTimeout(async () => {
+          if (moderatedAlertedIdsRef.current.has(realCommentId)) return;
 
-        if (latest?.visibility === 'hidden') {
-          moderatedAlertedIdsRef.current.add(realCommentId);
-          setComments((prev) => prev.filter((c) => c.id !== realCommentId));
-          Alert.alert(
-            'Content Moderated',
-            'Your recent comment was hidden for violating community guidelines.',
-          );
-        }
-      }, 2500);
+          const { data: latest } = await supabase
+            .from('comments')
+            .select('id, visibility')
+            .eq('id', realCommentId)
+            .maybeSingle();
+
+          if (latest?.visibility === 'hidden') {
+            moderatedAlertedIdsRef.current.add(realCommentId);
+            setComments((prev) => prev.filter((c) => c.id !== realCommentId));
+            Alert.alert(
+              'Content Moderated',
+              'Your recent comment was hidden for violating community guidelines.',
+            );
+          }
+        }, 2500);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to post: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -873,7 +995,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
     let fallbackRank: number | null = null;
     if (!leaderboardData) {
-      const { data: rankData } = await supabase.rpc('get_user_leaderboard_rank', { user_id: targetUserId });
+      const { data: rankData } = await supabase.rpc('get_user_leaderboard_rank', {
+        user_id: targetUserId,
+      });
       fallbackRank = rankData?.rank ?? null;
     }
 
@@ -905,9 +1029,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
     setSelectedProfile({
       id: selectedComment.userId,
-      displayName: selectedComment.author === 'You'
-        ? (currentUserProfile?.display_name || 'You')
-        : selectedComment.author,
+      displayName:
+        selectedComment.author === 'You'
+          ? currentUserProfile?.display_name || 'You'
+          : selectedComment.author,
       accessories: selectedComment.accessories,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
@@ -952,7 +1077,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   };
 
   const profileSubtitle = selectedProfile
-    ? `${selectedProfile.major || 'Undeclared'}${selectedProfile.graduationYear ? ` · Class of '${selectedProfile.graduationYear.slice(-2)}` : ''}`
+    ? `${selectedProfile.major || 'Undeclared'}${
+        selectedProfile.graduationYear
+          ? ` · Class of '${selectedProfile.graduationYear.slice(-2)}`
+          : ''
+      }`
     : '';
   const selectedTotalXP = selectedProfile?.totalXP ?? 0;
   const levelData = calculateLevelFromXP(selectedTotalXP);
@@ -960,13 +1089,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const selectedBadges = selectedProfile?.badges ?? ['Guardian'];
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.modalBackdrop}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       <View style={styles.sheet}>
-        
         <View style={styles.header}>
           <Pressable style={styles.iconButton} onPress={() => navigation?.goBack?.()}>
             <BackIcon width={18} height={18} />
@@ -974,8 +1102,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </Pressable>
           <Text style={styles.headerTitle}>Quest Details</Text>
           {isPoster && commentsOpen ? (
-            <Pressable 
-              style={[styles.iconButton, { justifyContent: 'flex-end', opacity: loading ? 0.5 : 1 }]} 
+            <Pressable
+              style={[styles.iconButton, { justifyContent: 'flex-end', opacity: loading ? 0.5 : 1 }]}
               onPress={handleDeleteQuest}
               disabled={loading}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -994,7 +1122,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           style={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          
           {shouldShowCompactCard ? (
             <CompactQuestCard
               quest={questData || quest}
@@ -1005,9 +1132,16 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           ) : (
             <View style={styles.card}>
               <View style={styles.rowBetween}>
-                <View style={[styles.categoryBadge, { backgroundColor: withOpacity(categoryColor, 0.15) }]}>
+                <View
+                  style={[
+                    styles.categoryBadge,
+                    { backgroundColor: withOpacity(categoryColor, 0.15) },
+                  ]}
+                >
                   <View style={[styles.dot, { backgroundColor: categoryColor }]} />
-                  <Text style={[styles.categoryText, { color: categoryColor }]}>{category.toUpperCase()}</Text>
+                  <Text style={[styles.categoryText, { color: categoryColor }]}>
+                    {category.toUpperCase()}
+                  </Text>
                 </View>
                 <View style={styles.statusPill}>
                   <Text style={styles.statusText}>{statusText}</Text>
@@ -1018,25 +1152,20 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               <Text style={styles.preview}>{preview}</Text>
 
               <View style={styles.metaRow}>
-                <Pressable 
-                  onPress={openPosterProfile} 
+                <Pressable
+                  onPress={openPosterProfile}
                   style={styles.posterInfoWrap}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   <View style={styles.posterAvatarWrap}>
-                    <LayeredAvatar 
-                      accessories={posterAccessories} 
-                      size={32} 
-                      scale={1.4} 
-                      translateY={2} 
-                    />
+                    <LayeredAvatar accessories={posterAccessories} size={32} scale={1.4} translateY={2} />
                   </View>
                   <View>
                     <Text style={styles.poster}>{posterProfile?.display_name || posterName}</Text>
                     <Text style={styles.time}>{ago}</Text>
                   </View>
                 </Pressable>
-                
+
                 <View style={styles.locationChip}>
                   <LocationIcon width={14} height={14} />
                   <Text style={styles.locationText}>{locationText}</Text>
@@ -1061,92 +1190,122 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
           {isPoster && !isAutoAccept && commentsOpen && (
             <View style={styles.applicantsCard}>
-               <Pressable 
-                 style={styles.applicantsHeader} 
-                 onPress={() => setApplicantsExpanded(!applicantsExpanded)}
-               >
-                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-                   <Ionicons name="people" size={18} color={colors.textPrimary} />
-                   <Text style={styles.applicantsTitle}>Review Applicants</Text>
-                   <View style={styles.countChip}>
-                     <Text style={styles.countText}>{appliedParticipants.length}</Text>
-                   </View>
-                 </View>
-                 <Ionicons name={applicantsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
-               </Pressable>
+              <Pressable
+                style={styles.applicantsHeader}
+                onPress={() => setApplicantsExpanded(!applicantsExpanded)}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="people" size={18} color={colors.textPrimary} />
+                  <Text style={styles.applicantsTitle}>Review Applicants</Text>
+                  <View style={styles.countChip}>
+                    <Text style={styles.countText}>{appliedParticipants.length}</Text>
+                  </View>
+                </View>
+                <Ionicons
+                  name={applicantsExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
 
-               {applicantsExpanded && (
-                 <View style={styles.applicantsList}>
-                   {acceptedParticipants.length > 0 && (
-                     <Text style={styles.startQuestHint}>
-                       Accepted ({acceptedParticipants.length}/{maxParticipants})
-                     </Text>
-                   )}
-                   {appliedParticipants.length === 0 ? (
-                     <Text style={styles.emptyApplicants}>No applicants yet.</Text>
-                   ) : (
-                     appliedParticipants.map(p => (
-                       <View key={p.id} style={styles.applicantRow}>
-                         <View style={styles.applicantInfo}>
-                           <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
-                           <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
-                         </View>
-                         <Pressable 
-                           style={[styles.acceptApplicantBtn, loading && {opacity: 0.7}]} 
-                           onPress={() => handleAcceptApplicant(p.user_id)}
-                           disabled={loading || acceptedParticipants.length >= maxParticipants}
-                         >
-                           <Text style={styles.acceptApplicantText}>Accept</Text>
-                         </Pressable>
-                       </View>
-                     ))
-                   )}
-                   
-                   <View style={styles.startQuestWrap}>
-                      <Pressable 
-                        style={[styles.startQuestBtn, (loading || acceptedParticipants.length === 0) && {opacity: 0.7}]} 
-                        onPress={handleStartManualQuest}
-                        disabled={loading || acceptedParticipants.length === 0}
-                      >
-                        <Text style={styles.startQuestText}>Start Quest Now</Text>
-                      </Pressable>
-                      <Text style={styles.startQuestHint}>
-                        This will lock the quest and reject remaining applicants.
-                      </Text>
-                   </View>
-                 </View>
-               )}
+              {applicantsExpanded && (
+                <View style={styles.applicantsList}>
+                  {acceptedParticipants.length > 0 && (
+                    <Text style={styles.startQuestHint}>
+                      Accepted ({acceptedParticipants.length}/{maxParticipants})
+                    </Text>
+                  )}
+                  {appliedParticipants.length === 0 ? (
+                    <Text style={styles.emptyApplicants}>No applicants yet.</Text>
+                  ) : (
+                    appliedParticipants.map((p) => (
+                      <View key={p.id} style={styles.applicantRow}>
+                        <View style={styles.applicantInfo}>
+                          <LayeredAvatar
+                            accessories={normalizeAccessories(p.profiles?.equipped_accessories)}
+                            size={32}
+                          />
+                          <Text style={styles.applicantName}>
+                            {p.profiles?.display_name || 'Anonymous'}
+                          </Text>
+                        </View>
+                        <Pressable
+                          style={[styles.acceptApplicantBtn, loading && { opacity: 0.7 }]}
+                          onPress={() => handleAcceptApplicant(p.user_id)}
+                          disabled={loading || acceptedParticipants.length >= maxParticipants}
+                        >
+                          <Text style={styles.acceptApplicantText}>Accept</Text>
+                        </Pressable>
+                      </View>
+                    ))
+                  )}
+
+                  <View style={styles.startQuestWrap}>
+                    <Pressable
+                      style={[
+                        styles.startQuestBtn,
+                        (loading || acceptedParticipants.length === 0) && { opacity: 0.7 },
+                      ]}
+                      onPress={handleStartManualQuest}
+                      disabled={loading || acceptedParticipants.length === 0}
+                    >
+                      <Text style={styles.startQuestText}>Start Quest Now</Text>
+                    </Pressable>
+                    <Text style={styles.startQuestHint}>
+                      This will lock the quest and reject remaining applicants.
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
           {(!shouldShowCompactCard || myParticipantStatus === 'accepted') && !isPoster && (
-             <View style={{ marginTop: 4 }}>
-                {myParticipantStatus === 'applied' ? (
-                  <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
-                    <Text style={styles.acceptText}>Application Pending</Text>
-                  </View>
-                ) : myParticipantStatus === 'accepted' ? (
-                  <Pressable style={[styles.acceptButton, { backgroundColor: colors.error || '#FF3B30' }, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
-                    <Text style={styles.acceptText}>Drop Quest</Text>
-                  </Pressable>
-                ) : commentsOpen ? (
-                  <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
-                    <Text style={styles.acceptText}>{isAutoAccept ? 'Accept Quest' : 'Apply for Quest'}</Text>
-                  </Pressable>
-                ) : (
-                  <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
-                    <Text style={styles.acceptText}>Quest Unavailable</Text>
-                  </View>
-                )}
-             </View>
+            <View style={{ marginTop: 4 }}>
+              {myParticipantStatus === 'applied' ? (
+                <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
+                  <Text style={styles.acceptText}>Application Pending</Text>
+                </View>
+              ) : myParticipantStatus === 'accepted' ? (
+                <Pressable
+                  style={[
+                    styles.acceptButton,
+                    { backgroundColor: colors.error || '#FF3B30' },
+                    loading && { opacity: 0.7 },
+                  ]}
+                  onPress={handleApplyOrDrop}
+                  disabled={loading}
+                >
+                  <Text style={styles.acceptText}>Drop Quest</Text>
+                </Pressable>
+              ) : commentsOpen ? (
+                <Pressable
+                  style={[styles.acceptButton, loading && { opacity: 0.7 }]}
+                  onPress={handleApplyOrDrop}
+                  disabled={loading}
+                >
+                  <Text style={styles.acceptText}>
+                    {isAutoAccept ? 'Accept Quest' : 'Apply for Quest'}
+                  </Text>
+                </Pressable>
+              ) : (
+                <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
+                  <Text style={styles.acceptText}>Quest Unavailable</Text>
+                </View>
+              )}
+            </View>
           )}
 
           {showComments ? (
             <>
               <View style={styles.commentsHeader}>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={styles.commentsTitle}>
-                    {commentsOpen ? 'Comments' : (viewingArchive ? 'Archived Comments' : 'Group Chat')}
+                    {commentsOpen
+                      ? 'Comments'
+                      : viewingArchive
+                      ? 'Archived Comments'
+                      : 'Group Chat'}
                   </Text>
                   <View style={styles.countChip}>
                     <Text style={styles.countText}>{commentCount}</Text>
@@ -1175,7 +1334,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           ) : (
             <View style={styles.lockedCommentsBox}>
               <Ionicons name="lock-closed" size={24} color={colors.textSecondary} />
-              <Text style={styles.lockedCommentsText}>This quest is currently in progress.{"\n"}Comments are closed to the public.</Text>
+              <Text style={styles.lockedCommentsText}>
+                This quest is currently in progress.{'\n'}Comments are closed to the public.
+              </Text>
             </View>
           )}
         </ScrollView>
@@ -1186,7 +1347,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               <Animated.View style={[styles.replyBanner, replyBannerStyle]}>
                 <View style={styles.replyBannerLeft}>
                   <Text style={styles.replyBannerTitle} numberOfLines={1}>
-                    Replying to <Text style={styles.replyBannerName}>{replyTo.author}</Text>
+                    Replying to{' '}
+                    <Text style={styles.replyBannerName}>{replyTo.author}</Text>
                   </Text>
                   {!!replyPreview && (
                     <Text style={styles.replyBannerPreview} numberOfLines={1}>
@@ -1194,35 +1356,59 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                     </Text>
                   )}
                 </View>
-
                 <Pressable onPress={cancelReply} hitSlop={10} style={styles.replyBannerClose}>
                   <Ionicons name="close" size={16} color={colors.textSecondary} />
                 </Pressable>
               </Animated.View>
             )}
-            <TextInput
-              ref={(r) => {
-                inputRef.current = r;
-              }}
-              value={message}
-              onChangeText={setMessage}
-              placeholder={
-                replyTo
-                  ? `Reply to ${replyTo.author}...`
-                  : commentsOpen
-                    ? "Add a public comment..."
-                    : "Message group..."
-              }
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <Pressable style={styles.sendButton} onPress={onSubmitComment}>
+
+            <Pressable onPress={pickImage} style={{ paddingHorizontal: 8 }}>
+              <Ionicons name="camera" size={28} color="#FF3B30" />
+            </Pressable>
+
+            <View style={{ flex: 1 }}>
+              {selectedImage && (
+                <View style={styles.selectedImagePreview}>
+                  <Image source={{ uri: selectedImage }} style={styles.miniPreview} />
+                  <Pressable
+                    onPress={() => {
+                      setSelectedImage(null);
+                      setImageBase64(null);
+                    }}
+                    style={styles.removeImageBtn}
+                  >
+                    <Ionicons name="close-circle" size={18} color="red" />
+                  </Pressable>
+                </View>
+              )}
+              <TextInput
+                ref={(r) => {
+                  inputRef.current = r;
+                }}
+                value={message}
+                onChangeText={setMessage}
+                placeholder={replyTo ? `Reply to ${replyTo.author}...` : 'Message...'}
+                placeholderTextColor={colors.textSecondary}
+                style={styles.input}
+              />
+            </View>
+
+            <Pressable
+              style={[styles.sendButton, loading && { opacity: 0.5 }]}
+              onPress={onSubmitComment}
+              disabled={loading}
+            >
               <Ionicons name="send" size={16} color={colors.bg} />
             </Pressable>
           </View>
         )}
 
-        <Modal visible={actionsVisible} animationType="fade" transparent onRequestClose={closeCommentActions}>
+        <Modal
+          visible={actionsVisible}
+          animationType="fade"
+          transparent
+          onRequestClose={closeCommentActions}
+        >
           <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
             <Pressable style={styles.actionBubble} onPress={() => {}}>
               <Pressable style={styles.actionRow} onPress={onViewProfile}>
@@ -1238,7 +1424,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </Pressable>
         </Modal>
 
-        <Modal visible={profilePreviewVisible} animationType="slide" transparent onRequestClose={closeProfilePreview}>
+        <Modal
+          visible={profilePreviewVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={closeProfilePreview}
+        >
           <Pressable style={styles.previewBackdrop} onPress={closeProfilePreview}>
             <Pressable style={styles.previewCard} onPress={() => {}}>
               <View style={styles.previewHeader}>
@@ -1250,10 +1441,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
               <View style={styles.previewIdentityRow}>
                 <View style={styles.previewAvatarFrame}>
-                  <LayeredAvatar accessories={selectedProfile?.accessories} size={68} scale={1.55} translateY={4} />
+                  <LayeredAvatar
+                    accessories={selectedProfile?.accessories}
+                    size={68}
+                    scale={1.55}
+                    translateY={4}
+                  />
                 </View>
                 <View style={styles.previewIdentityText}>
-                  <Text style={styles.previewName}>{selectedProfile?.displayName || 'Anonymous'}</Text>
+                  <Text style={styles.previewName}>
+                    {selectedProfile?.displayName || 'Anonymous'}
+                  </Text>
                   <Text style={styles.previewSubtitle}>{profileSubtitle}</Text>
                   <Text style={styles.previewBio}>
                     {selectedProfile?.bio || 'Tell your campus a little about yourself...'}
@@ -1267,11 +1465,15 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   <Text style={styles.previewStatLabel}>Global Rank</Text>
                 </View>
                 <View style={styles.previewStatCard}>
-                  <Text style={styles.previewStatValue}>{selectedProfile?.completedQuests ?? 0}</Text>
+                  <Text style={styles.previewStatValue}>
+                    {selectedProfile?.completedQuests ?? 0}
+                  </Text>
                   <Text style={styles.previewStatLabel}>Quests Completed</Text>
                 </View>
                 <View style={styles.previewStatCard}>
-                  <Text style={styles.previewStatValue}>LVL {selectedProfile?.level ?? levelData.currentLevel}</Text>
+                  <Text style={styles.previewStatValue}>
+                    LVL {selectedProfile?.level ?? levelData.currentLevel}
+                  </Text>
                   <Text style={styles.previewStatLabel}>Level</Text>
                 </View>
               </View>
@@ -1282,15 +1484,27 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 </View>
                 <View style={styles.previewBadgeRow}>
                   <View style={styles.previewBadgeSlot}>
-                    <Image source={PROFILE_BADGE_ASSETS.badgeShield} style={styles.previewBadgeImage} resizeMode="contain" />
+                    <Image
+                      source={PROFILE_BADGE_ASSETS.badgeShield}
+                      style={styles.previewBadgeImage}
+                      resizeMode="contain"
+                    />
                     <Text style={styles.previewBadgeLabel}>{selectedBadges[0] || 'Guardian'}</Text>
                   </View>
                   <View style={styles.previewBadgeSlot}>
-                    <Image source={PROFILE_BADGE_ASSETS.badgeMedal} style={styles.previewBadgeImage} resizeMode="contain" />
+                    <Image
+                      source={PROFILE_BADGE_ASSETS.badgeMedal}
+                      style={styles.previewBadgeImage}
+                      resizeMode="contain"
+                    />
                     <Text style={styles.previewBadgeLabel}>{selectedBadges[1] || 'Achiever'}</Text>
                   </View>
                   <View style={styles.previewBadgeSlot}>
-                    <Image source={PROFILE_BADGE_ASSETS.badgeHat} style={styles.previewBadgeImage} resizeMode="contain" />
+                    <Image
+                      source={PROFILE_BADGE_ASSETS.badgeHat}
+                      style={styles.previewBadgeImage}
+                      resizeMode="contain"
+                    />
                     <Text style={styles.previewBadgeLabel}>{selectedBadges[2] || 'Scholar'}</Text>
                   </View>
                 </View>
@@ -1300,7 +1514,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 <View style={styles.previewSectionHeaderRow}>
                   <Text style={styles.previewSectionTitle}>Reputation</Text>
                   <View style={styles.previewRankChip}>
-                    <Text style={styles.previewRankChipText}>{selectedProfile?.reputation || 'Campus Helper'}</Text>
+                    <Text style={styles.previewRankChipText}>
+                      {selectedProfile?.reputation || 'Campus Helper'}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.previewKarmaLabelRow}>
@@ -1308,10 +1524,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                     <Image source={PROFILE_BADGE_ASSETS.experience} style={styles.previewKarmaIcon} />
                     <Text style={styles.previewKarmaTitle}>EXPERIENCE</Text>
                   </View>
-                  <Text style={styles.previewKarmaValueText}>{levelData.xpInCurrentLevel} / {levelData.xpNeededForNextLevel}</Text>
+                  <Text style={styles.previewKarmaValueText}>
+                    {levelData.xpInCurrentLevel} / {levelData.xpNeededForNextLevel}
+                  </Text>
                 </View>
                 <View style={styles.previewProgressTrack}>
-                  <View style={[styles.previewProgressFill, { width: `${levelData.progressPercent * 100}%` }]} />
+                  <View
+                    style={[
+                      styles.previewProgressFill,
+                      { width: `${levelData.progressPercent * 100}%` },
+                    ]}
+                  />
                 </View>
                 <View style={styles.previewLevelRow}>
                   <Text style={styles.previewLevelRangeText}>LVL {levelData.currentLevel}</Text>
@@ -1328,687 +1551,711 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             </Pressable>
           </Pressable>
         </Modal>
-
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.52)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    height: '92%',
-    backgroundColor: COLORS.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-  },
-  header: {
-    height: 64,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  iconButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minWidth: 72,
-  },
-  backText: {
-    color: COLORS.favor,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  headerRightSpacer: {
-    minWidth: 72,
-  },
-  scroll: {
-    flex: 1,
-  },
-  card: {
-    margin: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    padding: 14,
-    gap: 12,
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  categoryBadge: {
-    borderRadius: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  statusPill: {
-    borderRadius: 999,
-    backgroundColor: withOpacity(COLORS.item, 0.15),
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusText: {
-    color: COLORS.item,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  title: {
-    color: COLORS.textPrimary,
-    fontSize: 21,
-    fontWeight: '700',
-  },
-  preview: {
-    color: COLORS.textSecondary,
-    lineHeight: 21,
-    fontSize: 14,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  posterInfoWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  posterAvatarWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  poster: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  time: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-  },
-  locationChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  locationText: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-  },
-  rewardBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  rewardBlock: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  divider: {
-    width: 1,
-    height: 72,
-    backgroundColor: COLORS.border,
-  },
-  rewardValue: {
-    color: COLORS.xp,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  tokenValue: {
-    color: COLORS.token,
-  },
-  rewardLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    letterSpacing: 0.6,
-  },
-  acceptButton: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.favor,
-  },
-  acceptText: {
-    color: COLORS.bg,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  applicantsCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    overflow: 'hidden',
-  },
-  applicantsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    backgroundColor: COLORS.surface2,
-  },
-  applicantsTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  applicantsList: {
-    padding: 14,
-    gap: 12,
-  },
-  applicantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  applicantInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  applicantName: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  acceptApplicantBtn: {
-    backgroundColor: COLORS.favor,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  acceptApplicantText: {
-    color: COLORS.bg,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  startQuestWrap: {
-    marginTop: 8,
-    gap: 6,
-  },
-  startQuestBtn: {
-    backgroundColor: COLORS.xp,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  startQuestText: {
-    color: COLORS.bg,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  startQuestHint: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    textAlign: 'center',
-  },
-  emptyApplicants: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    paddingVertical: 8,
-  },
-  commentsHeader: {
-    marginTop: 6,
-    marginBottom: 8,
-    marginHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  commentsTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  countChip: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 999,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-  },
-  countText: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  archiveToggleText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  commentRow: {
-    marginHorizontal: 0,
-    marginBottom: 0,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    padding: 10,
-    gap: 10,
-    flexDirection: 'row',
-  },
-  swipeRowWrap: {
-    marginHorizontal: 16,
-    marginBottom: 10,
-  },
-  replyUnderlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 14,
-    borderRadius: 12,
-    backgroundColor: withOpacity(COLORS.favor, 0.14),
-    borderWidth: 1,
-    borderColor: withOpacity(COLORS.favor, 0.22),
-  },
-  replyUnderlayPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: COLORS.favor,
-  },
-  replyUnderlayText: {
-    color: COLORS.bg,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  commentAvatarWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  commentContent: {
-    flex: 1,
-    gap: 2,
-  },
-  commentAuthor: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  commentTime: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-  },
-  commentText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
-  lockedCommentsBox: {
-    marginHorizontal: 16,
-    marginVertical: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    padding: 32,
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
-  },
-  lockedCommentsText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  inputBar: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  replyBanner: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    top: -36,
-    minHeight: 44,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  replyBannerLeft: { flex: 1, paddingRight: 10 },
-  replyBannerTitle: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '700' },
-  replyBannerName: { color: COLORS.textPrimary, fontWeight: '800' },
-  replyBannerPreview: { color: COLORS.textSecondary, fontSize: 11, marginTop: 2, opacity: 0.9 },
-  replyBannerClose: { padding: 4, borderRadius: 10 },
-  replyQuoteBox: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: withOpacity(COLORS.textPrimary, 0.04),
-    marginTop: 6,
-    marginBottom: 6,
-  },
-  replyQuoteBar: {
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: withOpacity(COLORS.favor, 0.7),
-  },
-  replyQuoteText: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  replyQuoteTextWrap: {
-    flex: 1,
-  },
-  replyQuoteMeta: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 2,
-    opacity: 0.9,
-  },
-  input: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 21,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 14,
-    color: COLORS.textPrimary,
-  },
-  sendButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORS.favor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  actionBubble: {
-    width: '100%',
-    maxWidth: 300,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    overflow: 'hidden',
-  },
-  actionRow: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-  },
-  actionRowDisabled: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-  },
-  actionText: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  actionTextDisabled: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  actionDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-  },
-  previewBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'flex-end',
-    padding: 16,
-  },
-  previewCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    padding: 14,
-    gap: 12,
-    marginBottom: 86,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  previewTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 1.2,
-  },
-  previewIdentityRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  previewAvatarFrame: {
-    borderWidth: 1.5,
-    borderColor: withOpacity(COLORS.favor, 0.4),
-    borderRadius: 40,
-    padding: 2,
-  },
-  previewIdentityText: {
-    flex: 1,
-    gap: 4,
-  },
-  previewName: {
-    color: COLORS.textPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  previewSubtitle: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-  },
-  previewBio: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  previewStatsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  previewStatCard: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: withOpacity(COLORS.favor, 0.25),
-    backgroundColor: withOpacity(COLORS.favor, 0.06),
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    gap: 2,
-  },
-  previewStatValue: {
-    color: COLORS.favor,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  previewStatLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  previewSection: {
-    gap: 10,
-  },
-  previewSectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  previewSectionTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  previewBadgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: -4,
-  },
-  previewBadgeSlot: {
-    flex: 1,
-    height: 90,
-    borderRadius: 12,
-    backgroundColor: COLORS.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  previewBadgeImage: {
-    width: 40,
-    height: 40,
-    marginBottom: 5,
-  },
-  previewBadgeLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  previewRankChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    backgroundColor: withOpacity(COLORS.favor, 0.08),
-    borderWidth: 1,
-    borderColor: withOpacity(COLORS.favor, 0.2),
-  },
-  previewRankChipText: {
-    color: COLORS.favor,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  previewKarmaLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  previewKarmaTitleCluster: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  previewKarmaIcon: {
-    width: 16,
-    height: 16,
-  },
-  previewKarmaTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  previewKarmaValueText: {
-    color: COLORS.textPrimary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  previewProgressTrack: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.surface2,
-    overflow: 'hidden',
-  },
-  previewProgressFill: {
-    height: '100%',
-    borderRadius: 5,
-    backgroundColor: COLORS.xp,
-  },
-  previewLevelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  previewLevelRangeText: {
-    color: COLORS.textSecondary,
-    fontSize: 9,
-    fontWeight: '700',
-  },
-});
+const createStyles = (COLORS: ThemeColors) =>
+  StyleSheet.create({
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.52)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      height: '92%',
+      backgroundColor: COLORS.bg,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      overflow: 'hidden',
+    },
+    header: {
+      height: 64,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+    },
+    iconButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 72,
+    },
+    backText: {
+      color: COLORS.favor,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    headerTitle: {
+      color: COLORS.textPrimary,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    headerRightSpacer: {
+      minWidth: 72,
+    },
+    scroll: {
+      flex: 1,
+    },
+    card: {
+      margin: 16,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      padding: 14,
+      gap: 12,
+    },
+    rowBetween: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    categoryBadge: {
+      borderRadius: 8,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    categoryText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    statusPill: {
+      borderRadius: 999,
+      backgroundColor: withOpacity(COLORS.item, 0.15),
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    statusText: {
+      color: COLORS.item,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    title: {
+      color: COLORS.textPrimary,
+      fontSize: 21,
+      fontWeight: '700',
+    },
+    preview: {
+      color: COLORS.textSecondary,
+      lineHeight: 21,
+      fontSize: 14,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    posterInfoWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    posterAvatarWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: COLORS.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    poster: {
+      color: COLORS.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    time: {
+      color: COLORS.textSecondary,
+      fontSize: 11,
+    },
+    locationChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    locationText: {
+      color: COLORS.textSecondary,
+      fontSize: 11,
+    },
+    rewardBox: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    rewardBlock: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+    },
+    divider: {
+      width: 1,
+      height: 72,
+      backgroundColor: COLORS.border,
+    },
+    rewardValue: {
+      color: COLORS.xp,
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    tokenValue: {
+      color: COLORS.token,
+    },
+    rewardLabel: {
+      color: COLORS.textSecondary,
+      fontSize: 11,
+      letterSpacing: 0.6,
+    },
+    acceptButton: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      height: 48,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: COLORS.favor,
+    },
+    acceptText: {
+      color: COLORS.bg,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    applicantsCard: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      overflow: 'hidden',
+    },
+    applicantsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 14,
+      backgroundColor: COLORS.surface2,
+    },
+    applicantsTitle: {
+      color: COLORS.textPrimary,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    applicantsList: {
+      padding: 14,
+      gap: 12,
+    },
+    applicantRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    applicantInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    applicantName: {
+      color: COLORS.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    acceptApplicantBtn: {
+      backgroundColor: COLORS.favor,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    acceptApplicantText: {
+      color: COLORS.bg,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    startQuestWrap: {
+      marginTop: 8,
+      gap: 6,
+    },
+    startQuestBtn: {
+      backgroundColor: COLORS.xp,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+    startQuestText: {
+      color: COLORS.bg,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    startQuestHint: {
+      color: COLORS.textSecondary,
+      fontSize: 11,
+      textAlign: 'center',
+    },
+    emptyApplicants: {
+      color: COLORS.textSecondary,
+      fontSize: 13,
+      textAlign: 'center',
+      fontStyle: 'italic',
+      paddingVertical: 8,
+    },
+    commentsHeader: {
+      marginTop: 6,
+      marginBottom: 8,
+      marginHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    commentsTitle: {
+      color: COLORS.textPrimary,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    countChip: {
+      backgroundColor: COLORS.surface,
+      borderRadius: 999,
+      paddingVertical: 2,
+      paddingHorizontal: 8,
+    },
+    countText: {
+      color: COLORS.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    archiveToggleText: {
+      color: COLORS.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    commentRow: {
+      marginHorizontal: 0,
+      marginBottom: 0,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      padding: 10,
+      gap: 10,
+      flexDirection: 'row',
+    },
+    swipeRowWrap: {
+      marginHorizontal: 16,
+      marginBottom: 10,
+    },
+    replyUnderlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'flex-start',
+      paddingLeft: 14,
+      borderRadius: 12,
+      backgroundColor: withOpacity(COLORS.favor, 0.14),
+      borderWidth: 1,
+      borderColor: withOpacity(COLORS.favor, 0.22),
+    },
+    replyUnderlayPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: COLORS.favor,
+    },
+    replyUnderlayText: {
+      color: COLORS.bg,
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    commentAvatarWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      overflow: 'hidden',
+      backgroundColor: COLORS.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    commentContent: {
+      flex: 1,
+      gap: 2,
+    },
+    commentAuthor: {
+      color: COLORS.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    commentTime: {
+      color: COLORS.textSecondary,
+      fontSize: 11,
+    },
+    commentText: {
+      color: COLORS.textSecondary,
+      fontSize: 13,
+    },
+    commentImage: {
+      width: '100%',
+      height: 180,
+      borderRadius: 10,
+      marginVertical: 8,
+      backgroundColor: '#1E1E1E',
+    },
+    lockedCommentsBox: {
+      marginHorizontal: 16,
+      marginVertical: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      padding: 32,
+      backgroundColor: COLORS.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderStyle: 'dashed',
+    },
+    lockedCommentsText: {
+      color: COLORS.textSecondary,
+      fontSize: 14,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    inputBar: {
+      borderTopWidth: 1,
+      borderTopColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    replyBanner: {
+      position: 'absolute',
+      left: 16,
+      right: 16,
+      top: -36,
+      minHeight: 44,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    replyBannerLeft: { flex: 1, paddingRight: 10 },
+    replyBannerTitle: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '700' },
+    replyBannerName: { color: COLORS.textPrimary, fontWeight: '800' },
+    replyBannerPreview: { color: COLORS.textSecondary, fontSize: 11, marginTop: 2, opacity: 0.9 },
+    replyBannerClose: { padding: 4, borderRadius: 10 },
+    replyQuoteBox: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      gap: 8,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: withOpacity(COLORS.textPrimary, 0.04),
+      marginTop: 6,
+      marginBottom: 6,
+    },
+    replyQuoteBar: {
+      width: 3,
+      borderRadius: 2,
+      backgroundColor: withOpacity(COLORS.favor, 0.7),
+    },
+    replyQuoteText: {
+      color: COLORS.textSecondary,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    replyQuoteTextWrap: {
+      flex: 1,
+    },
+    replyQuoteMeta: {
+      color: COLORS.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+      marginBottom: 2,
+      opacity: 0.9,
+    },
+    input: {
+      flex: 1,
+      minHeight: 42,
+      borderRadius: 21,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      paddingHorizontal: 14,
+      color: COLORS.textPrimary,
+    },
+    selectedImagePreview: {
+      marginBottom: 8,
+      position: 'relative',
+      width: 60,
+    },
+    miniPreview: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+    },
+    removeImageBtn: {
+      position: 'absolute',
+      top: -5,
+      right: -5,
+      backgroundColor: 'white',
+      borderRadius: 10,
+    },
+    sendButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: COLORS.favor,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    actionBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    actionBubble: {
+      width: '100%',
+      maxWidth: 300,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      overflow: 'hidden',
+    },
+    actionRow: {
+      height: 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+    },
+    actionRowDisabled: {
+      height: 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+    },
+    actionText: {
+      color: COLORS.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    actionTextDisabled: {
+      color: COLORS.textSecondary,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    actionDivider: {
+      height: 1,
+      backgroundColor: COLORS.border,
+    },
+    previewBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      justifyContent: 'flex-end',
+      padding: 16,
+    },
+    previewCard: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      padding: 14,
+      gap: 12,
+      marginBottom: 86,
+    },
+    previewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    previewTitle: {
+      color: COLORS.textPrimary,
+      fontSize: 11,
+      fontWeight: '600',
+      letterSpacing: 1.2,
+    },
+    previewIdentityRow: {
+      flexDirection: 'row',
+      gap: 12,
+      alignItems: 'center',
+    },
+    previewAvatarFrame: {
+      borderWidth: 1.5,
+      borderColor: withOpacity(COLORS.favor, 0.4),
+      borderRadius: 40,
+      padding: 2,
+    },
+    previewIdentityText: {
+      flex: 1,
+      gap: 4,
+    },
+    previewName: {
+      color: COLORS.textPrimary,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    previewSubtitle: {
+      color: COLORS.textSecondary,
+      fontSize: 12,
+    },
+    previewBio: {
+      color: COLORS.textSecondary,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    previewStatsRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    previewStatCard: {
+      flex: 1,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: withOpacity(COLORS.favor, 0.25),
+      backgroundColor: withOpacity(COLORS.favor, 0.06),
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      alignItems: 'center',
+      gap: 2,
+    },
+    previewStatValue: {
+      color: COLORS.favor,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    previewStatLabel: {
+      color: COLORS.textSecondary,
+      fontSize: 10,
+      textAlign: 'center',
+    },
+    previewSection: {
+      gap: 10,
+    },
+    previewSectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    previewSectionTitle: {
+      color: COLORS.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    previewBadgeRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginHorizontal: -4,
+    },
+    previewBadgeSlot: {
+      flex: 1,
+      height: 90,
+      borderRadius: 12,
+      backgroundColor: COLORS.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 4,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    previewBadgeImage: {
+      width: 40,
+      height: 40,
+      marginBottom: 5,
+    },
+    previewBadgeLabel: {
+      color: COLORS.textSecondary,
+      fontSize: 10,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    previewRankChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 20,
+      backgroundColor: withOpacity(COLORS.favor, 0.08),
+      borderWidth: 1,
+      borderColor: withOpacity(COLORS.favor, 0.2),
+    },
+    previewRankChipText: {
+      color: COLORS.favor,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    previewKarmaLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    previewKarmaTitleCluster: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    previewKarmaIcon: {
+      width: 16,
+      height: 16,
+    },
+    previewKarmaTitle: {
+      color: COLORS.textPrimary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    previewKarmaValueText: {
+      color: COLORS.textPrimary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    previewProgressTrack: {
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: COLORS.surface2,
+      overflow: 'hidden',
+    },
+    previewProgressFill: {
+      height: '100%',
+      borderRadius: 5,
+      backgroundColor: COLORS.xp,
+    },
+    previewLevelRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    previewLevelRangeText: {
+      color: COLORS.textSecondary,
+      fontSize: 9,
+      fontWeight: '700',
+    },
+  });

@@ -81,11 +81,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     if (!category) list.push('Choose a category');
     if (!titleTrim) list.push('Add a quest title');
     if (!descTrim) list.push('Add a description');
-    if (!locTrim) list.push('Add a campus location');
     if (maxParticipants < 1) list.push('Group size must be at least 1');
 
     return list;
-  }, [category, titleTrim, descTrim, locTrim, maxParticipants]);
+  }, [category, titleTrim, descTrim, maxParticipants]);
 
   const isValid = validationIssues.length === 0;
 
@@ -202,7 +201,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         p_category: category?.toLowerCase(),
         p_title: titleTrim,
         p_description: descTrim,
-        p_location: locTrim,
+        p_location: locTrim || null,
         p_bonus_xp: appraisal.bonusXp,
         p_token_bounty: tokenBounty,
         p_latitude: lat,
@@ -389,7 +388,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             <View style={styles.section}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>LOCATION ON CAMPUS</Text>
-                <View style={styles.requiredDot} />
               </View>
               <View style={styles.locationRow}>
                 <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
@@ -402,7 +400,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   autoCorrect
                 />
               </View>
-              <FieldError message="Campus location is required" visible={submitAttempted && !locTrim} colors={colors} styles={styles} />
             </View>
 
             <View style={styles.section}>

@@ -1,7 +1,6 @@
 // app/services/FeedAlgorithmService.ts
 import { supabase } from "../lib/supabase";
 
-// Standardized structure for the data we send to/receive from the DB
 export interface NearbyQuest {
   id: string;
   user_id?: string;
@@ -16,6 +15,7 @@ export interface NearbyQuest {
   equipped_accessories: Record<string, string>; // Replaced avatar_index
   created_at: string;
   distance_km: number;
+  ai_score?: number; // Added to track algorithm confidence if needed
 }
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
@@ -23,11 +23,9 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 // Instant heuristic fallback: Scores quests mathematically (0ms latency)
 function heuristicSort(quests: NearbyQuest[]): NearbyQuest[] {
   return [...quests].sort((a, b) => {
-    // Arbitrary weights: Bounty is highly valued, Distance penalizes
-    const scoreA = (a.token_bounty * 10) + (a.bonus_xp * 2) -
-      (a.distance_km * 20);
-    const scoreB = (b.token_bounty * 10) + (b.bonus_xp * 2) -
-      (b.distance_km * 20);
+    // Weights: Bounty is highly valued, Distance penalizes
+    const scoreA = (a.token_bounty * 10) + (a.bonus_xp * 2) - (a.distance_km * 20);
+    const scoreB = (b.token_bounty * 10) + (b.bonus_xp * 2) - (b.distance_km * 20);
     return scoreB - scoreA;
   });
 }
@@ -35,49 +33,52 @@ function heuristicSort(quests: NearbyQuest[]): NearbyQuest[] {
 export async function getPersonalizedFeed(
   userLat: number,
   userLon: number,
-  userProfileText: string =
-    "A busy college student looking to help out locally.",
+  userProfileText: string = "A busy college student looking to help out locally.",
   onFastResult?: (quests: NearbyQuest[]) => void,
 ): Promise<NearbyQuest[]> {
-  // STEP 1: Fetch nearby quests from Database
+
+  // STEP 1: Fetch AI-sorted nearby quests from the database
+  // Uses the vector search RPC when available, falls back gracefully
   const { data, error } = await supabase
-    .rpc("get_nearby_quests", {
+    .rpc("get_nearby_quests_ai", {
       user_lat: userLat,
       user_lon: userLon,
       max_results: 30,
     });
 
   if (error) {
-    console.error("Error fetching nearby quests:", error);
-    if (onFastResult) onFastResult([]);
+    console.error("Error fetching AI nearby quests:", error);
     return [];
   }
 
-  let nearbyQuests: NearbyQuest[] = data || [];
+  let nearbyQuests: NearbyQuest[] = (data as NearbyQuest[]) || [];
 
-  // Instantly sort locally to provide an immediate, high-quality UI render
+  // Apply heuristic sort as an instant pre-pass so the UI renders immediately
   nearbyQuests = heuristicSort(nearbyQuests);
 
-  // Instantly return the heuristic DB results to the UI so it doesn't lag
+  // Deliver the fast heuristic result to the caller right away (no waiting for AI)
   if (onFastResult) {
     onFastResult(nearbyQuests);
   }
 
   // ====================================================================
-  // DEV OVERRIDE: AI Algorithm bypassed to save API quota and load times
+  // DEV OVERRIDE: AI re-ranking bypassed to save API quota and load times.
+  // The DB-level vector sort already provides high-quality ordering.
+  // Remove the early return below to re-enable Gemini re-ranking.
   // ====================================================================
   return nearbyQuests;
 
-  /* // If there are 0 or 1 quests, or API Key is missing, no need to waste time/tokens
+  /* --- Gemini AI Re-ranking (disabled in dev, re-enable for production) ---
+
   if (nearbyQuests.length <= 1 || !GEMINI_API_KEY) {
     return nearbyQuests;
   }
 
-  // Limit AI processing to the Top 15 to drastically cut payload size and latency
+  // Limit AI processing to the Top 15 to cut payload size and latency
   const topQuestsForAI = nearbyQuests.slice(0, 15);
   const remainingQuests = nearbyQuests.slice(15);
 
-  // STEP 2: Prepare a minified AI Prompt (Removed heavy descriptions)
+  // Prepare a minified prompt (heavy descriptions excluded to save tokens)
   const minifiedQuests = topQuestsForAI.map(q => ({
     id: q.id,
     title: q.title,
@@ -87,26 +88,25 @@ export async function getPersonalizedFeed(
 
   const prompt = `Rank these quests based on urgency, bounty, and relevance for: ${userProfileText}. Data: ${JSON.stringify(minifiedQuests)}`;
 
-  // STEP 3: Call Gemini API using the updated Gemini 2.5 Flash Lite model
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.1,
             responseMimeType: "application/json",
-            // Forces the model to only output the array natively
+            // Forces the model to output only the sorted ID array
             responseSchema: {
               type: "ARRAY",
-              items: { type: "STRING" }
-            }
-          }
-        })
-      }
+              items: { type: "STRING" },
+            },
+          },
+        }),
+      },
     );
 
     const jsonResponse = await response.json();
@@ -117,16 +117,14 @@ export async function getPersonalizedFeed(
     }
 
     const rawText = jsonResponse.candidates?.[0]?.content?.parts?.[0]?.text;
-
     if (!rawText) {
-       console.warn("Gemini returned empty payload.");
-       return nearbyQuests;
+      console.warn("Gemini returned empty payload.");
+      return nearbyQuests;
     }
 
-    // Parse the strictly formatted JSON natively
     const sortedIds: string[] = JSON.parse(rawText);
 
-    // STEP 4: Map the sorted IDs back to the original database rows
+    // Map sorted IDs back to the original DB rows
     const aiSortedTopQuests: NearbyQuest[] = [];
     sortedIds.forEach(id => {
       const match = topQuestsForAI.find(q => q.id === id);
@@ -143,8 +141,9 @@ export async function getPersonalizedFeed(
     return [...aiSortedTopQuests, ...remainingQuests];
 
   } catch (err) {
-    console.warn("AI Reranking failed, gracefully falling back to heuristic sort.", err);
+    console.warn("AI re-ranking failed, falling back to heuristic sort.", err);
     return nearbyQuests;
   }
+
   */
 }

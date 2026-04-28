@@ -5,9 +5,11 @@ import { Animated, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNav, { MainTab } from '../../components/BottomNav';
+import QuestCardSkeleton from '../../components/cards/QuestCardSkeleton';
 import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -89,6 +91,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
 
   const [activeQuests, setActiveQuests] = useState<QuestItem[]>([]);
   const [historyQuests, setHistoryQuests] = useState<QuestItem[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchQuests = useCallback(async () => {
@@ -151,6 +154,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       });
       setActiveQuests(activeList); setHistoryQuests(historyList);
     } catch (err) { console.error(err); }
+    finally { setIsInitialLoading(false); }
   }, [colors, theme]);
 
   useEffect(() => {
@@ -197,12 +201,16 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           )}
 
           <View style={styles.list}>
-            {filteredHistoryQuests.map((q) => (
-              <QuestCard key={q.id} item={q} variant={activeSection === 'History' ? 'history' : 'active'}
-                onPress={() => { if (activeSection === 'Active') navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 }}); }}
-                onResolve={q.isActionable ? () => { setSelectedQuestId(q.id); setResolutionModalVisible(true); } : undefined}
-              />
-            ))}
+            {isInitialLoading ? (
+              Array.from({ length: 4 }).map((_, index) => <QuestCardSkeleton key={`quest-skeleton-${index}`} />)
+            ) : (
+              filteredHistoryQuests.map((q) => (
+                <QuestCard key={q.id} item={q} variant={activeSection === 'History' ? 'history' : 'active'}
+                  onPress={() => { if (activeSection === 'Active') navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 }}); }}
+                  onResolve={q.isActionable ? () => { setSelectedQuestId(q.id); setResolutionModalVisible(true); } : undefined}
+                />
+              ))
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -216,7 +224,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safeArea: { flex: 1 },
   header: { height: 68, paddingHorizontal: 20, justifyContent: 'flex-end', paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  title: { color: colors.textPrimary, fontSize: 30, lineHeight: 34, fontWeight: '700', letterSpacing: 0.2 },
+  title: { fontFamily: FONTS.display, color: colors.textPrimary, fontSize: 20, lineHeight: 34, fontWeight: '700', letterSpacing: 0.2 },
   content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 112 },
   segmentedControl: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, padding: 4, gap: 4, position: 'relative' },
   segmentIndicator: { position: 'absolute', top: 4, left: 4, height: 38, borderRadius: 10, backgroundColor: theme === 'dark' ? colors.border : '#FFFFFF', elevation: theme === 'light' ? 2 : 0, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2 },

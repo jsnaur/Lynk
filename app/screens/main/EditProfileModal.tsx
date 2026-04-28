@@ -8,23 +8,23 @@ import {
     TextInput,
     ScrollView,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import { FONTS } from '../../constants/fonts';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
 const MAJORS = [
-    'Computer Engineering',
-    'Computer Science',
-    'Electrical Engineering',
-    'Mechanical Engineering',
-    'Civil Engineering',
-    'Business',
-    'Biology',
-    'Chemistry',
-    'Physics',
+  "Computer Science", "Information Technology", "Business", "Architecture",
+  "Computer Engineering", "Electrical Engineering", "Mechanical Engineering",
+  "Chemical Engineering", "Industrial Engineering", "Mechatronics Engineering",
+  "Civil Engineering", "Mining Engineering", "Electronics Engineering",
+  "Psychology", "Nursing", "Criminology", "Accounting",
+  "Tourism Management", "Hotel Management",
 ];
 
 const GRADUATION_YEARS = ['2024', '2025', '2026', '2027', '2028', '2029', '2030'];
@@ -64,6 +64,34 @@ export default function EditProfileModal({
     const [graduationYear, setGraduationYear] = useState(initialData.graduationYear);
     const [showMajorDropdown, setShowMajorDropdown] = useState(false);
     const [showYearDropdown, setShowYearDropdown] = useState(false);
+    const [majorSearchQuery, setMajorSearchQuery] = useState('');
+    const [yearSearchQuery, setYearSearchQuery] = useState('');
+
+    const filteredMajors = useMemo(
+        () =>
+            MAJORS.filter((m) =>
+                m.toLowerCase().includes(majorSearchQuery.trim().toLowerCase())
+            ),
+        [majorSearchQuery]
+    );
+
+    const filteredGraduationYears = useMemo(
+        () =>
+            GRADUATION_YEARS.filter((year) =>
+                year
+                    .toLowerCase()
+                    .includes(yearSearchQuery.trim().toLowerCase())
+            ),
+        [yearSearchQuery]
+    );
+
+    const getMatchingMajor = (value: string) =>
+        MAJORS.find((m) => m.toLowerCase() === value.trim().toLowerCase());
+
+    const getMatchingGraduationYear = (value: string) =>
+        GRADUATION_YEARS.find(
+            (year) => year.toLowerCase() === value.trim().toLowerCase()
+        );
 
     useEffect(() => {
         Animated.parallel([
@@ -120,11 +148,18 @@ export default function EditProfileModal({
                 </Pressable>
             </View>
 
-            <ScrollView
-                style={styles.formContainer}
-                showsVerticalScrollIndicator={false}
-                scrollEventThrottle={16}
+            <KeyboardAvoidingView
+                style={styles.keyboardAvoidingContainer}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
             >
+                <ScrollView
+                    style={styles.formContainer}
+                    showsVerticalScrollIndicator={false}
+                    scrollEventThrottle={16}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                >
                 <View style={styles.fieldBlock}>
                     <View style={styles.fieldLabelRow}>
                         <Text style={styles.fieldLabel}>DISPLAY NAME</Text>
@@ -173,9 +208,49 @@ export default function EditProfileModal({
                     </View>
                     <Pressable
                         style={styles.dropdownButton}
-                        onPress={() => setShowMajorDropdown(!showMajorDropdown)}
+                        onPress={() => {
+                            const nextIsOpen = !showMajorDropdown;
+                            setShowMajorDropdown(nextIsOpen);
+                            if (!nextIsOpen) {
+                                setMajorSearchQuery('');
+                            } else {
+                                setMajorSearchQuery('');
+                            }
+                        }}
                     >
-                        <Text style={styles.dropdownText}>{major}</Text>
+                        <TextInput
+                            style={[
+                                styles.dropdownInput,
+                                !showMajorDropdown &&
+                                    major !== 'Undeclared' && {
+                                    color: colors.textPrimary,
+                                },
+                            ]}
+                            value={
+                                showMajorDropdown ? majorSearchQuery : major
+                            }
+                            onFocus={() => {
+                                setShowMajorDropdown(true);
+                                setMajorSearchQuery('');
+                            }}
+                            onChangeText={(text) => {
+                                setShowMajorDropdown(true);
+                                setMajorSearchQuery(text);
+                                const matchingMajor = getMatchingMajor(text);
+                                if (matchingMajor) {
+                                    setMajor(matchingMajor);
+                                }
+                            }}
+                            placeholder={showMajorDropdown ? '' : 'Search major'}
+                            placeholderTextColor={colors.textSecondary}
+                            onEndEditing={() => {
+                                const matchingMajor =
+                                    getMatchingMajor(majorSearchQuery);
+                                if (matchingMajor) {
+                                    setMajor(matchingMajor);
+                                }
+                            }}
+                        />
                         <Ionicons
                             name={
                                 showMajorDropdown
@@ -188,25 +263,40 @@ export default function EditProfileModal({
                     </Pressable>
                     {showMajorDropdown && (
                         <View style={styles.dropdownMenu}>
-                            {MAJORS.map((m) => (
-                                <Pressable
-                                    key={m}
-                                    style={styles.dropdownItem}
-                                    onPress={() => {
-                                        setMajor(m);
-                                        setShowMajorDropdown(false);
-                                    }}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.dropdownItemText,
-                                            m === major && styles.selectedItem,
-                                        ]}
-                                    >
-                                        {m}
-                                    </Text>
-                                </Pressable>
-                            ))}
+                            <ScrollView
+                                nestedScrollEnabled
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                {filteredMajors.length > 0 ? (
+                                    filteredMajors.map((m) => (
+                                        <Pressable
+                                            key={m}
+                                            style={styles.dropdownItem}
+                                            onPress={() => {
+                                                setMajor(m);
+                                                setShowMajorDropdown(false);
+                                                setMajorSearchQuery('');
+                                            }}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.dropdownItemText,
+                                                    m === major &&
+                                                        styles.selectedItem,
+                                                ]}
+                                            >
+                                                {m}
+                                            </Text>
+                                        </Pressable>
+                                    ))
+                                ) : (
+                                    <View style={styles.emptyDropdownState}>
+                                        <Text style={styles.emptyDropdownText}>
+                                            No majors found
+                                        </Text>
+                                    </View>
+                                )}
+                            </ScrollView>
                         </View>
                     )}
                 </View>
@@ -217,13 +307,53 @@ export default function EditProfileModal({
                     </View>
                     <Pressable
                         style={styles.dropdownButton}
-                        onPress={() =>
-                            setShowYearDropdown(!showYearDropdown)
-                        }
+                        onPress={() => {
+                            const nextIsOpen = !showYearDropdown;
+                            setShowYearDropdown(nextIsOpen);
+                            if (!nextIsOpen) {
+                                setYearSearchQuery('');
+                            } else {
+                                setYearSearchQuery('');
+                            }
+                        }}
                     >
-                        <Text style={styles.dropdownText}>
-                            {graduationYear}
-                        </Text>
+                        <TextInput
+                            style={[
+                                styles.dropdownInput,
+                                !showYearDropdown &&
+                                    graduationYear !== '2027' && {
+                                    color: colors.textPrimary,
+                                },
+                            ]}
+                            value={
+                                showYearDropdown
+                                    ? yearSearchQuery
+                                    : graduationYear
+                            }
+                            onFocus={() => {
+                                setShowYearDropdown(true);
+                                setYearSearchQuery('');
+                            }}
+                            onChangeText={(text) => {
+                                setShowYearDropdown(true);
+                                setYearSearchQuery(text);
+                                const matchingYear =
+                                    getMatchingGraduationYear(text);
+                                if (matchingYear) {
+                                    setGraduationYear(matchingYear);
+                                }
+                            }}
+                            placeholder={showYearDropdown ? '' : 'Search year'}
+                            placeholderTextColor={colors.textSecondary}
+                            keyboardType="number-pad"
+                            onEndEditing={() => {
+                                const matchingYear =
+                                    getMatchingGraduationYear(yearSearchQuery);
+                                if (matchingYear) {
+                                    setGraduationYear(matchingYear);
+                                }
+                            }}
+                        />
                         <Ionicons
                             name={
                                 showYearDropdown
@@ -236,30 +366,45 @@ export default function EditProfileModal({
                     </Pressable>
                     {showYearDropdown && (
                         <View style={styles.dropdownMenu}>
-                            {GRADUATION_YEARS.map((year) => (
-                                <Pressable
-                                    key={year}
-                                    style={styles.dropdownItem}
-                                    onPress={() => {
-                                        setGraduationYear(year);
-                                        setShowYearDropdown(false);
-                                    }}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.dropdownItemText,
-                                            year === graduationYear &&
-                                                styles.selectedItem,
-                                        ]}
-                                    >
-                                        {year}
-                                    </Text>
-                                </Pressable>
-                            ))}
+                            <ScrollView
+                                nestedScrollEnabled
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                {filteredGraduationYears.length > 0 ? (
+                                    filteredGraduationYears.map((year) => (
+                                        <Pressable
+                                            key={year}
+                                            style={styles.dropdownItem}
+                                            onPress={() => {
+                                                setGraduationYear(year);
+                                                setShowYearDropdown(false);
+                                                setYearSearchQuery('');
+                                            }}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.dropdownItemText,
+                                                    year === graduationYear &&
+                                                        styles.selectedItem,
+                                                ]}
+                                            >
+                                                {year}
+                                            </Text>
+                                        </Pressable>
+                                    ))
+                                ) : (
+                                    <View style={styles.emptyDropdownState}>
+                                        <Text style={styles.emptyDropdownText}>
+                                            No years found
+                                        </Text>
+                                    </View>
+                                )}
+                            </ScrollView>
                         </View>
                     )}
                 </View>
             </ScrollView>
+            </KeyboardAvoidingView>
         </Animated.View>
     );
 }
@@ -301,7 +446,7 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     },
     headerTitle: {
         fontSize: 17,
-        fontWeight: '700',
+        fontFamily: FONTS.display,
         color: COLORS.textPrimary,
     },
     saveButton: {
@@ -376,10 +521,14 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    dropdownText: {
+    dropdownInput: {
         fontSize: 15,
         fontWeight: '400',
         color: COLORS.textSecondary,
+        flex: 1,
+        paddingVertical: 0,
+    },
+    keyboardAvoidingContainer: {
         flex: 1,
     },
     dropdownMenu: {
@@ -404,6 +553,14 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     selectedItem: {
         color: COLORS.favor,
         fontWeight: '600',
+    },
+    emptyDropdownState: {
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+    },
+    emptyDropdownText: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
     },
     nudgeCard: {
         backgroundColor: withOpacity(COLORS.favor, 0.04),
