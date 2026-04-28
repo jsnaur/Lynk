@@ -89,9 +89,7 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
   const [initialLoading, setInitialLoading] = useState(!HAS_FETCHED_INITIALLY);
   const [quests, setQuests] = useState<any[]>(CACHED_QUESTS);
-  const [currentUserAccessories, setCurrentUserAccessories] = useState
-    Partial<Record<AvatarSlot, string>>
-  >(CACHED_ACCESSORIES);
+  const [currentUserAccessories, setCurrentUserAccessories] = useState<Partial<Record<AvatarSlot, string>>>(CACHED_ACCESSORIES);
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
