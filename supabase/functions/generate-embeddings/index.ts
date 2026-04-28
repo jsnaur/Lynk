@@ -7,7 +7,23 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 serve(async (req: Request) => {
   try {
     const payload = await req.json();
-    const { table, record } = payload; 
+    const { type, table, record, old_record } = payload; 
+
+    // --- CRITICAL ADDITION: PREVENT INFINITE LOOP ---
+    // Only generate a new embedding if the relevant text fields actually changed.
+    if (type === "UPDATE" && old_record) {
+      if (table === "quests") {
+        const textChanged = old_record.category !== record.category || 
+                            old_record.title !== record.title || 
+                            old_record.description !== record.description;
+        if (!textChanged) return new Response("Quest text unchanged, skipping", { status: 200 });
+      } else if (table === "profiles") {
+        const textChanged = old_record.bio !== record.bio || 
+                            old_record.major !== record.major;
+        if (!textChanged) return new Response("Profile text unchanged, skipping", { status: 200 });
+      }
+    }
+    // ------------------------------------------------
 
     // 1. Determine what text to embed based on the table
     let textToEmbed = "";
@@ -21,7 +37,7 @@ serve(async (req: Request) => {
 
     if (!textToEmbed.trim()) return new Response("Empty text", { status: 200 });
 
-    // 2. Call Gemini Embedding API (Extremely fast and cheap)
+    // 2. Call Gemini Embedding API
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
       {
@@ -53,7 +69,6 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
   } catch (error: unknown) {
     console.error("Error:", error);
-    // Properly extract the error message from an unknown type to satisfy the linter
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     return new Response(JSON.stringify({ error: errorMessage }), { status: 500 });
   }
