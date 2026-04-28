@@ -12,4 +12,13 @@ web-build/
 .env.local
 .env.*
 !.env.example
+
+# Local secret/tooling files
+.envrc
+.direnv/
+*.pem
+supabase/.env
+supabase/.env.*
+supabase/functions/.env
+supabase/functions/.env.*
 agents.md

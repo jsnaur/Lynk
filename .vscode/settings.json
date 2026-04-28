@@ -1,37 +1,50 @@
 {
-    "builder.serverUrl": "",
-    "builder.command": "npm run start",
-    "builder.runDevServer": false,
-    "builder.autoDetectDevServer": true,
-    "builder.launchType": "editor",
-    "chat.useAgentsMdFile": true,
-    "workbench.colorCustomizations": {
-        "activityBar.activeBackground": "#ab307e",
-        "activityBar.background": "#ab307e",
-        "activityBar.foreground": "#e7e7e7",
-        "activityBar.inactiveForeground": "#e7e7e799",
-        "activityBarBadge.background": "#25320e",
-        "activityBarBadge.foreground": "#e7e7e7",
-        "commandCenter.border": "#e7e7e799",
-        "sash.hoverBorder": "#ab307e",
-        "statusBar.background": "#832561",
-        "statusBar.foreground": "#e7e7e7",
-        "statusBarItem.hoverBackground": "#ab307e",
-        "statusBarItem.remoteBackground": "#832561",
-        "statusBarItem.remoteForeground": "#e7e7e7",
-        "titleBar.activeBackground": "#832561",
-        "titleBar.activeForeground": "#e7e7e7",
-        "titleBar.inactiveBackground": "#83256199",
-        "titleBar.inactiveForeground": "#e7e7e799"
-    },
-    "peacock.color": "#832561",
-    
-    // --- NEW: Deno Workspace Configuration ---
-    // This tells VS Code to ONLY use Deno for the Edge Functions directory, 
-    // preserving Node.js/React Native intelligence for the rest of the app.
-    "deno.enablePaths": [
-        "supabase/functions"
-    ],
-    "deno.lint": true,
-    "deno.unstable": true
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "builder.autoDetectDevServer": true,
+  "builder.command": "npm run start",
+  "builder.launchType": "editor",
+  "builder.runDevServer": false,
+  "builder.serverUrl": "",
+  "chat.useAgentsMdFile": true,
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.lint": true,
+  "deno.unstable": [
+    "bare-node-builtins",
+    "byonm",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "broadcast-channel",
+    "worker-options",
+    "cron",
+    "kv",
+    "ffi",
+    "fs",
+    "http",
+    "net"
+  ],
+  "peacock.color": "#832561",
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#ab307e",
+    "activityBar.background": "#ab307e",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#25320e",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "sash.hoverBorder": "#ab307e",
+    "statusBar.background": "#832561",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#ab307e",
+    "statusBarItem.remoteBackground": "#832561",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#832561",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#83256199",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  }
 }

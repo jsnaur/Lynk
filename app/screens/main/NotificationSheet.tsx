@@ -113,21 +113,31 @@ export default function NotificationSheet({
     };
 
     const handlePress = async (item: Notification) => {
-        // 1. Optimistic UI update
-        setNotifications(prev => 
-            prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
+        // Navigation callback stays separate from read-state mutation.
+        onNotificationPress?.(item);
+    };
+
+    const handleMarkAsRead = async (item: Notification, isRead: boolean) => {
+        if (item.is_read === isRead) return;
+
+        const prev = notifications;
+        const next = prev.map((n) =>
+            n.id === item.id ? { ...n, is_read: isRead } : n
         );
 
-        // 2. Update Database
-        if (!item.is_read) {
-            await supabase
-                .from('notifications')
-                .update({ is_read: true })
-                .eq('id', item.id);
-        }
+        setNotifications(next);
+        onUnreadCountHint?.(next.reduce((acc, n) => acc + (n.is_read ? 0 : 1), 0));
 
-        // 3. Callback to handle navigation
-        onNotificationPress?.(item);
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: isRead })
+            .eq('id', item.id);
+
+        if (error) {
+            console.error('mark as read error:', error.message);
+            setNotifications(prev);
+            onUnreadCountHint?.(prev.reduce((acc, n) => acc + (n.is_read ? 0 : 1), 0));
+        }
     };
 
     const handleDeleteOne = async (item: Notification) => {
@@ -219,6 +229,7 @@ export default function NotificationSheet({
             description={item.description}
             timestamp={timeAgo(item.created_at)}
             onPress={() => handlePress(item)}
+            onMarkAsRead={(isRead) => handleMarkAsRead(item, isRead)}
             onLongPress={() => handleDeleteOne(item)}
         />
     );
