@@ -105,11 +105,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const changeTokens = useCallback((delta: number) => {
     setTokenBounty((v) => {
       const next = v + delta;
-      if (next < TOKEN_MIN) return TOKEN_MIN;
+      // Minimum is either TOKEN_MIN or the AI recommended amount, whichever is higher
+      const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
+      if (next < minimumAllowed) return minimumAllowed;
       if (next > TOKEN_MAX) return TOKEN_MAX;
       return next;
     });
-  }, []);
+  }, [appraisal.tokenBounty]);
 
   const changeMaxParticipants = useCallback((delta: number) => {
     setMaxParticipants((v) => {
@@ -525,10 +527,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <Pressable
                     hitSlop={8}
                     onPress={() => changeTokens(-1)}
-                    disabled={tokenBounty <= TOKEN_MIN}
+                    disabled={tokenBounty <= Math.max(TOKEN_MIN, appraisal.tokenBounty)}
                     style={({ pressed }) => [
                       styles.stepperHit,
-                      (pressed || tokenBounty <= TOKEN_MIN) && styles.stepperDim,
+                      (pressed || tokenBounty <= Math.max(TOKEN_MIN, appraisal.tokenBounty)) && styles.stepperDim,
                     ]}
                   >
                     <DecrementBtn width={32} height={32} />
