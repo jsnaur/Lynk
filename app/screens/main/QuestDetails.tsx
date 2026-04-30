@@ -23,8 +23,8 @@ import 'react-native-url-polyfill/auto';
 // Icons
 import BackIcon from '../../../assets/QuestDetailsAssets/Back_Icon.svg';
 import LocationIcon from '../../../assets/QuestDetailsAssets/Location_Icon.svg';
-import XpPixelIcon from '../../../assets/QuestDetailsAssets/XP_Pixel_Icon.svg';
-import TokenPixelIcon from '../../../assets/QuestDetailsAssets/Token_Pixel_Icon.svg';
+const STAR_ICON = require('../../../assets/PostAssets/Star_Icon.png');
+const COIN_ICON = require('../../../assets/PostAssets/Coin_Icon.png');
 
 import CompactQuestCard from '../../components/cards/CompactQuestCard';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
@@ -85,7 +85,7 @@ const PROFILE_BADGE_ASSETS = {
   badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
   badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
   badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
-  experience: require("../../../assets/ProfileAssets/Experience_Pixel.png"),
+  experience: require("../../../assets/ProfileAssets/Star_Icon.png"),
 };
 
 const SWIPE_REPLY_MAX = 86;
@@ -1007,13 +1007,13 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
               <View style={styles.rewardBox}>
                 <View style={styles.rewardBlock}>
-                  <XpPixelIcon width={48} height={48} />
+                  <Image source={STAR_ICON} style={styles.rewardIcon} />
                   <Text style={styles.rewardValue}>{xp}</Text>
                   <Text style={styles.rewardLabel}>XP</Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.rewardBlock}>
-                  <TokenPixelIcon width={48} height={48} />
+                  <Image source={COIN_ICON} style={styles.rewardIcon} />
                   <Text style={[styles.rewardValue, styles.tokenValue]}>{token}</Text>
                   <Text style={styles.rewardLabel}>Tokens</Text>
                 </View>
@@ -1467,6 +1467,11 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     color: COLORS.xp,
     fontSize: 20,
     fontWeight: '700',
+  },
+  rewardIcon: {
+    width: 48,
+    height: 48,
+    resizeMode: 'contain',
   },
   tokenValue: {
     color: COLORS.token,

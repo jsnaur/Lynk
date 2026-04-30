@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'react-native';
 import { FeedCategory, FeedQuest } from '../../constants/categories';
 import { withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
@@ -49,6 +49,9 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
         ? quest.posterAccessories
         : DEFAULT_POSTER_ACCESSORIES;
 
+    const STAR = require('../../../assets/PostAssets/Star_Icon.png');
+    const COIN = require('../../../assets/PostAssets/Coin_Icon.png');
+
     return (
         <Pressable style={styles.card} onPress={onPress}>
             <View style={[styles.stripe, { backgroundColor: categoryMeta.color }]} />
@@ -90,12 +93,12 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
 
                     <View style={styles.rewardWrap}>
                         <View style={[styles.rewardPill, { backgroundColor: withOpacity(colors.xp, 0.15) }]}>
-                            <MaterialCommunityIcons name="star-four-points" size={14} color={colors.xp} />
+                            <Image source={STAR} style={styles.iconImage} />
                             <Text style={[styles.rewardValue, { color: colors.xp }]}>{quest.xp}</Text>
                         </View>
 
                         <View style={[styles.rewardPill, { backgroundColor: withOpacity(colors.token, 0.15) }]}>
-                            <MaterialCommunityIcons name="lightning-bolt-circle" size={14} color={colors.token} />
+                            <Image source={COIN} style={styles.iconImage} />
                             <Text style={[styles.rewardValue, { color: colors.token }]}>{quest.token}</Text>
                         </View>
                     </View>
@@ -135,5 +138,6 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     posterName: { fontSize: 13, color: colors.textSecondary, fontFamily: FONTS.body },
     rewardWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     rewardPill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 3 },
+    iconImage: { width: 14, height: 14, resizeMode: 'contain' },
     rewardValue: { fontSize: 11, fontWeight: '700', fontFamily: FONTS.body },
 });
