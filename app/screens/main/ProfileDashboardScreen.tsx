@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import ProfileSkeleton from '../../components/cards/ProfileSkeleton';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
+import { withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
@@ -21,7 +22,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 // Profile Assets
 import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
-import QuestIcon from "../../../assets/ProfileAssets/Quest_Icon.svg";
+const QuestIcon = require("../../../assets/ProfileAssets/Scroll_Icon.png");
 
 import BadgeSelectorModal from './BadgeSelectorModal';
 import EditProfileModal from './EditProfileModal';
@@ -31,7 +32,8 @@ const ASSETS = {
     badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
     badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
     experience: require("../../../assets/ProfileAssets/Star_Icon.png"),
-    token: require("../../../assets/ProfileAssets/Token_Pixel.png"),
+    trophy: require("../../../assets/ProfileAssets/Trophy_Icon.png"),
+    token: require("../../../assets/ProfileAssets/Coin_Icon.png"),
 };
 
 type ProfileDashboardScreenProps = {
@@ -124,20 +126,21 @@ function LeaderboardCard({ onPress }: { onPress: () => void }) {
     const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
     return (
         <Pressable style={({ pressed }) => [styles.leaderboardCard, pressed && { opacity: 0.75 }]} onPress={onPress}>
-            <LinearGradient colors={['rgba(255,215,0,0.13)', 'rgba(192,84,252,0.08)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-            <View style={styles.leaderboardLeft}>
-                <View style={styles.leaderboardIconWrap}>
-                    <Ionicons name="trophy" size={20} color={colors.token} />
+            <LinearGradient colors={[colors.token, colors.xp]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.leaderboardGradientBorder}>
+                <View style={styles.leaderboardInner}>
+                    <View style={styles.leaderboardLeft}>
+                        <Image source={ASSETS.trophy} style={styles.leaderboardIcon} />
+                        <View style={styles.leaderboardTextCluster}>
+                            <Text style={styles.leaderboardTitle}>Hall of Fame</Text>
+                            <Text style={styles.leaderboardSubtitle}>Global Rankings</Text>
+                        </View>
+                    </View>
+                    <View style={styles.leaderboardRight}>
+                        <Text style={styles.leaderboardCta}>VIEW</Text>
+                        <Ionicons name="chevron-forward" size={14} color={colors.token} />
+                    </View>
                 </View>
-                <View>
-                    <Text style={styles.leaderboardTitle}>HALL OF FAME</Text>
-                    <Text style={styles.leaderboardSubtitle}>Global Rankings</Text>
-                </View>
-            </View>
-            <View style={styles.leaderboardRight}>
-                <Text style={styles.leaderboardCta}>VIEW</Text>
-                <Ionicons name="chevron-forward" size={14} color={colors.token} />
-            </View>
+            </LinearGradient>
         </Pressable>
     );
 }
@@ -354,12 +357,12 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </View>
                         </Pressable>
 
-                        <Pressable style={styles.questsShortcut} onPress={() => { if (onTabPress) onTabPress('Quests'); else navigation?.navigate('Main', { screen: 'Quest' }); }}>
-                            <View style={styles.questsLeftCluster}>
-                                <QuestIcon width={26} height={26} />
+                        <Pressable style={styles.questCard} onPress={() => { if (onTabPress) onTabPress('Quests'); else navigation?.navigate('Main', { screen: 'Quest' }); }}>
+                            <View style={styles.questLeftCluster}>
+                                <Image source={QuestIcon} style={styles.questIcon} />
                                 <View>
-                                    <Text style={styles.questsTitle}>My Quests</Text>
-                                    <Text style={styles.questsSubtitle}>{activeQuestCount} active · {completedQuestCount} completed</Text>
+                                    <Text style={styles.questTitle}>My Quests</Text>
+                                    <Text style={styles.questSubtitle}>{activeQuestCount} active · {completedQuestCount} completed</Text>
                                 </View>
                             </View>
                             <Ionicons name="chevron-forward" size={16} color={colors.token} />
@@ -432,23 +435,33 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     progressFill: { height: '100%', borderRadius: 5 },
     levelRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 },
     levelRangeText: { fontSize: 8, fontWeight: '700', color: colors.textSecondary, fontFamily: 'monospace' },
-    leaderboardCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,215,0,0.30)', backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' },
+   
+    //Leaderboard Card
+    leaderboardCard: { height: 64, borderRadius: 14, overflow: 'hidden' },
+    leaderboardGradientBorder: { flex: 1, padding: 1, borderRadius: 14 },
+    leaderboardInner: { flex: 1, height: '100%', paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: withOpacity(colors.surface, 0.96), borderRadius: 14 },
     leaderboardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    leaderboardIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,215,0,0.12)', borderWidth: 1, borderColor: 'rgba(255,215,0,0.25)', alignItems: 'center', justifyContent: 'center' },
+    leaderboardIcon: { width: 24, height: 24, resizeMode: 'contain' },
+    leaderboardTextCluster: { gap: 2 },
     leaderboardTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
     leaderboardSubtitle: { fontSize: 11, color: colors.textSecondary },
     leaderboardRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     leaderboardCta: { fontSize: 13, fontWeight: '600', color: colors.token },
-    tokenCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+   
+    // Token Card
+    tokenCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.token, backgroundColor: withOpacity(colors.token, 0.12), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     tokenLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    tokenIcon: { width: 26, height: 26 },
+    tokenIcon: { width: 26, height: 26, resizeMode: 'contain' },
     tokenTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
     tokenSubtitle: { fontSize: 11, color: colors.textSecondary },
     tokenRightCluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     tokenValue: { fontSize: 22, fontWeight: '700', color: colors.token },
     tokenUnit: { fontSize: 13, color: colors.textSecondary },
-    questsShortcut: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    questsLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    questsTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
-    questsSubtitle: { fontSize: 11, color: colors.textSecondary },
+   
+    // Quest Card
+    questCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.xp, backgroundColor: withOpacity(colors.xp, 0.12), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    questLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    questIcon: { width: 26, height: 26, resizeMode: 'contain' },
+    questTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
+    questSubtitle: { fontSize: 11, color: colors.textSecondary },
 });
