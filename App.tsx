@@ -10,6 +10,7 @@ import { SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
 import AppNavigator from './app/navigation/AppNavigator';
 import AnimatedSplashScreen from './app/screens/AnimatedSplashScreen';
 import { TokenBalanceProvider } from './app/contexts/TokenContext';
+import { AlertProvider } from './app/contexts/AlertContext';
 import { ThemeProvider, useTheme } from './app/contexts/ThemeContext';
 import { COLORS } from './app/constants/colors';
 
@@ -54,14 +55,16 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        {/* Render Splash Screen OR App Navigator, but not both concurrently to prevent load delays */}
-        {!isSplashComplete ? (
-          <View style={styles.root}>
-            <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
-          </View>
-        ) : (
-          <MainApp />
-        )}
+        <AlertProvider>
+          {/* Render Splash Screen OR App Navigator, but not both concurrently to prevent load delays */}
+          {!isSplashComplete ? (
+            <View style={styles.root}>
+              <AnimatedSplashScreen onAnimationComplete={() => setIsSplashComplete(true)} />
+            </View>
+          ) : (
+            <MainApp />
+          )}
+        </AlertProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
