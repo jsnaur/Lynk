@@ -9,21 +9,25 @@ serve(async (req: Request) => {
     const payload = await req.json();
     const { type, table, record, old_record } = payload; 
 
-    // --- CRITICAL ADDITION: PREVENT INFINITE LOOP ---
-    // Only generate a new embedding if the relevant text fields actually changed.
-    if (type === "UPDATE" && old_record) {
+    // --- PREVENT INFINITE LOOP ---
+    // The embedding save triggers another UPDATE webhook. We skip it if text hasn't changed.
+    // If old_record is missing on an UPDATE, skip entirely — safer than risking a loop.
+    if (type === "UPDATE") {
+      if (!old_record) {
+        return new Response("UPDATE missing old_record, skipping to prevent loop", { status: 200 });
+      }
       if (table === "quests") {
-        const textChanged = old_record.category !== record.category || 
-                            old_record.title !== record.title || 
+        const textChanged = old_record.category !== record.category ||
+                            old_record.title !== record.title ||
                             old_record.description !== record.description;
         if (!textChanged) return new Response("Quest text unchanged, skipping", { status: 200 });
       } else if (table === "profiles") {
-        const textChanged = old_record.bio !== record.bio || 
+        const textChanged = old_record.bio !== record.bio ||
                             old_record.major !== record.major;
         if (!textChanged) return new Response("Profile text unchanged, skipping", { status: 200 });
       }
     }
-    // ------------------------------------------------
+    // ------------------------------
 
     // 1. Determine what text to embed based on the table
     let textToEmbed = "";
