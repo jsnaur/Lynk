@@ -1,32 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  PanResponder,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Animated, Dimensions, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 
 import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
+import ExperiencePixelIcon from '../../../assets/ProfileAssets/Experience_Pixel.png';
+import CoinIcon from '../../../assets/PostAssets/Coin_Icon.png';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
@@ -52,6 +41,7 @@ function FieldError({ message, visible, colors, styles }: { message: string; vis
 export default function PostScreen({ navigation }: { navigation: any }) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+  const { alert } = useCustomAlert();
 
   const CATEGORIES: { key: QuestCategory; color: string; bg: string }[] = useMemo(() => [
     { key: 'Favor', color: colors.favor, bg: withOpacity(colors.favor, 0.15) },
@@ -234,12 +224,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
           error.message.toLowerCase().includes('create_quest_with_bounty'));
 
       if (isMissingRpc) {
-        Alert.alert(
+        alert(
           'Database Update Required',
           'Quest posting now requires the latest RPC definitions. Please run the migration in Supabase, then try again.',
         );
       } else {
-        Alert.alert('Error', error.message || 'Failed to publish quest.');
+        alert('Error', error.message || 'Failed to publish quest.');
       }
     } finally {
       setIsPublishing(false);
@@ -250,18 +240,37 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     setSubmitAttempted(true);
     if (!isValid) return;
 
-    Alert.alert(
-      'Publish quest?',
-      `Guild Appraiser: ${appraisal.tier} tier (${appraisal.confidence} confidence)\nCategory: ${category}\nTotal XP: ${GUILD_BASE_XP + appraisal.bonusXp}${
-        tokenBounty > 0 ? `\nTokens: ${tokenBounty}` : ''
-      }`,
+    const publishTable = (
+      <View style={styles.alertTable}>
+        <View style={styles.alertRow}>
+          <Text style={styles.alertRowLabel}>Category</Text>
+          <Text style={styles.alertRowValue}>{category}</Text>
+        </View>
+        <View style={styles.alertRow}>
+          <View style={styles.alertCellLabel}>
+            <Text style={styles.alertRowLabel}>Experience Points:</Text>
+          </View>
+          <Text style={styles.alertRowValue}>{GUILD_BASE_XP + appraisal.bonusXp}</Text>
+          <Image source={ExperiencePixelIcon} style={styles.alertIcon} resizeMode="contain" />
+        </View>
+        <View style={[styles.alertRow, styles.alertRowLast]}>
+          <View style={styles.alertCellLabel}>
+            <Text style={styles.alertRowLabel}>Tokens:</Text>
+          </View>
+          <Text style={styles.alertRowValue}>{tokenBounty}</Text>
+          <Image source={CoinIcon} style={styles.alertIcon} resizeMode="contain" />
+        </View>
+      </View>
+    );
+
+    alert(
+      'Publish this Quest?',
+      undefined,
       [
-        { text: 'Keep editing', style: 'cancel' },
-        {
-          text: 'Publish',
-          onPress: publishToSupabase,
-        },
+        { text: 'Keep Editing', style: 'cancel' },
+        { text: 'Publish', onPress: publishToSupabase },
       ],
+      publishTable,
     );
   }, [isValid, category, appraisal, tokenBounty, publishToSupabase]);
 
@@ -939,6 +948,53 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
+  },
+  alertTable: {
+    width: '100%',
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
+  alertRow: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  alertRowLast: {
+    borderBottomWidth: 0,
+  },
+  alertCellLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    marginRight: 12,
+  },
+  alertIcon: {
+    width: 18,
+    height: 18,
+  },
+  alertRowLabel: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: colors.textPrimary,
+    flexShrink: 1,
+  },
+  alertRowValue: {
+    fontSize: 13,
+    fontFamily: 'SpaceMono-Bold',
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'right',
   },
   appraiserCard: {
     borderRadius: 18,
