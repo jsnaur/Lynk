@@ -30,7 +30,7 @@ const ASSETS = {
     badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
     badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
     badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
-    experience: require("../../../assets/ProfileAssets/Experience_Pixel.png"),
+    experience: require("../../../assets/ProfileAssets/Star_Icon.png"),
     token: require("../../../assets/ProfileAssets/Token_Pixel.png"),
 };
 
