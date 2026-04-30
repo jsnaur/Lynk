@@ -3,16 +3,21 @@ import { supabase } from '../lib/supabase';
 
 export interface NearbyQuest {
   id: string;
+  user_id: string;
   title: string;
   description: string;
+  location: string | null;
   category: string;
   token_bounty: number;
-  bonus_xp: number;         
-  poster_name: string;      
+  bonus_xp: number;
+  status: string;
+  poster_name: string;
   equipped_accessories: Record<string, string>;
   created_at: string;
   distance_km: number;
-  ai_score?: number; // Added to track algorithm confidence if needed
+  max_participants: number;
+  is_auto_accept: boolean;
+  ai_score: number;
 }
 
 // REMOVED: GEMINI_API_KEY and heuristicSort (now handled instantly by DB)

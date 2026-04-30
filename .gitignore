@@ -13,3 +13,15 @@ web-build/
 .env.*
 !.env.example
 agents.md
+
+# Claude Code
+CLAUDE.md
+.claude/
+
+# Playwright
+playwright.config.ts
+playwright.config.js
+test-results/
+playwright-report/
+.playwright/
+tests/e2e/

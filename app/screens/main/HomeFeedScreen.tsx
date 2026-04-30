@@ -16,7 +16,7 @@ import * as Location from 'expo-location';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
 import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
-import { FEED_FILTERS, FeedCategory, FeedQuest } from '../../constants/categories';
+import { FEED_FILTERS, FeedCategory } from '../../constants/categories';
 import { supabase } from '../../lib/supabase';
 import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
 import NotificationSheet from './NotificationSheet';
@@ -162,14 +162,21 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
             const finalFormatted = aiSortedQuests.map((q: any) => ({
                 id: q.id,
+                user_id: q.user_id,
                 category: q.category.toLowerCase() as FeedCategory,
                 ago: timeAgo(q.created_at),
                 title: q.title,
+                description: q.description,
                 preview: q.description,
                 posterName: q.poster_name || 'Anonymous',
                 posterAccessories: q.equipped_accessories || {},
-                xp: 50 + (q.bonus_xp || 0), 
+                xp: 50 + (q.bonus_xp || 0),
                 token: q.token_bounty,
+                token_bounty: q.token_bounty,
+                bonus_xp: q.bonus_xp || 0,
+                status: q.status,
+                max_participants: q.max_participants,
+                is_auto_accept: q.is_auto_accept,
             }));
 
             CACHED_QUESTS = finalFormatted;
