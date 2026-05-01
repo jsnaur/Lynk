@@ -8,8 +8,8 @@ import * as Location from 'expo-location';
 import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
-import ExperiencePixelIcon from '../../../assets/ProfileAssets/Experience_Pixel.png';
-import CoinIcon from '../../../assets/PostAssets/Coin_Icon.png';
+const ExperiencePixelIcon = require('../../../assets/ProfileAssets/Experience_Pixel.png');
+const CoinIcon = require('../../../assets/PostAssets/Coin_Icon.png');
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
@@ -243,7 +243,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     const publishTable = (
       <View style={styles.alertTable}>
         <View style={styles.alertRow}>
-          <Text style={styles.alertRowLabel}>Category</Text>
+          <Text style={styles.alertRowLabel}>Category:</Text>
           <Text style={styles.alertRowValue}>{category}</Text>
         </View>
         <View style={styles.alertRow}>
@@ -949,53 +949,6 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: 'DMSans-Regular',
   },
-  alertTable: {
-    width: '100%',
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-  },
-  alertRow: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  alertRowLast: {
-    borderBottomWidth: 0,
-  },
-  alertCellLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    marginRight: 12,
-  },
-  alertIcon: {
-    width: 18,
-    height: 18,
-  },
-  alertRowLabel: {
-    fontSize: 13,
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '600',
-    color: colors.textPrimary,
-    flexShrink: 1,
-  },
-  alertRowValue: {
-    fontSize: 13,
-    fontFamily: 'SpaceMono-Bold',
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'right',
-  },
   appraiserCard: {
     borderRadius: 18,
     borderWidth: 1,
@@ -1074,5 +1027,35 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     fontFamily: 'DMSans-Regular',
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+   alertTable: {
+    width: '100%',
+    gap: 10,
+  },
+  alertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  alertRowLast: {
+    marginTop: 2,
+  },
+  alertCellLabel: {
+    flex: 1,
+  },
+  alertRowLabel: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  alertRowValue: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Regular',
+    color: colors.textPrimary,
+  },
+  alertIcon: {
+    width: 18,
+    height: 18,
   },
 });

@@ -52,7 +52,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
               <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>{config?.message}</Text>
             )}
 
-            {!!config?.content && <View style={styles.modalCustomContent}>{config.content}</View>}
+            {!!config?.content && <View style={styles.modalContentBody}>{config.content}</View>}
             
             <View style={styles.modalButtonRow}>
               {config?.buttons && config.buttons.length > 0 ? (
@@ -139,9 +139,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 20,
   },
-  modalCustomContent: {
+  modalContentBody: {
     width: '100%',
-    marginBottom: 18,
+    marginBottom: 24,
   },
   modalButtonRow: {
     flexDirection: 'row',
