@@ -96,11 +96,13 @@ function SwipeReplyCommentRow({
   onReply,
   onOpenActions,
   parse,
+  onImagePress,
 }: {
   comment: UIComment;
   onReply: (comment: UIComment) => void;
   onOpenActions: (comment: UIComment) => void;
   parse: (text: string) => { repliedToName: string; replyPreview: string; body: string };
+  onImagePress: (url: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -181,7 +183,11 @@ function SwipeReplyCommentRow({
           <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
         </Pressable>
 
-        <View style={styles.commentContent}>
+        <Pressable 
+          style={styles.commentContent}
+          onLongPress={() => onOpenActions(comment)}
+          delayLongPress={250}
+        >
           <View style={styles.rowBetween}>
             <Pressable onPress={() => onOpenActions(comment)} hitSlop={8}>
               <Text style={styles.commentAuthor}>{comment.author}</Text>
@@ -206,15 +212,17 @@ function SwipeReplyCommentRow({
           )}
 
           {comment.image_url && (
-            <Image 
-              source={{ uri: comment.image_url }} 
-              style={styles.commentImage} 
-              resizeMode="cover"
-            />
+            <Pressable onPress={() => onImagePress(comment.image_url!)}>
+              <Image
+                source={{ uri: comment.image_url }}
+                style={styles.commentImage}
+                resizeMode="contain"
+              />
+            </Pressable>
           )}
 
           <Text style={styles.commentText}>{parsed.body}</Text>
-        </View>
+        </Pressable>
       </Animated.View>
     </View>
   );
@@ -376,6 +384,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
   const [applicantsExpanded, setApplicantsExpanded] = useState(true);
+
+  // ── Fullscreen image viewer ──────────────────────────────────────────────
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const [viewingArchive, setViewingArchiveState] = useState(false);
   const viewingArchiveRef = useRef(false);
@@ -552,12 +563,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.2,
-      base64: true, // Added base64 extraction
+      base64: true,
     });
 
     if (!result.canceled) {
       setSelectedImage(result.assets[0].uri);
-      setImageBase64(result.assets[0].base64 || null); // Save base64 string
+      setImageBase64(result.assets[0].base64 || null);
     }
   };
 
@@ -565,7 +576,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     const fileName = `${Date.now()}-${currentUserId}.jpg`;
     const filePath = `comment_photos/${fileName}`;
 
-    // Upload directly using base64 decode bypasses the React Native fetch bug
     const { data, error } = await supabase.storage
       .from('quest-attachments') 
       .upload(filePath, decode(base64Str), {
@@ -739,7 +749,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         
       if (error) throw error;
 
-      // Clear all states after successful send
       setMessage('');
       setSelectedImage(null);
       setImageBase64(null); 
@@ -750,6 +759,40 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteComment = () => {
+    if (!selectedComment || selectedComment.userId !== currentUserId) return;
+
+    Alert.alert(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const { error } = await supabase
+                .from('comments')
+                .delete()
+                .eq('id', selectedComment.id);
+
+              if (error) throw error;
+
+              setComments((prev) => prev.filter((c) => c.id !== selectedComment.id));
+              closeCommentActions();
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to delete comment.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const beginReply = (comment: UIComment) => {
@@ -1131,6 +1174,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   onReply={beginReply}
                   onOpenActions={openCommentActions}
                   parse={parseReplyEncodedContent}
+                  onImagePress={setFullscreenImage}
                 />
               ))}
             </>
@@ -1197,6 +1241,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </View>
         )}
 
+        {/* ── Comment Actions Modal ────────────────────────────────────────── */}
         <Modal visible={actionsVisible} animationType="fade" transparent onRequestClose={closeCommentActions}>
           <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
             <Pressable style={styles.actionBubble} onPress={() => {}}>
@@ -1204,6 +1249,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 <Ionicons name="person-circle-outline" size={18} color={colors.favor} />
                 <Text style={styles.actionText}>View Profile</Text>
               </Pressable>
+              
+              {selectedComment?.userId === currentUserId && (
+                <>
+                  <View style={styles.actionDivider} />
+                  <Pressable style={styles.actionRow} onPress={handleDeleteComment}>
+                    <Ionicons name="trash-outline" size={18} color={colors.error || '#FF3B30'} />
+                    <Text style={[styles.actionText, { color: colors.error || '#FF3B30' }]}>Delete Comment</Text>
+                  </Pressable>
+                </>
+              )}
+
               <View style={styles.actionDivider} />
               <View style={styles.actionRowDisabled}>
                 <Ionicons name="flag-outline" size={18} color={colors.textSecondary} />
@@ -1213,6 +1269,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </Pressable>
         </Modal>
 
+        {/* ── Profile Preview Modal ────────────────────────────────────────── */}
         <Modal visible={profilePreviewVisible} animationType="slide" transparent onRequestClose={closeProfilePreview}>
           <Pressable style={styles.previewBackdrop} onPress={closeProfilePreview}>
             <Pressable style={styles.previewCard} onPress={() => {}}>
@@ -1300,6 +1357,37 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   <Text style={styles.previewStatLabel}>Total EXP</Text>
                 </View>
               </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* ── Fullscreen Image Viewer Modal ────────────────────────────────── */}
+        <Modal
+          visible={!!fullscreenImage}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setFullscreenImage(null)}
+          statusBarTranslucent
+        >
+          <Pressable
+            style={styles.fullscreenBackdrop}
+            onPress={() => setFullscreenImage(null)}
+          >
+            {/* Inner pressable prevents backdrop tap from firing when tapping the image */}
+            <Pressable onPress={() => {}}>
+              <Image
+                source={{ uri: fullscreenImage! }}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={() => setFullscreenImage(null)}
+              style={styles.fullscreenCloseBtn}
+              hitSlop={16}
+            >
+              <Ionicons name="close" size={22} color="#fff" />
             </Pressable>
           </Pressable>
         </Modal>
@@ -1667,12 +1755,13 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 13,
   },
+  // ── FIXED: use aspectRatio + contain so the image is never cropped ──────
   commentImage: {
-    width: '100%', 
-    height: 180, 
-    borderRadius: 10, 
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 10,
     marginVertical: 8,
-    backgroundColor: '#1E1E1E'
+    backgroundColor: COLORS.surface2,
   },
   lockedCommentsBox: {
     marginHorizontal: 16,
@@ -2014,5 +2103,24 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 9,
     fontWeight: '700',
+  },
+  // ── Fullscreen image viewer styles ───────────────────────────────────────
+  fullscreenBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenImage: {
+    width: 360,
+    height: 360,
+  },
+  fullscreenCloseBtn: {
+    position: 'absolute',
+    top: 52,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    padding: 8,
   },
 });
