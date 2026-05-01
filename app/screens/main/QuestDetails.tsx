@@ -33,6 +33,7 @@ import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -351,6 +352,7 @@ function LayeredAvatar({ accessories, size, scale = 1.35, translateY = 2 }: Laye
 
 export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const { colors } = useTheme();
+  const { alert } = useCustomAlert();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const CATEGORY_COLORS: Record<FeedCategory, string> = useMemo(() => ({
@@ -592,14 +594,36 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   };
 
   const handleDeleteQuest = () => {
-    Alert.alert(
+    const deleteTable = (
+      <View style={styles.alertTable}>
+        <View style={styles.alertRow}>
+          <Text style={styles.alertRowLabel}>Category:</Text>
+          <Text style={styles.alertRowValue}>{category.toUpperCase()}</Text>
+        </View>
+        <View style={styles.alertRow}>
+          <View style={styles.alertCellLabel}>
+            <Text style={styles.alertRowLabel}>Experience Points:</Text>
+          </View>
+          <Text style={styles.alertRowValue}>{xp}</Text>
+          <Image source={STAR_ICON} style={styles.alertIcon} resizeMode="contain" />
+        </View>
+        <View style={[styles.alertRow, styles.alertRowLast]}>
+          <View style={styles.alertCellLabel}>
+            <Text style={styles.alertRowLabel}>Token Refund:</Text>
+          </View>
+          <Text style={styles.alertRowValue}>{questData?.token_bounty ?? token}</Text>
+          <Image source={COIN_ICON} style={styles.alertIcon} resizeMode="contain" />
+        </View>
+      </View>
+    );
+
+    alert(
       "Delete Quest",
-      `Are you sure you want to delete this quest? \n\n${questData?.token_bounty} Tokens will be refunded to your account.`,
+      "This quest will be permanently deleted and tokens will be refunded to your account.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
-          style: "destructive",
           onPress: async () => {
             if (!questData?.id) return;
             try {
@@ -617,7 +641,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             }
           }
         }
-      ]
+      ],
+      deleteTable,
     );
   };
 
@@ -764,14 +789,28 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const handleDeleteComment = () => {
     if (!selectedComment || selectedComment.userId !== currentUserId) return;
 
-    Alert.alert(
+    const deleteCommentTable = (
+      <View style={styles.alertTable}>
+        <View style={styles.alertRow}>
+          <Text style={styles.alertRowLabel}>Author:</Text>
+          <Text style={styles.alertRowValue}>{selectedComment.author}</Text>
+        </View>
+        <View style={[styles.alertRow, styles.alertRowLast]}>
+          <View style={styles.alertCellLabel}>
+            <Text style={styles.alertRowLabel}>Posted:</Text>
+          </View>
+          <Text style={styles.alertRowValue}>{selectedComment.time}</Text>
+        </View>
+      </View>
+    );
+
+    alert(
       "Delete Comment",
-      "Are you sure you want to delete this comment?",
+      "This comment will be permanently deleted.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
-          style: "destructive",
           onPress: async () => {
             try {
               setLoading(true);
@@ -789,9 +828,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
             } finally {
               setLoading(false);
             }
-          },
-        },
-      ]
+          }
+        }
+      ],
+      deleteCommentTable,
     );
   };
 
@@ -2122,5 +2162,36 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: 8,
+  },
+  // ── Alert Table Styles ────────────────────────────────────────────────
+  alertTable: {
+    width: '100%',
+    gap: 10,
+  },
+  alertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  alertRowLast: {
+    marginTop: 2,
+  },
+  alertCellLabel: {
+    flex: 1,
+  },
+  alertRowLabel: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Bold',
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  alertRowValue: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Regular',
+    color: COLORS.textPrimary,
+  },
+  alertIcon: {
+    width: 18,
+    height: 18,
   },
 });
