@@ -43,7 +43,7 @@ Follow these steps to get a local copy up and running.
 
 ## Prerequisites
 
-| Requirement | Tool | Details |
+| Requirements | Tools | Details |
 |-------------|------|----------|
 | Node.js | [Node.js v18+](https://nodejs.org/) | JavaScript runtime required for Expo and React Native |
 | Package Manager | npm or yarn | Comes with Node.js; yarn is optional |
