@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { darkColors } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import NotificationRow from '../../components/rows/NotificationRow';
 
@@ -56,6 +57,7 @@ export default function NotificationSheet({
     const [refreshing, setRefreshing] = useState(false);
     const [errorText, setErrorText] = useState<string | null>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const { alert } = useCustomAlert();
 
     // Animation Values
     const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -177,14 +179,13 @@ export default function NotificationSheet({
     const handleClearAll = async () => {
         if (!currentUserId || notifications.length === 0) return;
 
-        Alert.alert(
+        alert(
             'Clear notifications',
             'This will remove all notifications from your inbox.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Clear',
-                    style: 'destructive',
                     onPress: async () => {
                         const prev = notifications;
                         setNotifications([]);
