@@ -19,9 +19,22 @@ AGENTS.md
 CLAUDE.md
 .claude/
 
-# GitNexus
+# GitNexus & Copilot Linking
 .gitnexus/
 .ladybug/
+gitnexus.log
+ladybug.log
+.gitnexus-cache/
+.gitnexus-index/
+# Promptscript / Skill files
+*.prs
+promptscript.json
+
+# AI Instructions (Commonly contains GitNexus tool references)
+.github/copilot-instructions.md
+.copilot-instructions.md
+.cursorrules
+.windsurfrules
 
 # Playwright
 playwright.config.ts

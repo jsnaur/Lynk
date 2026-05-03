@@ -16,6 +16,7 @@ import * as Location from 'expo-location';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import PostCard from '../../components/cards/PostCard';
 import PostCardSkeleton from '../../components/cards/PostCardSkeleton';
+import DailyRewardGiftIcon from '../../components/buttons/DailyRewardGiftIcon';
 import { FEED_FILTERS, FeedCategory } from '../../constants/categories';
 import { supabase } from '../../lib/supabase';
 import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
@@ -317,6 +318,10 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                     <Text style={styles.logo}>LYNK</Text>
 
                     <View style={styles.headerActions}>
+                        <DailyRewardGiftIcon
+                            isClaimable={!!dailyRewardClaimable}
+                            onPress={onOpenDailyReward}
+                        />
                         <Pressable
                             style={styles.notificationWrapper}
                             onPress={() => setIsNotifOpen(true)}
@@ -325,10 +330,10 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                         >
                             <Ionicons name="notifications-outline" size={26} color={colors.textPrimary} />
 
-                            {(unreadNotifCount + (dailyRewardClaimable ? 1 : 0)) > 0 && (
+                            {unreadNotifCount > 0 && (
                                 <View style={styles.notificationBadge}>
                                     <Text style={styles.notificationBadgeText}>
-                                        {(unreadNotifCount + (dailyRewardClaimable ? 1 : 0)) > 99 ? '99+' : (unreadNotifCount + (dailyRewardClaimable ? 1 : 0))}
+                                        {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
                                     </Text>
                                 </View>
                             )}
