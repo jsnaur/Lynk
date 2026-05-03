@@ -21,13 +21,14 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
   const tabBeforePostRef = useRef<MainTab>('Feed');
   
   // Daily Reward Logic
-  const { 
-    shouldShowSheet, 
-    currentDay, 
-    alreadyClaimed, 
-    checkDailyReward, 
-    claimReward, 
-    dismissSheet 
+  const {
+    shouldShowSheet,
+    currentDay,
+    alreadyClaimed,
+    checkDailyReward,
+    claimReward,
+    dismissSheet,
+    openSheet,
   } = useDailyReward();
 
   const handleTabPress = useCallback((tab: MainTab) => {
@@ -72,7 +73,14 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
       case 'Quests': return <QuestScreen navigation={navigation} onTabPress={handleTabPress} />;
       case 'Post': return <PostScreen navigation={postNavigation} />;
       case 'Shop': return <ShopScreen onTabPress={handleTabPress} />;
-      default: return <HomeFeedScreen navigation={navigation} onTabPress={handleTabPress} />;
+      default: return (
+        <HomeFeedScreen
+          navigation={navigation}
+          onTabPress={handleTabPress}
+          dailyRewardClaimable={!alreadyClaimed}
+          onOpenDailyReward={openSheet}
+        />
+      );
     }
   };
 

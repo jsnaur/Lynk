@@ -102,6 +102,13 @@ export function useDailyReward() {
     void markDismissedToday();
   }, [markDismissedToday]);
 
+  // Manual entry point — bypasses the auto-popup suppression so the user can
+  // tap a button and reopen the sheet to claim later in the day.
+  const openSheet = useCallback(async () => {
+    await checkDailyReward();
+    setShouldShowSheet(true);
+  }, [checkDailyReward]);
+
   return {
     isLoading,
     shouldShowSheet,
@@ -111,5 +118,6 @@ export function useDailyReward() {
     checkDailyReward,
     claimReward,
     dismissSheet,
+    openSheet,
   };
 }

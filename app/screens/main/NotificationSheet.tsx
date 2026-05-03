@@ -34,13 +34,19 @@ type NotificationSheetProps = {
     onClose: () => void;
     onNotificationPress?: (notification: Notification) => void;
     onUnreadCountHint?: (unreadCount: number) => void;
+    dailyRewardClaimable?: boolean;
+    onDailyRewardPress?: () => void;
 };
+
+const DAILY_REWARD_NOTIF_ID = 'daily-reward-synthetic';
 
 export default function NotificationSheet({
     visible,
     onClose,
     onNotificationPress,
     onUnreadCountHint,
+    dailyRewardClaimable,
+    onDailyRewardPress,
 }: NotificationSheetProps) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
@@ -113,8 +119,13 @@ export default function NotificationSheet({
     };
 
     const handlePress = async (item: Notification) => {
+        if (item.id === DAILY_REWARD_NOTIF_ID) {
+            onDailyRewardPress?.();
+            return;
+        }
+
         // 1. Optimistic UI update
-        setNotifications(prev => 
+        setNotifications(prev =>
             prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
         );
 
@@ -131,6 +142,7 @@ export default function NotificationSheet({
     };
 
     const handleDeleteOne = async (item: Notification) => {
+        if (item.id === DAILY_REWARD_NOTIF_ID) return;
         if (!currentUserId) return;
 
         Alert.alert('Delete Notification', 'Remove this notification?', [
@@ -211,6 +223,19 @@ export default function NotificationSheet({
         return `${Math.floor(diff / 1440)}d ago`;
     };
 
+    const displayNotifications = useMemo<Notification[]>(() => {
+        if (!dailyRewardClaimable) return notifications;
+        const synthetic: Notification = {
+            id: DAILY_REWARD_NOTIF_ID,
+            created_at: new Date().toISOString(),
+            title: 'Daily Reward Available',
+            description: 'Tap to claim your daily login reward.',
+            is_read: false,
+            type: 'daily_reward',
+        };
+        return [synthetic, ...notifications];
+    }, [dailyRewardClaimable, notifications]);
+
     const renderItem = ({ item }: { item: Notification }) => (
         <NotificationRow
             type={item.type}
@@ -250,7 +275,7 @@ export default function NotificationSheet({
                         <ActivityIndicator style={{ padding: 40 }} color={colors.favor} />
                     ) : (
                         <FlatList
-                            data={notifications}
+                            data={displayNotifications}
                             keyExtractor={(item) => item.id}
                             renderItem={renderItem}
                             contentContainerStyle={styles.listContent}
