@@ -25,7 +25,9 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
-    navigation?: any; 
+    navigation?: any;
+    dailyRewardClaimable?: boolean;
+    onOpenDailyReward?: () => void;
 };
 
 function withAlpha(hexColor: string, alpha: number) {
@@ -71,7 +73,7 @@ let CACHED_QUESTS: any[] = [];
 let CACHED_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {};
 let HAS_FETCHED_INITIALLY = false;
 
-export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScreenProps) {
+export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClaimable, onOpenDailyReward }: HomeFeedScreenProps) {
     const { theme, colors } = useTheme();
     const styles = useMemo(() => getStyles(colors), [colors]);
 
@@ -314,22 +316,24 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
 
                     <Text style={styles.logo}>LYNK</Text>
 
-                    <Pressable
-                        style={styles.notificationWrapper}
-                        onPress={() => setIsNotifOpen(true)}
-                        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-                        accessibilityRole="button"
-                    >
-                        <Ionicons name="notifications-outline" size={26} color={colors.textPrimary} />
-                        
-                        {unreadNotifCount > 0 && (
-                            <View style={styles.notificationBadge}>
-                                <Text style={styles.notificationBadgeText}>
-                                    {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
-                                </Text>
-                            </View>
-                        )}
-                    </Pressable>
+                    <View style={styles.headerActions}>
+                        <Pressable
+                            style={styles.notificationWrapper}
+                            onPress={() => setIsNotifOpen(true)}
+                            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                            accessibilityRole="button"
+                        >
+                            <Ionicons name="notifications-outline" size={26} color={colors.textPrimary} />
+
+                            {(unreadNotifCount + (dailyRewardClaimable ? 1 : 0)) > 0 && (
+                                <View style={styles.notificationBadge}>
+                                    <Text style={styles.notificationBadgeText}>
+                                        {(unreadNotifCount + (dailyRewardClaimable ? 1 : 0)) > 99 ? '99+' : (unreadNotifCount + (dailyRewardClaimable ? 1 : 0))}
+                                    </Text>
+                                </View>
+                            )}
+                        </Pressable>
+                    </View>
                 </View>
 
                 <View style={styles.filterBar}>
@@ -413,13 +417,18 @@ export default function HomeFeedScreen({ onTabPress, navigation }: HomeFeedScree
             <BottomNav activeTab="Feed" onTabPress={handleBottomNavPress} />
             
             {isNotifOpen && (
-                <NotificationSheet 
-                    visible={isNotifOpen} 
+                <NotificationSheet
+                    visible={isNotifOpen}
                     onClose={() => {
                         setIsNotifOpen(false);
                         fetchUnreadNotifCount();
-                    }} 
+                    }}
                     onUnreadCountHint={(count) => setUnreadNotifCount(count)}
+                    dailyRewardClaimable={!!dailyRewardClaimable}
+                    onDailyRewardPress={() => {
+                        setIsNotifOpen(false);
+                        onOpenDailyReward?.();
+                    }}
                     onNotificationPress={async (item) => {
                         try {
                             setIsNotifOpen(false);
@@ -517,4 +526,5 @@ const getStyles = (colors: any) => StyleSheet.create({
     notificationWrapper: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: colors.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.bg, paddingHorizontal: 4, zIndex: 2 },
     notificationBadgeText: { color: colors.textPrimary, fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

@@ -47,6 +47,8 @@ const getNotificationIcon = (
             return { name: 'checkmark-circle', color: COLORS.favor };
         case 'new_comment':
             return { name: 'chatbubble', color: COLORS.favor };
+        case 'daily_reward':
+            return { name: 'gift', color: COLORS.xp };
         default:
             return { name: 'notifications', color: COLORS.textSecondary };
     }
@@ -69,6 +71,8 @@ const getBackgroundColor = (
         case 'applicant_accepted':
         case 'new_comment':
             return withOpacity(COLORS.favor, 0.12);
+        case 'daily_reward':
+            return withOpacity(COLORS.xp, 0.12);
         default:
             return withOpacity(COLORS.surface2, 0.5);
     }
