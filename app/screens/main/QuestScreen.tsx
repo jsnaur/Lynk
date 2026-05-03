@@ -12,11 +12,12 @@ import { useTokenBalance } from '../../contexts/TokenContext';
 import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
+import { getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
 type QuestItem = {
-  id: string; title: string; role: string; status: QuestStatus; timeLabel?: string; historyTag?: 'Posted' | 'Accepted'; accent: string; statusColor: string; cardTint: string; isActionable?: boolean; xp?: number; token?: number; acceptorName?: string;
+  id: string; title: string; role: string; status: QuestStatus; timeLabel?: string; historyTag?: 'Posted' | 'Accepted'; accent: string; statusColor: string; cardTint: string; isActionable?: boolean; xp?: number; token?: number; acceptorName?: string; moderation_status?: string; moderation_reason?: string;
 };
 
 type HistoryFilter = 'All' | 'Posted' | 'Accepted';
@@ -35,6 +36,10 @@ const HISTORY_FILTERS: HistoryFilter[] = ['All', 'Posted', 'Accepted'];
 function QuestCard({ item, onPress, onResolve, variant = 'active' }: { item: QuestItem; onPress?: () => void; onResolve?: () => void; variant?: 'active' | 'history'; }) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+
+  const modUI = item.moderation_status && item.moderation_status !== 'approved'
+    ? getModerationUI(item.moderation_status, item.moderation_reason)
+    : null;
 
   return (
     <Pressable
@@ -56,6 +61,11 @@ function QuestCard({ item, onPress, onResolve, variant = 'active' }: { item: Que
           ) : (
             <Text style={styles.metaLine} numberOfLines={1}>
               <Text style={styles.metaRole}>{item.role}</Text><Text style={styles.metaSeparator}> • </Text><Text style={[styles.metaStatus, { color: item.statusColor }]}>{item.status}</Text>
+            </Text>
+          )}
+          {modUI && !!modUI.label && (
+            <Text style={[styles.moderationLabel, { color: modUI.color }]} numberOfLines={1}>
+              {modUI.label}{modUI.message ? ` · ${modUI.message}` : ''}
             </Text>
           )}
         </View>
@@ -93,11 +103,14 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
   const [historyQuests, setHistoryQuests] = useState<QuestItem[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const moderationUnsubsRef = useRef<Array<() => void>>([]);
 
   const fetchQuests = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setCurrentUserId(user.id);
 
       const { data: mainQuests } = await supabase.from('quests').select(`*, acceptor:profiles!quests_accepted_by_fkey(display_name, first_name), participants:quest_participants(user_id, status)`).or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`).order('created_at', { ascending: false });
       const { data: partData } = await supabase.from('quest_participants').select('quest_id').eq('user_id', user.id).in('status', ['accepted', 'completed', 'failed', 'resolved']);
@@ -149,7 +162,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
             role = 'You accepted'; statusLabel = 'In progress'; statusColor = colors.xp; cardTint = 'rgba(192,132,252,0.08)'; isActionable = false;
           }
           if (!role) return;
-          activeList.push({ id: q.id, title: q.title, role, status: statusLabel as QuestStatus, accent, statusColor, cardTint, isActionable, xp: q.bonus_xp || 0, token: q.token_bounty || 0, acceptorName: fetchedAcceptorName });
+          activeList.push({ id: q.id, title: q.title, role, status: statusLabel as QuestStatus, accent, statusColor, cardTint, isActionable, xp: q.bonus_xp || 0, token: q.token_bounty || 0, acceptorName: fetchedAcceptorName, moderation_status: isPoster ? q.moderation_status : undefined, moderation_reason: isPoster ? q.moderation_reason : undefined });
         }
       });
       setActiveQuests(activeList); setHistoryQuests(historyList);
@@ -162,6 +175,31 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
     const unsubscribe = navigation?.addListener('focus', () => fetchQuests());
     return unsubscribe;
   }, [fetchQuests, navigation]);
+
+  useEffect(() => {
+    moderationUnsubsRef.current.forEach((fn) => fn());
+    moderationUnsubsRef.current = [];
+
+    if (!currentUserId) return;
+
+    activeQuests.forEach((q) => {
+      if (q.moderation_status === 'pending') {
+        const unsub = subscribeModerationStatus('quests', q.id, (status, reason) => {
+          setActiveQuests((prev) =>
+            prev.map((item) =>
+              item.id === q.id ? { ...item, moderation_status: status, moderation_reason: reason ?? undefined } : item,
+            ),
+          );
+        });
+        moderationUnsubsRef.current.push(unsub);
+      }
+    });
+
+    return () => {
+      moderationUnsubsRef.current.forEach((fn) => fn());
+      moderationUnsubsRef.current = [];
+    };
+  }, [activeQuests, currentUserId]);
 
   const quests = useMemo(() => (activeSection === 'Active' ? activeQuests : historyQuests), [activeSection, activeQuests, historyQuests]);
   const filteredHistoryQuests = useMemo(() => (activeSection !== 'History' || historyFilter === 'All' ? quests : quests.filter((q) => q.historyTag === historyFilter)), [activeSection, historyFilter, quests]);
@@ -261,4 +299,5 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   resolveButton: { minHeight: 28, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.item, alignItems: 'center', justifyContent: 'center' },
   resolveButtonPressed: { opacity: 0.85 },
   resolveText: { color: '#1A1A1F', fontSize: 12, lineHeight: 14, fontWeight: '800' },
+  moderationLabel: { fontSize: 11, fontWeight: '700', lineHeight: 14 },
 });

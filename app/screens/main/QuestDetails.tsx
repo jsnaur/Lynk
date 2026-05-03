@@ -34,6 +34,7 @@ import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import { preCheckContent, getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -559,6 +560,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     };
   }, [quest?.id, fetchQuestData]);
 
+  useEffect(() => {
+    if (!currentUserId || !questData?.id || currentUserId !== questData?.user_id) return;
+    if (questData?.moderation_status !== 'pending') return;
+
+    const unsubscribe = subscribeModerationStatus('quests', questData.id, (status, reason) => {
+      setQuestData((prev: any) => ({ ...prev, moderation_status: status, moderation_reason: reason }));
+    });
+
+    return unsubscribe;
+  }, [currentUserId, questData?.id, questData?.user_id, questData?.moderation_status]);
+
   // Image Picking & Uploading Logic (BASE64 Fix applied)
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -747,6 +759,15 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
     setLoading(true);
     try {
+      if (trimmed) {
+        const moderationCheck = await preCheckContent(trimmed);
+        if (!moderationCheck.allowed) {
+          setLoading(false);
+          Alert.alert('Content Flagged', moderationCheck.reason || 'Your comment was flagged by our moderation system.');
+          return;
+        }
+      }
+
       let uploadedUrl = null;
       if (selectedImage && imageBase64) {
         uploadedUrl = await uploadImage(imageBase64);
@@ -1040,6 +1061,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           showsVerticalScrollIndicator={false}
         >
           
+          {isPoster && (questData?.moderation_status === 'pending' || questData?.moderation_status === 'flagged') && (() => {
+            const modUI = getModerationUI(questData.moderation_status, questData.moderation_reason);
+            if (!modUI.label) return null;
+            return (
+              <View style={[styles.moderationBanner, { backgroundColor: modUI.color + '22', borderColor: modUI.color }]}>
+                <Text style={[styles.moderationBannerLabel, { color: modUI.color }]}>{modUI.label}</Text>
+                {!!modUI.message && <Text style={[styles.moderationBannerMessage, { color: modUI.color }]}>{modUI.message}</Text>}
+              </View>
+            );
+          })()}
+
           {shouldShowCompactCard ? (
             <CompactQuestCard
               quest={questData || quest}
@@ -2162,6 +2194,22 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: 8,
+  },
+  moderationBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 4,
+  },
+  moderationBannerLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  moderationBannerMessage: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   // ── Alert Table Styles ────────────────────────────────────────────────
   alertTable: {

@@ -6,10 +6,13 @@ import { withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { useTheme } from '../../contexts/ThemeContext';
+import { getModerationUI } from '../../services/ModeratorService';
 
 type PostCardProps = {
     quest: FeedQuest;
     onPress?: () => void;
+    moderationStatus?: string;
+    moderationReason?: string;
 };
 
 function getAccessoryById(accessoryId?: string | null) {
@@ -33,7 +36,7 @@ function hasPosterAccessories(
     return value != null && typeof value === 'object' && Object.keys(value).length > 0;
 }
 
-export default function PostCard({ quest, onPress }: PostCardProps) {
+export default function PostCard({ quest, onPress, moderationStatus, moderationReason }: PostCardProps) {
     const { colors, theme } = useTheme();
     const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
@@ -51,6 +54,10 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
 
     const STAR = require('../../../assets/PostAssets/Star_Icon.png');
     const COIN = require('../../../assets/PostAssets/Coin_Icon.png');
+
+    const modUI = moderationStatus && moderationStatus !== 'approved'
+        ? getModerationUI(moderationStatus, moderationReason)
+        : null;
 
     return (
         <Pressable style={styles.card} onPress={onPress}>
@@ -104,6 +111,12 @@ export default function PostCard({ quest, onPress }: PostCardProps) {
                     </View>
                 </View>
             </View>
+            {modUI && !!modUI.label && (
+                <View style={[styles.moderationBanner, { backgroundColor: modUI.color + '22', borderColor: modUI.color }]}>
+                    <Text style={[styles.moderationLabel, { color: modUI.color }]}>{modUI.label}</Text>
+                    {!!modUI.message && <Text style={[styles.moderationMessage, { color: modUI.color }]}>{modUI.message}</Text>}
+                </View>
+            )}
         </Pressable>
     );
 }
@@ -140,4 +153,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     rewardPill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 3 },
     iconImage: { width: 14, height: 14, resizeMode: 'contain' },
     rewardValue: { fontSize: 11, fontWeight: '700', fontFamily: FONTS.body },
+    moderationBanner: { paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1, gap: 2 },
+    moderationLabel: { fontSize: 11, fontWeight: '700', fontFamily: FONTS.body },
+    moderationMessage: { fontSize: 11, fontFamily: FONTS.body },
 });

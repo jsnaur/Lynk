@@ -13,10 +13,15 @@ web-build/
 .env.*
 !.env.example
 agents.md
+AGENTS.md
 
 # Claude Code
 CLAUDE.md
 .claude/
+
+# GitNexus
+.gitnexus/
+.ladybug/
 
 # Playwright
 playwright.config.ts

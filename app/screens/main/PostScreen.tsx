@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, Dimensions, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 
@@ -14,6 +14,7 @@ import { useTokenBalance } from '../../contexts/TokenContext';
 import { withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
+import { preCheckContent } from '../../services/ModeratorService';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 
@@ -236,9 +237,18 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     }
   };
 
-  const onPublish = useCallback(() => {
+  const onPublish = useCallback(async () => {
     setSubmitAttempted(true);
     if (!isValid) return;
+
+    setIsPublishing(true);
+    const moderationCheck = await preCheckContent(`${titleTrim} ${descTrim}`);
+    if (!moderationCheck.allowed) {
+      setIsPublishing(false);
+      Alert.alert('Content Flagged', moderationCheck.reason || 'Your quest content was flagged by our moderation system.');
+      return;
+    }
+    setIsPublishing(false);
 
     const publishTable = (
       <View style={styles.alertTable}>
@@ -272,7 +282,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       ],
       publishTable,
     );
-  }, [isValid, category, appraisal, tokenBounty, publishToSupabase]);
+  }, [isValid, category, appraisal, tokenBounty, publishToSupabase, titleTrim, descTrim]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
