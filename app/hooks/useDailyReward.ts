@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useTokenBalance } from '../contexts/TokenContext';
 
@@ -8,7 +9,9 @@ export type ClaimResult = {
   xp_awarded: number;
 };
 
-type ClaimError = 'already_claimed' | 'not_authenticated' | 'rpc_error' | 'parse_error';
+const DISMISSED_KEY = 'dailyReward.dismissedDateUTC';
+
+const getTodayUTC = () => new Date().toISOString().slice(0, 10);
 
 export function useDailyReward() {
   const { refreshBalance } = useTokenBalance();
@@ -35,16 +38,11 @@ export function useDailyReward() {
       const lastClaim = data.last_reward_claimed_at;
       const streak = data.current_login_streak ?? 0;
 
-      // UTC Date Calculation
-      const now = new Date();
-      const todayUTC = now.toISOString().slice(0, 10);
+      const todayUTC = getTodayUTC();
       const lastClaimUTC = lastClaim ? new Date(lastClaim).toISOString().slice(0, 10) : null;
-      
       const hasClaimedToday = lastClaimUTC === todayUTC;
-      
-      // Calculate which day of the 1-7 cycle to show
-      // If claimed today: show current day in "claimed" state
-      // If not claimed: if streak was yesterday, show streak+1. If older, show day 1.
+
+      // Compute which 1-7 cycle day to display
       let displayDay = 1;
       if (hasClaimedToday) {
         displayDay = ((streak - 1) % 7) + 1;
@@ -52,20 +50,25 @@ export function useDailyReward() {
         const yesterday = new Date();
         yesterday.setUTCDate(yesterday.getUTCDate() - 1);
         const yesterdayUTC = yesterday.toISOString().slice(0, 10);
-        
-        if (lastClaimUTC === yesterdayUTC) {
-          displayDay = (streak % 7) + 1;
-        } else {
-          displayDay = 1;
-        }
+        displayDay = lastClaimUTC === yesterdayUTC ? (streak % 7) + 1 : 1;
       }
+
+      // Show once per UTC day: suppress if user already dismissed/claimed today
+      const dismissedDate = await AsyncStorage.getItem(`${DISMISSED_KEY}.${user.id}`);
+      const dismissedToday = dismissedDate === todayUTC;
 
       setCurrentDay(displayDay);
       setAlreadyClaimed(hasClaimedToday);
-      setShouldShowSheet(!hasClaimedToday);
+      setShouldShowSheet(!hasClaimedToday && !dismissedToday);
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const markDismissedToday = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await AsyncStorage.setItem(`${DISMISSED_KEY}.${user.id}`, getTodayUTC());
   }, []);
 
   const claimReward = useCallback(async () => {
@@ -86,13 +89,18 @@ export function useDailyReward() {
 
       setLastClaimResult(result);
       setAlreadyClaimed(true);
-      // We don't call earnTokens here because TokenContext.tsx realtime listener 
-      // will pick up the DB change from the RPC update automatically.
+      await markDismissedToday();
+      // TokenContext realtime listener picks up the DB update.
       return result;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [markDismissedToday]);
+
+  const dismissSheet = useCallback(() => {
+    setShouldShowSheet(false);
+    void markDismissedToday();
+  }, [markDismissedToday]);
 
   return {
     isLoading,
@@ -102,6 +110,6 @@ export function useDailyReward() {
     lastClaimResult,
     checkDailyReward,
     claimReward,
-    dismissSheet: () => setShouldShowSheet(false),
+    dismissSheet,
   };
 }
