@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { FONTS } from '../../constants/fonts';
+import { preCheckContent, type ModerationCategory } from '../../services/ModeratorService';
+import { ContentBlockedModal } from '../../components/modals';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -66,6 +68,8 @@ export default function EditProfileModal({
     const [showYearDropdown, setShowYearDropdown] = useState(false);
     const [majorSearchQuery, setMajorSearchQuery] = useState('');
     const [yearSearchQuery, setYearSearchQuery] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [blockInfo, setBlockInfo] = useState<{ reason?: string; category?: ModerationCategory } | null>(null);
 
     const filteredMajors = useMemo(
         () =>
@@ -108,7 +112,18 @@ export default function EditProfileModal({
         ]).start();
     }, [slideAnim, opacityAnim]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (isSaving) return;
+        const checkText = `${displayName.trim()} ${bio.trim()}`.trim();
+        if (checkText) {
+            setIsSaving(true);
+            const moderationCheck = await preCheckContent(checkText);
+            setIsSaving(false);
+            if (!moderationCheck.allowed) {
+                setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });
+                return;
+            }
+        }
         const data: ProfileData = {
             displayName,
             bio,
@@ -123,6 +138,7 @@ export default function EditProfileModal({
     };
 
     return (
+        <>
         <Animated.View
             style={[
                 styles.container,
@@ -406,6 +422,14 @@ export default function EditProfileModal({
             </ScrollView>
             </KeyboardAvoidingView>
         </Animated.View>
+        <ContentBlockedModal
+            visible={!!blockInfo}
+            onClose={() => setBlockInfo(null)}
+            reason={blockInfo?.reason}
+            category={blockInfo?.category}
+            contentType="profile"
+        />
+        </>
     );
 }
 

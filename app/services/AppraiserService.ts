@@ -25,7 +25,7 @@ const GUILD_BASE_XP = 50;
 const BONUS_XP_MAX = 200;
 const TOKEN_MIN = 0;
 const TOKEN_MAX = 10;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));

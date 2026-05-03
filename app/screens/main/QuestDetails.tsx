@@ -34,7 +34,8 @@ import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
-import { preCheckContent, getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
+import { preCheckContent, getModerationUI, subscribeModerationStatus, type ModerationCategory } from '../../services/ModeratorService';
+import { ContentBlockedModal } from '../../components/modals';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -387,6 +388,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfilePreview | null>(null);
   const [applicantsExpanded, setApplicantsExpanded] = useState(true);
+  const [blockInfo, setBlockInfo] = useState<{ reason?: string; category?: ModerationCategory } | null>(null);
 
   // ── Fullscreen image viewer ──────────────────────────────────────────────
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -763,7 +765,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         const moderationCheck = await preCheckContent(trimmed);
         if (!moderationCheck.allowed) {
           setLoading(false);
-          Alert.alert('Content Flagged', moderationCheck.reason || 'Your comment was flagged by our moderation system.');
+          setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });
           return;
         }
       }
@@ -1465,6 +1467,13 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         </Modal>
 
       </View>
+      <ContentBlockedModal
+        visible={!!blockInfo}
+        onClose={() => setBlockInfo(null)}
+        reason={blockInfo?.reason}
+        category={blockInfo?.category}
+        contentType="comment"
+      />
     </KeyboardAvoidingView>
   );
 }

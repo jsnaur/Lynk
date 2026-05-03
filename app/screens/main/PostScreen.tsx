@@ -14,9 +14,10 @@ import { useTokenBalance } from '../../contexts/TokenContext';
 import { withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { appraiseQuest, DEFAULT_APPRAISAL, APPRAISER_CONSTANTS } from '../../services/AppraiserService';
-import { preCheckContent } from '../../services/ModeratorService';
+import { preCheckContent, type ModerationCategory } from '../../services/ModeratorService';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import { ContentBlockedModal } from '../../components/modals';
 
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
@@ -60,6 +61,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [tokenBounty, setTokenBounty] = useState(DEFAULT_APPRAISAL.tokenBounty);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [blockInfo, setBlockInfo] = useState<{ reason?: string; category?: ModerationCategory } | null>(null);
   const sheetTranslateY = useRef(new Animated.Value(0)).current;
   const isDismissingRef = useRef(false);
 
@@ -245,7 +247,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     const moderationCheck = await preCheckContent(`${titleTrim} ${descTrim}`);
     if (!moderationCheck.allowed) {
       setIsPublishing(false);
-      Alert.alert('Content Flagged', moderationCheck.reason || 'Your quest content was flagged by our moderation system.');
+      setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });
       return;
     }
     setIsPublishing(false);
@@ -589,6 +591,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
           </ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>
+      <ContentBlockedModal
+        visible={!!blockInfo}
+        onClose={() => setBlockInfo(null)}
+        reason={blockInfo?.reason}
+        category={blockInfo?.category}
+        contentType="quest"
+      />
     </SafeAreaView>
   );
 }
