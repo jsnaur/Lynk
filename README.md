@@ -6,7 +6,7 @@
 
 ---
 
-## About LYNK
+## About LYNK:
 
 LYNK is an exclusive campus questing mobile application designed specifically for the students of the Cebu Institute of Technology - University (CIT - U). By merging social connectivity with engaging real-world and digital challenges, LYNK transforms the university experience into an interactive adventure. To ensure a safe, localized, and authentic community, registration is strictly restricted to users with a valid `@cit.edu` institutional email address.
 
