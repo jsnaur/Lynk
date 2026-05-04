@@ -8,9 +8,7 @@ serve(async (req: Request) => {
     const payload = await req.json();
     const { type, table, record, old_record } = payload;
 
-    // --- PREVENT INFINITE LOOP ---
-    // The moderation write-back triggers another UPDATE webhook. Skip if relevant fields unchanged.
-    // If old_record is missing on an UPDATE, skip entirely — safer than risking a loop.
+    // Prevent infinite loop — moderation write-back triggers another UPDATE webhook
     if (type === "UPDATE") {
       if (!old_record) {
         return new Response("UPDATE missing old_record, skipping to prevent loop", { status: 200 });
@@ -30,9 +28,8 @@ serve(async (req: Request) => {
         if (!textChanged) return new Response("Profile text unchanged, skipping", { status: 200 });
       }
     }
-    // ------------------------------
 
-    // 1. Extract text to moderate based on table
+    // Extract text to moderate
     let textToModerate = "";
     if (table === "quests") {
       textToModerate = `${record.category ?? ""} ${record.title ?? ""} ${record.description ?? ""}`.trim();
@@ -56,11 +53,30 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // 2. Call Gemini generateContent API
     let moderationResult: { approved: boolean; reason: string | null; confidence: number };
 
     try {
-      const prompt = `You are a content moderation system for a university social app. Evaluate the following text for community guideline violations including hate speech, harassment, explicit content, spam, and violence.
+      const prompt = `You are a content moderator for LYNK, a social app for university students at Cebu Institute of Technology (CIT-U) in the Philippines. Users write in English, Tagalog, Bisaya (Cebuano), and mixes of all three (Taglish/Bislish).
+
+Your job is to identify CLEAR, OBVIOUS violations only. Most content from university students is completely normal and should be APPROVED. Do NOT flag content just because it is casual, informal, slang-heavy, or uses Filipino or Bisaya words.
+
+ONLY flag content that CLEARLY and UNAMBIGUOUSLY contains:
+- Explicit sexual content: graphic descriptions of sexual acts, genitalia slang used offensively, sexual solicitation, pornography links.
+- Severe profanity used as a direct personal insult (e.g. "putang ina mo", "gago ka") — casual Filipino/Bisaya expressions used as filler or exclamations (e.g. "grabe", "yawa grabe naman", "lami kaayo", "patay na ako") are NORMAL speech and must NOT be flagged.
+- Explicit hate speech: slurs targeting race, religion, gender, sexuality, or disability used hatefully.
+- Direct personal threats of violence (e.g. "patayin kita", "I will hurt you").
+- Illegal activity: drug sales, solicitation of minors.
+- Obvious spam: repetitive nonsense, ads for unrelated external services.
+
+DO NOT flag:
+- Normal university task requests (tutoring, borrowing items, food runs, study groups, errands, favors).
+- Casual language, slang, hyperbole, or expressions of frustration.
+- Bisaya or Tagalog vocabulary that sounds unusual in English.
+- Academic Latin terms like "cum laude", "magna cum laude", "summa cum laude".
+- Short or terse messages that are simply requests or questions.
+- Anything that is merely informal, imperfect grammar, or low-effort content.
+
+When in doubt, APPROVE. Only flag content you are CERTAIN violates the above rules.
 
 Text to evaluate:
 """
@@ -71,32 +87,44 @@ Respond with a JSON object only, no markdown, no extra text:
 { "approved": boolean, "reason": string | null, "confidence": number }
 
 Where:
-- approved: true if the content is acceptable, false if it violates guidelines
-- reason: a short explanation if flagged, null if approved
-- confidence: a number from 0.0 to 1.0 indicating how confident you are in this decision`;
+- approved: true if content is acceptable, false only if it clearly violates the rules above
+- reason: a short user-friendly explanation if flagged (under 120 chars), null if approved
+- confidence: a number from 0.0 to 1.0`;
 
       const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0,
+            },
           }),
         }
       );
 
-      const geminiData = await geminiRes.json();
-
-      // Gemini's own safety filter blocked the input — auto-flag it
-      if (!geminiData.candidates || geminiData.candidates.length === 0) {
-        moderationResult = { approved: false, reason: "This content violates our community guidelines.", confidence: 1.0 };
+      // Non-2xx response (includes 429 rate limit) — approve rather than falsely flag
+      if (!geminiRes.ok) {
+        console.warn(`Gemini HTTP ${geminiRes.status} — approving to avoid false flag`);
+        moderationResult = { approved: true, reason: null, confidence: 0.5 };
       } else {
-        const rawText = geminiData.candidates[0]?.content?.parts?.[0]?.text;
-        if (!rawText) throw new Error("Empty response from Gemini");
-        moderationResult = JSON.parse(rawText);
+        const geminiData = await geminiRes.json();
+
+        // Gemini's own safety filter blocked the response — approve since the
+        // client-side local blocklist already catches the worst content before submission.
+        if (!geminiData.candidates || geminiData.candidates.length === 0) {
+          console.warn("Gemini returned no candidates (safety block) — approving");
+          moderationResult = { approved: true, reason: null, confidence: 0.5 };
+        } else {
+          const rawText = geminiData.candidates[0]?.content?.parts?.[0]?.text;
+          if (!rawText) throw new Error("Empty response from Gemini");
+          moderationResult = JSON.parse(rawText);
+        }
       }
+
       if (typeof moderationResult.approved !== "boolean" ||
           typeof moderationResult.confidence !== "number") {
         throw new Error("Unexpected Gemini response shape");
@@ -112,7 +140,6 @@ Where:
       });
     }
 
-    // 3. Write moderation result back to the table
     const status = moderationResult.approved ? "approved" : "flagged";
     const updatePayload: Record<string, unknown> = {
       moderation_status: status,

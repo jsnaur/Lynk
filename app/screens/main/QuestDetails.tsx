@@ -762,7 +762,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setLoading(true);
     try {
       if (trimmed) {
-        const moderationCheck = await preCheckContent(trimmed);
+        const moderationCheck = preCheckContent(trimmed);
         if (!moderationCheck.allowed) {
           setLoading(false);
           setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });

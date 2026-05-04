@@ -117,7 +117,7 @@ export default function EditProfileModal({
         const checkText = `${displayName.trim()} ${bio.trim()}`.trim();
         if (checkText) {
             setIsSaving(true);
-            const moderationCheck = await preCheckContent(checkText);
+            const moderationCheck = preCheckContent(checkText);
             setIsSaving(false);
             if (!moderationCheck.allowed) {
                 setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });
