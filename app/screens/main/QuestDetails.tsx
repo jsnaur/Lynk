@@ -833,19 +833,53 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
       const { error } = await supabase
         .from('comments')
-        .insert([{ 
-          quest_id: questData.id, 
-          user_id: currentUserId, 
+        .insert([{
+          quest_id: questData.id,
+          user_id: currentUserId,
           content: finalContent,
           image_url: uploadedUrl,
-          visibility: targetVisibility 
+          visibility: targetVisibility
         }]);
-        
+
       if (error) throw error;
+
+      // Send notifications client-side to avoid duplicates from DB trigger + moderation UPDATE
+      const questPosterId: string | undefined = questData.user_id;
+      const commenterName: string = currentUserProfile?.display_name || 'Someone';
+      const questId: string = questData.id;
+      const isReply = !!replyTo;
+      const replyTargetUserId: string | undefined = replyTo?.userId;
+      const posterIsReplyTarget = isReply && replyTargetUserId === questPosterId;
+
+      // Notify quest poster of new activity (skip if they are the commenter)
+      if (questPosterId && questPosterId !== currentUserId && !posterIsReplyTarget) {
+        await supabase.from('notifications').insert({
+          recipient_id: questPosterId,
+          sender_id: currentUserId,
+          type: 'new_comment',
+          title: 'New Comment',
+          description: `${commenterName} commented on your quest.`,
+          reference_id: questId,
+          is_read: false,
+        });
+      }
+
+      // Notify comment author of reply (skip if they are the replier)
+      if (isReply && replyTargetUserId && replyTargetUserId !== currentUserId) {
+        await supabase.from('notifications').insert({
+          recipient_id: replyTargetUserId,
+          sender_id: currentUserId,
+          type: 'new_reply',
+          title: 'New Reply',
+          description: `${commenterName} replied to your comment.`,
+          reference_id: questId,
+          is_read: false,
+        });
+      }
 
       setMessage('');
       setSelectedImage(null);
-      setImageBase64(null); 
+      setImageBase64(null);
       setReplyTo(null);
       fetchQuestData(currentUserId);
     } catch (err: any) {

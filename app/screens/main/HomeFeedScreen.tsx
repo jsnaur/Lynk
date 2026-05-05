@@ -452,7 +452,8 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                                 'quest_started',
                                 'quest_completed',
                                 'high_bounty_quest',
-                                'new_comment'
+                                'new_comment',
+                                'new_reply'
                             ];
 
                             if (!validClickableTypes.includes(item.type)) return;
