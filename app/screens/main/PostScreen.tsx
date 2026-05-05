@@ -219,6 +219,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       }
 
       await refreshBalance();
+      navigation.onPublishSuccess?.();
       navigation.goBack();
     } catch (error: any) {
       const isMissingRpc =
