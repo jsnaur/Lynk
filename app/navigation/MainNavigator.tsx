@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { AppState, AppStateStatus } from 'react-native'; // Added AppState for midnight-pass check
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HomeFeedScreen from '../screens/main/HomeFeedScreen';
+import HomeFeedScreen, { invalidateFeedCache } from '../screens/main/HomeFeedScreen';
 import ProfileDashboardScreen from '../screens/main/ProfileDashboardScreen';
 import QuestScreen from '../screens/main/QuestScreen';
 import QuestDetailScreen from '../screens/main/QuestDetailScreen';
@@ -65,6 +65,7 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
   const postNavigation = useMemo(() => ({
     ...navigation,
     goBack: () => setActiveTab(tabBeforePostRef.current),
+    onPublishSuccess: () => invalidateFeedCache(),
   }), [navigation]);
 
   const renderContent = () => {

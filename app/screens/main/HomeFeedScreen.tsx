@@ -73,6 +73,13 @@ const SKELETON_CARD_COUNT = 4;
 let CACHED_QUESTS: any[] = [];
 let CACHED_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {};
 let HAS_FETCHED_INITIALLY = false;
+let CACHED_LAT = 10.2975;
+let CACHED_LON = 123.8803;
+
+export function invalidateFeedCache() {
+    CACHED_QUESTS = [];
+    HAS_FETCHED_INITIALLY = false;
+}
 
 export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClaimable, onOpenDailyReward }: HomeFeedScreenProps) {
     const { theme, colors } = useTheme();
@@ -142,26 +149,23 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
         }
 
         try {
-            let lat = 10.2975;
-            let lon = 123.8803;
+            // Kick off GPS update in background — updates cache for the next refresh
+            Location.requestForegroundPermissionsAsync()
+                .then(({ status }) => {
+                    if (status !== 'granted') return;
+                    return Location.hasServicesEnabledAsync().then((enabled) => {
+                        if (!enabled) return;
+                        return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+                            .then((loc) => {
+                                CACHED_LAT = loc.coords.latitude;
+                                CACHED_LON = loc.coords.longitude;
+                            });
+                    });
+                })
+                .catch((err) => console.log("GPS unavailable, using cached location:", err.message));
 
-            try {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status === 'granted') {
-                    const servicesEnabled = await Location.hasServicesEnabledAsync();
-                    if (servicesEnabled) {
-                        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                        lat = loc.coords.latitude;
-                        lon = loc.coords.longitude;
-                    }
-                }
-            } catch (err: any) {
-                console.log("Silent fallback to CIT location due to:", err.message);
-            }
-
-            // --- UPDATED AI FETCH LOGIC ---
-            // Call our new Instant Vector Search Service directly
-            const aiSortedQuests = await getPersonalizedFeed(lat, lon);
+            // Use cached location immediately — no GPS wait
+            const aiSortedQuests = await getPersonalizedFeed(CACHED_LAT, CACHED_LON);
 
             const finalFormatted = aiSortedQuests.map((q: any) => ({
                 id: q.id,
