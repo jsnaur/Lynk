@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    Alert,
     FlatList,
     Pressable,
     RefreshControl,
@@ -446,68 +447,91 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                             if (!item.reference_id) return;
 
                             const validClickableTypes = [
-                                'quest_applied', 
-                                'applicant_accepted', 
-                                'quest_started', 
-                                'quest_completed', 
-                                'high_bounty_quest', 
+                                'quest_applied',
+                                'applicant_accepted',
+                                'quest_started',
+                                'quest_completed',
+                                'high_bounty_quest',
                                 'new_comment'
                             ];
 
-                            if (validClickableTypes.includes(item.type)) {
-                                const { data, error } = await supabase
-                                    .from('quests')
-                                    .select(`
-                                        id,
-                                        user_id,
-                                        category,
-                                        title,
-                                        description,
-                                        created_at,
-                                        bonus_xp,
-                                        token_bounty,
-                                        accepted_by,
-                                        status,
-                                        max_participants,
-                                        is_auto_accept,
-                                        profiles!quests_user_id_fkey(display_name, equipped_accessories)
-                                    `)
-                                    .eq('id', item.reference_id)
-                                    .single();
+                            if (!validClickableTypes.includes(item.type)) return;
 
-                                if (error || !data) {
-                                    console.error('Failed to load quest for notification:', error?.message);
-                                    return;
-                                }
+                            const { data, error } = await supabase
+                                .from('quests')
+                                .select(`
+                                    id,
+                                    user_id,
+                                    category,
+                                    title,
+                                    description,
+                                    created_at,
+                                    bonus_xp,
+                                    token_bounty,
+                                    accepted_by,
+                                    status,
+                                    max_participants,
+                                    is_auto_accept,
+                                    profiles!quests_user_id_fkey(display_name, equipped_accessories)
+                                `)
+                                .eq('id', item.reference_id)
+                                .single();
 
-                                const poster = Array.isArray((data as any).profiles)
-                                    ? (data as any).profiles[0]
-                                    : (data as any).profiles;
-
-                                const questForNav: any = {
-                                    id: data.id,
-                                    category: String(data.category).toLowerCase() as FeedCategory,
-                                    title: data.title,
-                                    preview: data.description,
-                                    posterName: poster?.display_name || 'Anonymous',
-                                    posterAccessories: poster?.equipped_accessories || {},
-                                    ago: timeAgo(data.created_at),
-                                    xp: 50 + (data.bonus_xp || 0),
-                                    token: data.token_bounty || 0,
-                                    user_id: data.user_id,
-                                    description: data.description,
-                                    bonus_xp: data.bonus_xp || 0,
-                                    token_bounty: data.token_bounty || 0,
-                                    accepted_by: data.accepted_by ?? undefined,
-                                    status: data.status,
-                                    max_participants: data.max_participants,
-                                    is_auto_accept: data.is_auto_accept,
-                                };
-
-                                navigation?.navigate?.('QuestDetail', { quest: questForNav });
+                            if (!data) {
+                                Alert.alert(
+                                    'Quest no longer available',
+                                    'This quest has been deleted or is no longer accessible.',
+                                    [
+                                        { text: 'Dismiss', style: 'cancel' },
+                                        {
+                                            text: 'Remove notification',
+                                            style: 'destructive',
+                                            onPress: async () => {
+                                                await supabase
+                                                    .from('notifications')
+                                                    .delete()
+                                                    .eq('id', item.id);
+                                                fetchUnreadNotifCount();
+                                            },
+                                        },
+                                    ],
+                                );
+                                return;
                             }
+
+                            if (error) {
+                                Alert.alert('Error', 'Failed to load quest. Please try again.');
+                                return;
+                            }
+
+                            const poster = Array.isArray((data as any).profiles)
+                                ? (data as any).profiles[0]
+                                : (data as any).profiles;
+
+                            const questForNav: any = {
+                                id: data.id,
+                                category: String(data.category).toLowerCase() as FeedCategory,
+                                title: data.title,
+                                preview: data.description,
+                                posterName: poster?.display_name || 'Anonymous',
+                                posterAccessories: poster?.equipped_accessories || {},
+                                ago: timeAgo(data.created_at),
+                                xp: 50 + (data.bonus_xp || 0),
+                                token: data.token_bounty || 0,
+                                user_id: data.user_id,
+                                description: data.description,
+                                bonus_xp: data.bonus_xp || 0,
+                                token_bounty: data.token_bounty || 0,
+                                accepted_by: data.accepted_by ?? undefined,
+                                status: data.status,
+                                max_participants: data.max_participants,
+                                is_auto_accept: data.is_auto_accept,
+                            };
+
+                            navigation?.navigate?.('QuestDetail', { quest: questForNav });
                         } catch (e: any) {
                             console.error('Notification press handler error:', e?.message ?? e);
+                            Alert.alert('Error', 'Something went wrong. Please try again.');
                         }
                     }}
                 />

@@ -225,7 +225,10 @@ export default function NotificationSheet({
     };
 
     const displayNotifications = useMemo<Notification[]>(() => {
-        if (!dailyRewardClaimable) return notifications;
+        const sorted = [...notifications].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        if (!dailyRewardClaimable) return sorted;
         const synthetic: Notification = {
             id: DAILY_REWARD_NOTIF_ID,
             created_at: new Date().toISOString(),
@@ -234,7 +237,7 @@ export default function NotificationSheet({
             is_read: false,
             type: 'daily_reward',
         };
-        return [synthetic, ...notifications];
+        return [synthetic, ...sorted];
     }, [dailyRewardClaimable, notifications]);
 
     const renderItem = ({ item }: { item: Notification }) => (
