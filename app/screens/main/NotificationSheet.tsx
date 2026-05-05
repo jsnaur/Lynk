@@ -11,6 +11,7 @@ import {
     ActivityIndicator,
     Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { darkColors } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -58,10 +59,106 @@ export default function NotificationSheet({
     const [errorText, setErrorText] = useState<string | null>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const { alert } = useCustomAlert();
+    const navigation = useNavigation<any>();
+
+    const validClickableTypes = [
+        'new_quest',
+        'comment',
+        'reply',
+        'new_comment',
+        'new_reply',
+        'quest_accepted',
+        'applicant_accepted',
+        'quest_started',
+        'quest_completed',
+        'quest_dropped',
+        'high_bounty_quest',
+    ];
 
     // Animation Values
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    const navigateToNotificationDestination = async (item: Notification) => {
+        if (!item.reference_id || !validClickableTypes.includes(item.type)) return;
+
+        const { data, error } = await supabase
+            .from('quests')
+            .select(`
+                id,
+                user_id,
+                category,
+                title,
+                description,
+                created_at,
+                bonus_xp,
+                token_bounty,
+                accepted_by,
+                status,
+                max_participants,
+                is_auto_accept,
+                profiles!quests_user_id_fkey(display_name, equipped_accessories)
+            `)
+            .eq('id', item.reference_id)
+            .single();
+
+        if (!data || error) {
+            Alert.alert(
+                'Destination not available',
+                'This notification destination is no longer available.',
+            );
+            return;
+        }
+
+        const isPoster = data.user_id === currentUserId;
+        let isAcceptedParticipant = false;
+        if (!isPoster && currentUserId) {
+            const { data: participantData } = await supabase
+                .from('quest_participants')
+                .select('status')
+                .eq('quest_id', data.id)
+                .eq('user_id', currentUserId)
+                .single();
+            isAcceptedParticipant = participantData?.status === 'accepted';
+        }
+
+        if (data.status !== 'open' && !isPoster && !isAcceptedParticipant) {
+            Alert.alert(
+                'Quest unavailable',
+                'This quest is closed to the public and cannot be opened from notifications.',
+            );
+            return;
+        }
+
+        const poster = Array.isArray((data as any).profiles)
+            ? (data as any).profiles[0]
+            : (data as any).profiles;
+
+        const questForNav: any = {
+            id: data.id,
+            category: String(data.category).toLowerCase(),
+            title: data.title,
+            preview: data.description,
+            posterName: poster?.display_name || 'Anonymous',
+            posterAccessories: poster?.equipped_accessories || {},
+            ago: timeAgo(data.created_at),
+            xp: 50 + (data.bonus_xp || 0),
+            token: data.token_bounty || 0,
+            user_id: data.user_id,
+            description: data.description,
+            bonus_xp: data.bonus_xp || 0,
+            token_bounty: data.token_bounty || 0,
+            accepted_by: data.accepted_by ?? undefined,
+            status: data.status,
+            max_participants: data.max_participants,
+            is_auto_accept: data.is_auto_accept,
+        };
+
+        const shouldScrollToComments = ['comment', 'reply', 'new_comment', 'new_reply'].includes(item.type);
+
+        onClose?.();
+        navigation.navigate('QuestDetail', { quest: questForNav, scrollToComments: shouldScrollToComments });
+    };
 
     useEffect(() => {
         if (visible) {
@@ -139,41 +236,37 @@ export default function NotificationSheet({
                 .eq('id', item.id);
         }
 
-        // 3. Callback to handle navigation
-        onNotificationPress?.(item);
+        // 3. Use parent callback if present, otherwise navigate directly
+        if (onNotificationPress) {
+            await onNotificationPress(item);
+            return;
+        }
+
+        await navigateToNotificationDestination(item);
     };
 
     const handleDeleteOne = async (item: Notification) => {
         if (item.id === DAILY_REWARD_NOTIF_ID) return;
         if (!currentUserId) return;
 
-        Alert.alert('Delete Notification', 'Remove this notification?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async () => {
-                    const prev = notifications;
-                    setNotifications((cur) => cur.filter((n) => n.id !== item.id));
-                    onUnreadCountHint?.(
-                        prev.reduce((acc, n) => acc + (n.id !== item.id && !n.is_read ? 1 : 0), 0),
-                    );
+        const prev = notifications;
+        setNotifications((cur) => cur.filter((n) => n.id !== item.id));
+        onUnreadCountHint?.(
+            prev.reduce((acc, n) => acc + (n.id !== item.id && !n.is_read ? 1 : 0), 0),
+        );
 
-                    const { error } = await supabase
-                        .from('notifications')
-                        .delete()
-                        .eq('id', item.id)
-                        .eq('recipient_id', currentUserId);
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('id', item.id)
+            .eq('recipient_id', currentUserId);
 
-                    if (error) {
-                        console.error('delete notification error:', error.message);
-                        setNotifications(prev);
-                        onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
-                        Alert.alert('Error', 'Failed to delete notification.');
-                    }
-                }
-            }
-        ]);
+        if (error) {
+            console.error('delete notification error:', error.message);
+            setNotifications(prev);
+            onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
+            Alert.alert('Error', 'Failed to delete notification.');
+        }
     };
 
     const handleClearAll = async () => {
@@ -245,7 +338,7 @@ export default function NotificationSheet({
             description={item.description}
             timestamp={timeAgo(item.created_at)}
             onPress={() => handlePress(item)}
-            onLongPress={() => handleDeleteOne(item)}
+            onSwipeLeft={() => handleDeleteOne(item)}
         />
     );
 

@@ -5,6 +5,8 @@ import {
     StyleSheet,
     Pressable,
     ViewStyle,
+    Animated,
+    GestureResponderEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, withOpacity } from '../../constants/colors';
@@ -31,6 +33,7 @@ export interface NotificationRowProps {
     description?: string;
     onPress?: () => void;
     onLongPress?: () => void;
+    onSwipeLeft?: () => void;
     style?: ViewStyle;
 }
 
@@ -96,57 +99,158 @@ export default function NotificationRow({
     description = 'You have a new update.',
     onPress,
     onLongPress,
+    onSwipeLeft,
     style,
 }: NotificationRowProps) {
     const icon = getNotificationIcon(type);
     const backgroundColor = getBackgroundColor(type, state);
+    const translateX = React.useRef(new Animated.Value(0)).current;
+    const touchStartRef = React.useRef({ x: 0, y: 0 });
+    const latestDxRef = React.useRef(0);
+    const isDraggingRef = React.useRef(false);
+
+    const deleteOpacity = translateX.interpolate({
+        inputRange: [-90, -24, 0],
+        outputRange: [1, 0.35, 0],
+        extrapolate: 'clamp',
+    });
+
+    const resetPosition = React.useCallback(() => {
+        Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 0,
+        }).start();
+    }, [translateX]);
+
+    const triggerSwipeDelete = React.useCallback(() => {
+        Animated.timing(translateX, {
+            toValue: -140,
+            duration: 160,
+            useNativeDriver: true,
+        }).start(() => {
+            onSwipeLeft?.();
+            translateX.setValue(0);
+        });
+    }, [onSwipeLeft, translateX]);
+
+    const handleTouchStart = React.useCallback((event: GestureResponderEvent) => {
+        const { pageX, pageY } = event.nativeEvent;
+        touchStartRef.current = { x: pageX, y: pageY };
+        latestDxRef.current = 0;
+        isDraggingRef.current = false;
+    }, []);
+
+    const handleTouchMove = React.useCallback((event: GestureResponderEvent) => {
+        const { pageX, pageY } = event.nativeEvent;
+        const dx = pageX - touchStartRef.current.x;
+        const dy = pageY - touchStartRef.current.y;
+        latestDxRef.current = dx;
+
+        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+            isDraggingRef.current = true;
+        }
+
+        if (isDraggingRef.current) {
+            translateX.setValue(Math.min(0, Math.max(dx, -120)));
+        }
+    }, [translateX]);
+
+    const handleTouchEnd = React.useCallback(() => {
+        const dx = latestDxRef.current;
+        const didDrag = isDraggingRef.current;
+        isDraggingRef.current = false;
+
+        if (didDrag) {
+            if (dx <= -90) {
+                triggerSwipeDelete();
+            } else {
+                resetPosition();
+            }
+            return;
+        }
+
+        onPress?.();
+    }, [onPress]);
 
     return (
-        <Pressable
-            onPress={onPress}
-            onLongPress={onLongPress}
-            delayLongPress={300}
-            style={({ pressed }) => [
-                styles.container,
-                { backgroundColor: pressed ? withOpacity(COLORS.surface2, 0.5) : backgroundColor },
-                style,
-            ]}
-        >
-            {/* Icon Container */}
-            <View style={[styles.iconContainer, { backgroundColor: withOpacity(COLORS.bg, 0.2) }]}>
-                <Ionicons
-                    name={icon.name as any}
-                    size={20}
-                    color={icon.color}
-                />
-            </View>
-
-            {/* Content Block */}
-            <View style={styles.contentBlock}>
-                <Text
-                    style={styles.title}
-                    numberOfLines={1}
+        <View style={styles.swipeContainer}>
+            <Animated.View style={[styles.deleteBackground, { opacity: deleteOpacity }]}>
+                <Ionicons name="trash-outline" size={18} color={COLORS.textPrimary} />
+                <Text style={styles.deleteText}>Clear</Text>
+            </Animated.View>
+            <Animated.View
+                style={{ transform: [{ translateX }] }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={resetPosition}
+            >
+                <Pressable
+                    onLongPress={onLongPress}
+                    delayLongPress={300}
+                    style={({ pressed }) => [
+                        styles.container,
+                        { backgroundColor: pressed ? withOpacity(COLORS.surface2, 0.5) : backgroundColor },
+                        style,
+                    ]}
                 >
-                    {title}
-                </Text>
-                <Text
-                    style={styles.description}
-                    numberOfLines={2}
-                >
-                    {description}
-                </Text>
-                <Text style={styles.timestamp}>
-                    {timestamp}
-                </Text>
-            </View>
+                    {/* Icon Container */}
+                    <View style={[styles.iconContainer, { backgroundColor: withOpacity(COLORS.bg, 0.2) }]}>
+                        <Ionicons
+                            name={icon.name as any}
+                            size={20}
+                            color={icon.color}
+                        />
+                    </View>
 
-            {/* Unread Indicator */}
-            {state === 'Unread' && <View style={styles.unreadDot} />}
-        </Pressable>
+                    {/* Content Block */}
+                    <View style={styles.contentBlock}>
+                        <Text
+                            style={styles.title}
+                            numberOfLines={1}
+                        >
+                            {title}
+                        </Text>
+                        <Text
+                            style={styles.description}
+                            numberOfLines={2}
+                        >
+                            {description}
+                        </Text>
+                        <Text style={styles.timestamp}>
+                            {timestamp}
+                        </Text>
+                    </View>
+
+                    {/* Unread Indicator */}
+                    {state === 'Unread' && <View style={styles.unreadDot} />}
+                </Pressable>
+            </Animated.View>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    swipeContainer: {
+        overflow: 'hidden',
+    },
+    deleteBackground: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 90,
+        backgroundColor: withOpacity(COLORS.error, 0.9),
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+    },
+    deleteText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+    },
     container: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -447,13 +447,17 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                             if (!item.reference_id) return;
 
                             const validClickableTypes = [
-                                'quest_applied',
+                                'new_quest',
+                                'comment',
+                                'reply',
+                                'new_comment',
+                                'new_reply',
+                                'quest_accepted',
                                 'applicant_accepted',
                                 'quest_started',
                                 'quest_completed',
+                                'quest_dropped',
                                 'high_bounty_quest',
-                                'new_comment',
-                                'new_reply'
                             ];
 
                             if (!validClickableTypes.includes(item.type)) return;
@@ -505,6 +509,28 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                                 return;
                             }
 
+                            const { data: { user } } = await supabase.auth.getUser();
+                            const currentUserId = user?.id;
+                            const isPoster = currentUserId === data.user_id;
+                            let isAcceptedParticipant = false;
+                            if (!isPoster && currentUserId) {
+                                const { data: participantData } = await supabase
+                                    .from('quest_participants')
+                                    .select('status')
+                                    .eq('quest_id', data.id)
+                                    .eq('user_id', currentUserId)
+                                    .single();
+                                isAcceptedParticipant = participantData?.status === 'accepted';
+                            }
+
+                            if (data.status !== 'open' && !isPoster && !isAcceptedParticipant) {
+                                Alert.alert(
+                                    'Quest unavailable',
+                                    'This quest is closed to the public and cannot be opened from notifications.',
+                                );
+                                return;
+                            }
+
                             const poster = Array.isArray((data as any).profiles)
                                 ? (data as any).profiles[0]
                                 : (data as any).profiles;
@@ -529,7 +555,9 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                                 is_auto_accept: data.is_auto_accept,
                             };
 
-                            navigation?.navigate?.('QuestDetail', { quest: questForNav });
+                            const shouldScrollToComments = ['comment', 'reply', 'new_comment', 'new_reply'].includes(item.type);
+
+                            navigation?.navigate?.('QuestDetail', { quest: questForNav, scrollToComments: shouldScrollToComments });
                         } catch (e: any) {
                             console.error('Notification press handler error:', e?.message ?? e);
                             Alert.alert('Error', 'Something went wrong. Please try again.');
