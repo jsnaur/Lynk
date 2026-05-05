@@ -51,6 +51,7 @@ type QuestDetailParams = {
     max_participants?: number;
     status?: string;
   };
+  scrollToComments?: boolean;
 };
 
 type QuestDetailsProps = {
@@ -372,6 +373,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const inputRef = useRef<TextInput | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
+  const [shouldScrollToComments, setShouldScrollToComments] = useState(false);
   
   const [comments, setComments] = useState<UIComment[]>([]);
   const [replyTo, setReplyTo] = useState<UIComment | null>(null);
@@ -493,6 +495,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   }, [quest?.id]);
 
   useEffect(() => {
+    if (route?.params?.scrollToComments) {
+      setShouldScrollToComments(true);
+    }
+  }, [route?.params?.scrollToComments]);
+
+  useEffect(() => {
     let mounted = true;
     let commentSubscription: any = null;
 
@@ -561,6 +569,16 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       if (commentSubscription) supabase.removeChannel(commentSubscription);
     };
   }, [quest?.id, fetchQuestData]);
+
+  useEffect(() => {
+    if (!shouldScrollToComments || comments.length === 0) return;
+
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+
+    setShouldScrollToComments(false);
+  }, [shouldScrollToComments, comments.length]);
 
   useEffect(() => {
     if (!currentUserId || !questData?.id || currentUserId !== questData?.user_id) return;
