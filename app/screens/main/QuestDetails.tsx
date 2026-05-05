@@ -660,33 +660,79 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     );
   };
 
-  const handleApplyOrDrop = async () => {
+  const handleApply = async () => {
     if (!currentUserId || !questData?.id) return;
     try {
       setLoading(true);
-      if (myParticipantStatus === 'accepted') {
-        const { error } = await supabase
-          .from('quest_participants')
-          .update({ status: 'withdrawn' })
-          .eq('quest_id', questData.id)
-          .eq('user_id', currentUserId);
-        if (error) throw error;
-        setParticipants(prev => prev.map(p => p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p));
+      const { data: newStatus, error } = await supabase.rpc('apply_for_quest', { p_quest_id: questData.id });
+      if (error) throw error;
+      await fetchQuestData(currentUserId);
+      if (newStatus === 'accepted') {
+        Alert.alert('Quest Accepted', 'You have successfully joined the quest!');
       } else {
-        const { data: newStatus, error } = await supabase.rpc('apply_for_quest', { p_quest_id: questData.id });
-        if (error) throw error;
-        await fetchQuestData(currentUserId); 
-        if (newStatus === 'accepted') {
-          Alert.alert('Quest Accepted', 'You have successfully joined the quest!');
-        } else {
-          Alert.alert('Application Sent', 'Your application is pending poster approval.');
-        }
+        Alert.alert('Application Sent', 'Your application is pending poster approval.');
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update quest.");
+      Alert.alert('Error', error.message || 'Failed to apply for quest.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDropQuest = () => {
+    if (!currentUserId || !questData?.id) return;
+    Alert.alert(
+      'Drop Quest',
+      'Are you sure you want to drop this quest? The poster will be notified.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Drop Quest',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const { error } = await supabase.rpc('drop_quest', { p_quest_id: questData.id });
+              if (error) throw error;
+              setParticipants(prev => prev.map(p => p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p));
+              await fetchQuestData(currentUserId);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to drop quest.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCancelApplication = () => {
+    if (!currentUserId || !questData?.id) return;
+    Alert.alert(
+      'Cancel Application',
+      'Are you sure you want to cancel your application for this quest?',
+      [
+        { text: 'Keep Application', style: 'cancel' },
+        {
+          text: 'Cancel Application',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const { error } = await supabase.rpc('cancel_application', { p_quest_id: questData.id });
+              if (error) throw error;
+              setParticipants(prev => prev.filter(p => p.user_id !== currentUserId));
+              await fetchQuestData(currentUserId);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to cancel application.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleAcceptApplicant = async (applicantId: string) => {
@@ -1201,15 +1247,19 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           {(!shouldShowCompactCard || myParticipantStatus === 'accepted') && !isPoster && (
              <View style={{ marginTop: 4 }}>
                 {myParticipantStatus === 'applied' ? (
-                  <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
-                    <Text style={styles.acceptText}>Application Pending</Text>
-                  </View>
-                ) : myParticipantStatus === 'accepted' ? (
-                  <Pressable style={[styles.acceptButton, { backgroundColor: colors.error || '#FF3B30' }, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
+                  <Pressable style={[styles.acceptButton, { backgroundColor: colors.textSecondary }, loading && { opacity: 0.7 }]} onPress={handleCancelApplication} disabled={loading}>
+                    <Text style={styles.acceptText}>Cancel Application</Text>
+                  </Pressable>
+                ) : myParticipantStatus === 'accepted' && questData?.status === 'open' ? (
+                  <Pressable style={[styles.acceptButton, { backgroundColor: colors.error }, loading && { opacity: 0.7 }]} onPress={handleDropQuest} disabled={loading}>
                     <Text style={styles.acceptText}>Drop Quest</Text>
                   </Pressable>
+                ) : myParticipantStatus === 'accepted' && questData?.status === 'in_progress' ? (
+                  <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
+                    <Text style={styles.acceptText}>Quest In Progress</Text>
+                  </View>
                 ) : questData?.status === 'open' ? (
-                  <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={handleApplyOrDrop} disabled={loading}>
+                  <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={handleApply} disabled={loading}>
                     <Text style={styles.acceptText}>{isAutoAccept ? 'Accept Quest' : 'Apply for Quest'}</Text>
                   </Pressable>
                 ) : (
