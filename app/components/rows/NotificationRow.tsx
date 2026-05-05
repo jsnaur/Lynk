@@ -18,7 +18,8 @@ export type NotificationType =
     | 'quest_completed'
     | 'quest_dropped'
     | 'high_bounty_quest'
-    | 'new_comment';
+    | 'new_comment'
+    | 'new_reply';
 
 export type NotificationState = 'Unread' | 'Read';
 
@@ -48,6 +49,8 @@ const getNotificationIcon = (
             return { name: 'checkmark-circle', color: COLORS.favor };
         case 'new_comment':
             return { name: 'chatbubble', color: COLORS.favor };
+        case 'new_reply':
+            return { name: 'chatbubble-ellipses', color: COLORS.study };
         case 'quest_dropped':
             return { name: 'exit', color: COLORS.error };
         case 'daily_reward':
@@ -74,6 +77,8 @@ const getBackgroundColor = (
         case 'applicant_accepted':
         case 'new_comment':
             return withOpacity(COLORS.favor, 0.12);
+        case 'new_reply':
+            return withOpacity(COLORS.study, 0.12);
         case 'quest_dropped':
             return withOpacity(COLORS.error, 0.12);
         case 'daily_reward':
