@@ -9,7 +9,7 @@ import {
     Text,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -316,6 +316,7 @@ function LeaderboardRow({
 export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+    const insets = useSafeAreaInsets();
 
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [userRank, setUserRank] = useState<UserRankData | null>(null);
@@ -481,7 +482,7 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                     data={rest}
                     keyExtractor={(item) => item.id}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 16 }}
+                    contentContainerStyle={{ paddingBottom: (userRank && typeof userRank.rank === 'number' && typeof userRank.total_xp === 'number') ? 80 + insets.bottom : 16 + insets.bottom }}
                     ListHeaderComponent={
                         <>
                             <View style={styles.filterRow}>
@@ -541,8 +542,8 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
             </SafeAreaView>
 
             {/* Sticky User Row */}
-            {userRank && (
-                <View style={styles.stickyWrap}>
+            {userRank && typeof userRank.rank === 'number' && typeof userRank.total_xp === 'number' && (
+                <View style={[styles.stickyWrap, { paddingBottom: insets.bottom }]}>
                     <LinearGradient colors={[withOpacity(colors.favor, 0.12), withOpacity(colors.favor, 0.04)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stickyGradient}>
                         <View style={styles.stickyInner}>
                             <Text style={styles.stickyRank}>#{String(userRank.rank).padStart(2, '0')}</Text>
