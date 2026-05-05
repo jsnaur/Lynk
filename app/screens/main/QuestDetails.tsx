@@ -770,6 +770,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const categoryColor = CATEGORY_COLORS[category];
   const title = questData?.title ?? quest?.title ?? 'Need help around campus today';
   const preview = questData?.description ?? quest?.preview ?? 'Looking for someone nearby to help with a quick request before 5PM.';
+  const questLocation = (
+    questData?.location ?? (quest as { location?: string | null } | undefined)?.location ?? ''
+  ).trim();
   const posterName = quest?.posterName ?? 'Anonymous User';
   const ago = quest?.ago ?? 'Just now';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
@@ -1162,10 +1165,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   </View>
                 </Pressable>
                 
-                <View style={styles.locationChip}>
-                  <LocationIcon width={14} height={14} />
-                  <Text style={styles.locationText}>GLE Building, Room 605</Text>
-                </View>
+                {questLocation ? (
+                  <View style={styles.locationChip}>
+                    <LocationIcon width={14} height={14} />
+                    <Text style={styles.locationText}>{questLocation}</Text>
+                  </View>
+                ) : null}
               </View>
 
               <View style={styles.rewardBox}>
