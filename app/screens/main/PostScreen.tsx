@@ -244,7 +244,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     if (!isValid) return;
 
     setIsPublishing(true);
-    const moderationCheck = await preCheckContent(`${titleTrim} ${descTrim}`);
+    const moderationCheck = preCheckContent(`${titleTrim} ${descTrim}`);
     if (!moderationCheck.allowed) {
       setIsPublishing(false);
       setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });
