@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import TextureSvg from '../../../assets/AuthAssets/texture.svg';
 import {
     ActivityIndicator,
@@ -35,6 +35,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Auth'>;
 
 export default function AuthScreen({ navigation }: Props) {
     const { width, height } = useWindowDimensions();
+    const scrollRef = useRef<ScrollView>(null);
     const [activeTab, setActiveTab] = useState<AuthTab>('login');
 
     // Form State
@@ -149,9 +150,10 @@ export default function AuthScreen({ navigation }: Props) {
     }
 
     return (
-        <KeyboardAvoidingView 
-            style={{ flex: 1 }} 
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
             <View style={styles.root}>
                 <StatusBar style="light" />
@@ -174,6 +176,7 @@ export default function AuthScreen({ navigation }: Props) {
                     </View>
                     <SafeAreaView style={styles.safeArea}>
                         <ScrollView
+                            ref={scrollRef}
                             contentContainerStyle={styles.scrollContent}
                             keyboardShouldPersistTaps="handled"
                             showsVerticalScrollIndicator={false}
@@ -249,6 +252,7 @@ export default function AuthScreen({ navigation }: Props) {
                                                 setEmail(val);
                                                 if (showForgotLink) setShowForgotLink(false);
                                             }}
+                                            onFocus={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
                                         />
                                         {showEmailError && (
                                             <Ionicons name="close-circle" size={18} color={COLORS.error} />
@@ -287,6 +291,7 @@ export default function AuthScreen({ navigation }: Props) {
                                             setPassword(val);
                                             if (showForgotLink) setShowForgotLink(false);
                                         }}
+                                        onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                                     />
                                     <Pressable onPress={() => setShowPassword((prev) => !prev)}>
                                         <Ionicons
@@ -313,6 +318,7 @@ export default function AuthScreen({ navigation }: Props) {
                                             style={styles.input}
                                             value={confirmPassword}
                                             onChangeText={setConfirmPassword}
+                                            onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                                         />
                                         <Pressable onPress={() => setShowConfirmPassword((prev) => !prev)}>
                                             <Ionicons
