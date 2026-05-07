@@ -298,7 +298,7 @@ export default function SettingsScreen({ navigation }: any) {
             iconBgColor={withOpacity(colors.favor, 0.15)}
             iconColor={colors.favor}
             title="Change Password"
-            onPress={() => navigation.navigate('PasswordRecovery')}
+            onPress={() => navigation.navigate('ChangePassword')}
           />
           <SettingsNavRow
             icon="shield-check"

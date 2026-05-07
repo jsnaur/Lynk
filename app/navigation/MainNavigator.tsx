@@ -9,6 +9,7 @@ import PostScreen from '../screens/main/PostScreen';
 import ShopScreen from '../screens/main/Shop';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import CustomizeScreen from '../screens/main/CustomizeScreen';
+import ChangePasswordScreen from '../screens/main/ChangePasswordScreen'; // Added Import
 import DailyRewardSheet from '../screens/main/DailyRewardSheet'; // Import the sheet
 import { useDailyReward } from '../hooks/useDailyReward'; // Import the hook
 import { MainTab } from '../components/BottomNav';
@@ -118,6 +119,8 @@ const MainNavigator = () => {
       />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Customize" component={CustomizeScreen} />
+      {/* Registered ChangePassword Screen */}
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="Leaderboard" getComponent={() => require('../screens/main/LeaderboardScreen').default} />
     </Stack.Navigator>
   );
