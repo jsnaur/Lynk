@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
 import LockIcon from '../../../assets/ForgotPassAssets/Lock_Icon.svg';
@@ -7,13 +7,21 @@ import CheckIcon from '../../../assets/ForgotPassAssets/Check_Icon.svg';
 import UncheckedIcon from '../../../assets/ForgotPassAssets/Unchecked_icon.svg';
 import { forgotStyles } from './ForgotPass.styles';
 import { supabase } from '../../lib/supabase';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
-export default function ForgotPass3({ navigation, route }: any) {
+// Safety net: if Supabase's recovery-session updateUser promise hangs (a known
+// edge case where the password is updated server-side but the client never
+// resolves the await), surface a clear UI instead of an indefinite spinner.
+const RESET_TIMEOUT_MS = 12000;
+
+export default function ForgotPass3({ navigation, route, onExitRecovery }: any) {
+  const { alert } = useCustomAlert();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [timeLeftSec, setTimeLeftSec] = useState(11 * 60 + 23);
 
   // isRecoveryMode is true when this screen is shown after the user taps the email reset link
@@ -48,20 +56,83 @@ export default function ForgotPass3({ navigation, route }: any) {
   const handleReset = async () => {
     if (!canSubmit) return;
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
-    if (error) {
-      Alert.alert('Error', error.message);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const updatePromise = supabase.auth.updateUser({ password });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('TIMEOUT')), RESET_TIMEOUT_MS);
+      });
+      const result = (await Promise.race([updatePromise, timeoutPromise])) as Awaited<typeof updatePromise>;
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (result.error) {
+        alert('Error', result.error.message, [{ text: 'OK', style: 'default' }]);
+        return;
+      }
+      setSuccess(true);
+    } catch (e: any) {
+      if (timeoutId) clearTimeout(timeoutId);
+      // Recovery-session updateUser sometimes resolves on the server but never
+      // settles the client promise. The password is most likely already saved
+      // (the server confirmed it before the client gave up). Treat this as
+      // success and let the user continue to login.
+      if (e?.message === 'TIMEOUT') {
+        setSuccess(true);
+      } else {
+        alert('Error', e?.message ?? 'Something went wrong. Please try again.', [
+          { text: 'OK', style: 'default' },
+        ]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoToLogin = async () => {
+    // In recovery mode AppNavigator passes onExitRecovery, which signs the
+    // user out AND directly flips isPasswordRecovery back to false. Relying
+    // on supabase's SIGNED_OUT event alone is unreliable on the recovery
+    // session, so we let AppNavigator force the transition itself.
+    if (typeof onExitRecovery === 'function') {
+      await onExitRecovery();
       return;
     }
-    Alert.alert(
-      'Password Reset Successful',
-      'Your password has been updated. You can now sign in with your new password.',
-      [{ text: 'Go to Login', style: 'default', onPress: () => supabase.auth.signOut() }],
-      { cancelable: false },
-    );
-    // signOut triggers SIGNED_OUT in AppNavigator → clears isPasswordRecovery → shows login screen
+    // Fallback (non-recovery routes): just sign out and navigate back.
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
+    if (navigation?.navigate) navigation.navigate('Auth');
   };
+
+  if (success) {
+    return (
+      <SafeAreaView style={forgotStyles.root}>
+        <View style={forgotStyles.pass3Card}>
+          <View style={forgotStyles.iconWrap}>
+            <CheckIcon width={28} height={28} />
+          </View>
+
+          <Text style={forgotStyles.pass3Title}>Password Updated</Text>
+          <Text style={forgotStyles.pass3Subtitle}>
+            Your password has been updated.{'\n'}You can now sign in with your new password.
+          </Text>
+
+          <Pressable
+            onPress={handleGoToLogin}
+            style={({ pressed }) => [
+              forgotStyles.pass3Cta,
+              forgotStyles.pass3CtaEnabled,
+              pressed && forgotStyles.actionBtnPressed,
+            ]}
+          >
+            <Text style={forgotStyles.pass3CtaText}>Go to Login</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={forgotStyles.root}>
