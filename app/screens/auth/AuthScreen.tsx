@@ -47,6 +47,8 @@ export default function AuthScreen({ navigation }: Props) {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
+    // Only reveal "Forgot password?" after a failed login due to wrong credentials
+    const [showForgotLink, setShowForgotLink] = useState(false);
 
     // Email Validation Logic
     const trimmedEmail = email.trim();
@@ -98,7 +100,15 @@ export default function AuthScreen({ navigation }: Props) {
                 password: password,
             });
 
-            if (error) Alert.alert('Login Failed', error.message);
+            if (error) {
+                Alert.alert('Login Failed', error.message);
+                // Supabase returns "Invalid login credentials" for wrong email OR wrong password.
+                // Reveal the Forgot password? link so the user can recover if it was the password.
+                const msg = (error.message || '').toLowerCase();
+                if (msg.includes('invalid') && msg.includes('credentials')) {
+                    setShowForgotLink(true);
+                }
+            }
         } else {
             if (isGmail(trimmedEmail)) {
                 // Gmail: standard signUp, no OTP needed
@@ -178,7 +188,7 @@ export default function AuthScreen({ navigation }: Props) {
                             <View style={styles.switcherContainer}>
                                 <View style={styles.switcher}>
                                     <Pressable
-                                        onPress={() => setActiveTab('login')}
+                                        onPress={() => { setActiveTab('login'); setShowForgotLink(false); }}
                                         style={[
                                             styles.switchTab,
                                             activeTab === 'login' && styles.switchTabActive,
@@ -195,7 +205,7 @@ export default function AuthScreen({ navigation }: Props) {
                                     </Pressable>
 
                                     <Pressable
-                                        onPress={() => setActiveTab('register')}
+                                        onPress={() => { setActiveTab('register'); setShowForgotLink(false); }}
                                         style={[
                                             styles.switchTab,
                                             activeTab === 'register' && styles.switchTabActive,
@@ -235,7 +245,10 @@ export default function AuthScreen({ navigation }: Props) {
                                             placeholderTextColor={COLORS.textSecondary}
                                             style={styles.input}
                                             value={email}
-                                            onChangeText={setEmail}
+                                            onChangeText={(val) => {
+                                                setEmail(val);
+                                                if (showForgotLink) setShowForgotLink(false);
+                                            }}
                                         />
                                         {showEmailError && (
                                             <Ionicons name="close-circle" size={18} color={COLORS.error} />
@@ -270,7 +283,10 @@ export default function AuthScreen({ navigation }: Props) {
                                         secureTextEntry={!showPassword}
                                         style={styles.input}
                                         value={password}
-                                        onChangeText={setPassword}
+                                        onChangeText={(val) => {
+                                            setPassword(val);
+                                            if (showForgotLink) setShowForgotLink(false);
+                                        }}
                                     />
                                     <Pressable onPress={() => setShowPassword((prev) => !prev)}>
                                         <Ionicons
@@ -308,7 +324,7 @@ export default function AuthScreen({ navigation }: Props) {
                                     </View>
                                 )}
 
-                                {activeTab === 'login' && (
+                                {activeTab === 'login' && showForgotLink && (
                                     <Pressable style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPass1')}>
                                         <Text style={styles.forgotText}>Forgot password?</Text>
                                     </Pressable>

@@ -80,6 +80,20 @@ const AppNavigator = () => {
 
   // Password recovery: show the reset screen regardless of auth state
   if (isPasswordRecovery) {
+    // We don't rely on supabase.auth.signOut() firing SIGNED_OUT to exit
+    // recovery (on the recovery session it sometimes doesn't fire on RN).
+    // The screen calls this directly when the user taps "Go to Login".
+    const exitRecovery = async () => {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore — we still force-exit recovery below
+      }
+      setSession(null);
+      setIsNewUser(false);
+      setIsPasswordRecovery(false);
+    };
+
     return (
       <Stack.Navigator
         screenOptions={{
@@ -90,9 +104,10 @@ const AppNavigator = () => {
       >
         <Stack.Screen
           name="PasswordReset"
-          component={ForgotPass3}
           initialParams={{ isRecoveryMode: true }}
-        />
+        >
+          {(props) => <ForgotPass3 {...props} onExitRecovery={exitRecovery} />}
+        </Stack.Screen>
       </Stack.Navigator>
     );
   }

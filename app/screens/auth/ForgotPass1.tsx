@@ -14,9 +14,11 @@ export default function ForgotPass1({ navigation }: any) {
   const [apiError, setApiError] = useState<string | null>(null);
 
   const trimmedEmail = email.trim().toLowerCase();
+  const isCit = isValidEmail(trimmedEmail) && trimmedEmail.endsWith('@cit.edu');
   const isGmail = isValidEmail(trimmedEmail) && trimmedEmail.endsWith('@gmail.com');
   const showFormatError = trimmedEmail.length > 0 && !isValidEmail(trimmedEmail);
-  const canContinue = trimmedEmail.length > 0 && isValidEmail(trimmedEmail) && !isGmail && !loading;
+  const showNonCitError = trimmedEmail.length > 0 && isValidEmail(trimmedEmail) && !isCit;
+  const canContinue = trimmedEmail.length > 0 && isCit && !loading;
 
   const handleSend = async () => {
     if (!canContinue) return;
@@ -60,7 +62,7 @@ export default function ForgotPass1({ navigation }: any) {
               placeholderTextColor="#71758A"
               autoCapitalize="none"
               keyboardType="email-address"
-              style={[forgotStyles.input, (showFormatError || isGmail) && forgotStyles.inputError]}
+              style={[forgotStyles.input, (showFormatError || showNonCitError) && forgotStyles.inputError]}
             />
             {showFormatError && (
               <Text style={forgotStyles.errorText}>Please enter a valid email address.</Text>
@@ -68,6 +70,11 @@ export default function ForgotPass1({ navigation }: any) {
             {isGmail && (
               <Text style={forgotStyles.errorText}>
                 Password reset is not available for Gmail accounts. Only @cit.edu emails are supported.
+              </Text>
+            )}
+            {showNonCitError && !isGmail && (
+              <Text style={forgotStyles.errorText}>
+                Only @cit.edu emails are supported for password reset.
               </Text>
             )}
             {apiError && <Text style={forgotStyles.errorText}>{apiError}</Text>}
