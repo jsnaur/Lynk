@@ -341,6 +341,37 @@ export const forgotStyles = StyleSheet.create({
   reqTextPass: {
     color: '#57F65A',
   },
+  otpRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginVertical: 8,
+    width: '100%',
+  },
+  otpBox: {
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: ForgotColors.inputBg,
+    borderWidth: 1.5,
+    borderColor: ForgotColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpBoxFocused: {
+    borderColor: ForgotColors.accent,
+  },
+  otpBoxFilled: {
+    borderColor: '#6B40B5',
+  },
+  otpDigit: {
+    color: ForgotColors.textPrimary,
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    padding: 0,
+    width: '100%',
+    height: '100%',
+  },
   pass3Cta: {
     marginTop: 10,
     backgroundColor: '#C9CBD8',

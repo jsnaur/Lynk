@@ -1,18 +1,35 @@
 import React, { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
 import EmailLogo from '../../../assets/ForgotPassAssets/Email_logo.svg';
 import { forgotStyles } from './ForgotPass.styles';
+import { supabase } from '../../lib/supabase';
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 export default function ForgotPass1({ navigation }: any) {
   const [email, setEmail] = useState('');
-  const trimmedEmail = email.trim();
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const showError = useMemo(() => trimmedEmail.length > 0 && !isValidEmail(trimmedEmail), [trimmedEmail]);
-  const canContinue = trimmedEmail.length > 0 && !showError;
+  const trimmedEmail = email.trim().toLowerCase();
+  const isGmail = isValidEmail(trimmedEmail) && trimmedEmail.endsWith('@gmail.com');
+  const showFormatError = trimmedEmail.length > 0 && !isValidEmail(trimmedEmail);
+  const canContinue = trimmedEmail.length > 0 && isValidEmail(trimmedEmail) && !isGmail && !loading;
+
+  const handleSend = async () => {
+    if (!canContinue) return;
+    setApiError(null);
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail);
+    setLoading(false);
+    if (error) {
+      setApiError(error.message);
+      return;
+    }
+    navigation.navigate('ForgotPass2', { email: trimmedEmail });
+  };
 
   return (
     <SafeAreaView style={forgotStyles.root}>
@@ -31,33 +48,44 @@ export default function ForgotPass1({ navigation }: any) {
 
           <Text style={forgotStyles.title}>Forgot Password</Text>
           <Text style={forgotStyles.subtitle}>
-            Enter your email and we will send you a reset link.
+            Enter your @cit.edu email and we'll send you a 6-digit verification code.
           </Text>
 
           <View>
             <Text style={forgotStyles.label}>Email</Text>
             <TextInput
               value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
+              onChangeText={(val) => { setEmail(val); setApiError(null); }}
+              placeholder="you@cit.edu"
               placeholderTextColor="#71758A"
               autoCapitalize="none"
               keyboardType="email-address"
-              style={[forgotStyles.input, showError && forgotStyles.inputError]}
+              style={[forgotStyles.input, (showFormatError || isGmail) && forgotStyles.inputError]}
             />
-            {showError && <Text style={forgotStyles.errorText}>Please enter a valid email address.</Text>}
+            {showFormatError && (
+              <Text style={forgotStyles.errorText}>Please enter a valid email address.</Text>
+            )}
+            {isGmail && (
+              <Text style={forgotStyles.errorText}>
+                Password reset is not available for Gmail accounts. Only @cit.edu emails are supported.
+              </Text>
+            )}
+            {apiError && <Text style={forgotStyles.errorText}>{apiError}</Text>}
           </View>
 
           <Pressable
             disabled={!canContinue}
-            onPress={() => navigation.navigate('ForgotPass2', { email: trimmedEmail })}
+            onPress={handleSend}
             style={({ pressed }) => [
               forgotStyles.actionBtn,
               !canContinue && forgotStyles.actionBtnDisabled,
               pressed && canContinue && forgotStyles.actionBtnPressed,
             ]}
           >
-            <Text style={forgotStyles.actionText}>Send reset link</Text>
+            {loading
+              ? <ActivityIndicator color="#0F0F14" />
+              : <Text style={forgotStyles.actionText}>Send reset link</Text>
+            }
           </Pressable>
         </View>
       </KeyboardAvoidingView>
