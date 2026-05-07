@@ -2,6 +2,7 @@
   "expo": {
     "name": "LYNK",
     "slug": "LYNK",
+    "scheme": "lynk",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",

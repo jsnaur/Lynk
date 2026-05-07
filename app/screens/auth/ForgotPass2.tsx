@@ -1,45 +1,89 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, Pressable, Text, View } from 'react-native';
+import React, { useRef, useState, useMemo } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
 import EnvelopePixelSprite from '../../../assets/ForgotPassAssets/Envelope_Pixel_Sprite.svg';
-import ClockIcon from '../../../assets/ForgotPassAssets/Clock_Icon.svg';
-import CheckIcon from '../../../assets/ForgotPassAssets/Check_Icon.svg';
-import UncheckedIcon from '../../../assets/ForgotPassAssets/Unchecked_icon.svg';
 import { forgotStyles } from './ForgotPass.styles';
+import { supabase } from '../../lib/supabase';
+
+const OTP_LENGTH = 6;
 
 export default function ForgotPass2({ navigation, route }: any) {
-  const [timeLeftSec, setTimeLeftSec] = useState(15 * 60);
+  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const refs = useRef<Array<TextInput | null>>(Array(OTP_LENGTH).fill(null));
 
-  const email = route?.params?.email ?? '';
+  const email: string = route?.params?.email ?? '';
   const maskedEmail = useMemo(() => {
-    const value = String(email).trim();
-    const [name, domain] = value.split('@');
-    if (!name || !domain) return value || 'your email';
-    if (name.length <= 2) return `${name[0] || '*'}*@${domain}`;
+    const [name, domain] = email.split('@');
+    if (!name || !domain) return email || 'your email';
+    if (name.length <= 2) return `${name[0] ?? '*'}*@${domain}`;
     return `${name.slice(0, 2)}***@${domain}`;
   }, [email]);
 
-  useEffect(() => {
-    const timerId = setInterval(() => {
-      setTimeLeftSec((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timerId);
-  }, []);
+  const code = digits.join('');
+  const canVerify = code.length === OTP_LENGTH && !loading;
 
-  const timerLabel = useMemo(() => {
-    const minutes = Math.floor(timeLeftSec / 60);
-    const seconds = timeLeftSec % 60;
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-  }, [timeLeftSec]);
-
-  const handleOpenEmailApp = async () => {
-    try {
-      await Linking.openURL('mailto:');
-    } catch {
-      // Continue even if no mail app
+  const handleDigit = (text: string, index: number) => {
+    const digit = text.replace(/[^0-9]/g, '').slice(-1);
+    const next = [...digits];
+    next[index] = digit;
+    setDigits(next);
+    setError(null);
+    if (digit && index < OTP_LENGTH - 1) {
+      refs.current[index + 1]?.focus();
     }
-    navigation.navigate('ForgotPass3', { email: email || 'user@example.com' });
+  };
+
+  const handleKeyPress = (key: string, index: number) => {
+    if (key === 'Backspace') {
+      if (digits[index]) {
+        const next = [...digits];
+        next[index] = '';
+        setDigits(next);
+      } else if (index > 0) {
+        const next = [...digits];
+        next[index - 1] = '';
+        setDigits(next);
+        refs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!canVerify) return;
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'recovery' });
+    setLoading(false);
+    if (error) {
+      setError('Invalid or expired code. Please try again.');
+      setDigits(Array(OTP_LENGTH).fill(''));
+      refs.current[0]?.focus();
+      return;
+    }
+    // Success: AppNavigator's onAuthStateChange receives PASSWORD_RECOVERY
+    // and automatically switches to the ForgotPass3 reset screen
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setError(null);
+    await supabase.auth.resetPasswordForEmail(email);
+    setResending(false);
+    setDigits(Array(OTP_LENGTH).fill(''));
+    refs.current[0]?.focus();
   };
 
   return (
@@ -58,46 +102,70 @@ export default function ForgotPass2({ navigation, route }: any) {
             <EnvelopePixelSprite width={58} height={58} />
           </View>
 
-          <Text style={forgotStyles.inboxTitle}>Check Your Inbox</Text>
+          <Text style={forgotStyles.inboxTitle}>Enter the Code</Text>
           <Text style={forgotStyles.inboxSubtitle}>
-            We&apos;ve sent a reset link to <Text style={forgotStyles.inboxEmailText}>[{maskedEmail}]</Text>.
-            {'\n'}
-            It expires in 15 minutes.
+            We sent a 6-digit code to{'\n'}
+            <Text style={forgotStyles.inboxEmailText}>{maskedEmail}</Text>
+            {'\n'}Check your inbox and enter it below.
           </Text>
 
-          <View style={forgotStyles.timerBadge}>
-            <ClockIcon width={14} height={14} />
-            <Text style={forgotStyles.timerText}>Link expires in {timerLabel}</Text>
+          {/* OTP digit boxes */}
+          <View style={forgotStyles.otpRow}>
+            {digits.map((digit, i) => (
+              <Pressable key={i} style={{ flex: 1 }} onPress={() => refs.current[i]?.focus()}>
+                <View
+                  style={[
+                    forgotStyles.otpBox,
+                    focusedIndex === i && forgotStyles.otpBoxFocused,
+                    !!digit && forgotStyles.otpBoxFilled,
+                  ]}
+                >
+                  <TextInput
+                    ref={(r) => { refs.current[i] = r; }}
+                    value={digit}
+                    onChangeText={(t) => handleDigit(t, i)}
+                    onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
+                    onFocus={() => setFocusedIndex(i)}
+                    onBlur={() => setFocusedIndex(null)}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    style={forgotStyles.otpDigit}
+                    caretHidden
+                    selectTextOnFocus
+                  />
+                </View>
+              </Pressable>
+            ))}
           </View>
 
-          <View style={forgotStyles.stepsWrap}>
-            <View style={forgotStyles.stepRow}>
-              <CheckIcon width={20} height={20} />
-              <Text style={forgotStyles.stepText}>Open the email from LYNK in your inbox</Text>
-            </View>
-            <View style={forgotStyles.stepRow}>
-              <UncheckedIcon width={20} height={20} />
-              <Text style={forgotStyles.stepText}>Tap the reset link — it opens the app</Text>
-            </View>
-            <View style={forgotStyles.stepRow}>
-              <UncheckedIcon width={20} height={20} />
-              <Text style={forgotStyles.stepText}>Create your new password</Text>
-            </View>
-          </View>
+          {error ? <Text style={[forgotStyles.errorText, { textAlign: 'center' }]}>{error}</Text> : null}
 
           <Pressable
-            style={({ pressed }) => [forgotStyles.resendWrap, pressed && { opacity: 0.8 }]}
-            onPress={() => setTimeLeftSec(15 * 60)}
+            disabled={!canVerify}
+            onPress={handleVerify}
+            style={({ pressed }) => [
+              forgotStyles.actionBtn,
+              { width: '100%', marginTop: 4 },
+              !canVerify && forgotStyles.actionBtnDisabled,
+              pressed && canVerify && forgotStyles.actionBtnPressed,
+            ]}
           >
-            <Text style={forgotStyles.resendLead}>Didn&apos;t receive it? </Text>
-            <Text style={forgotStyles.resendAction}>Resend email</Text>
+            {loading
+              ? <ActivityIndicator color="#14121A" />
+              : <Text style={forgotStyles.actionText}>Verify Code</Text>
+            }
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [forgotStyles.emailButton, pressed && { opacity: 0.85 }]}
-            onPress={handleOpenEmailApp}
+            style={({ pressed }) => [forgotStyles.resendWrap, pressed && { opacity: 0.7 }]}
+            onPress={handleResend}
+            disabled={resending}
           >
-            <Text style={forgotStyles.emailButtonText}>Open Email App</Text>
+            <Text style={forgotStyles.resendLead}>Didn't receive it? </Text>
+            {resending
+              ? <ActivityIndicator size="small" color="#11E0E8" />
+              : <Text style={forgotStyles.resendAction}>Resend code</Text>
+            }
           </Pressable>
         </View>
       </KeyboardAvoidingView>
