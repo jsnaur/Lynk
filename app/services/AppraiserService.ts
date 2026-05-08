@@ -78,7 +78,7 @@ function scoreDifficultySignals(description: string, category: FeedCategory | nu
 
   const categoryBase: Record<FeedCategory, number> = {
     favor: 8,
-    study: 14,
+    study: 10,
     item: 10,
   };
 
