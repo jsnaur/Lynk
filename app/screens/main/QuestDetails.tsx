@@ -50,6 +50,7 @@ type QuestDetailParams = {
     is_auto_accept?: boolean;
     max_participants?: number;
     status?: string;
+    image_url?: string | null;
   };
   scrollToComments?: boolean;
 };
@@ -795,6 +796,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const ago = quest?.ago ?? 'Just now';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
   const token = questData?.token_bounty ?? quest?.token ?? 25;
+  const questImageUrl = questData?.image_url ?? quest?.image_url ?? null;
   
   const isPoster = currentUserId === questData?.user_id;
   const isAutoAccept = questData?.is_auto_accept ?? true;
@@ -1196,6 +1198,17 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.preview}>{preview}</Text>
+
+              {/* ── Quest Attached Image (NEW) ─────────────────────────────────── */}
+              {questImageUrl && (
+                <Pressable
+                  style={styles.questAttachmentBtn}
+                  onPress={() => setFullscreenImage(questImageUrl)}
+                >
+                  <Image source={{ uri: questImageUrl }} style={styles.questAttachmentThumb} />
+                  <Text style={styles.questAttachmentText}>View Image</Text>
+                </Pressable>
+              )}
 
               <View style={styles.metaRow}>
                 <Pressable 
@@ -1680,6 +1693,30 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 21,
     fontSize: 14,
+  },
+  questAttachmentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 6,
+    paddingRight: 12,
+    borderRadius: 8,
+    backgroundColor: COLORS.surface2,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 4,
+  },
+  questAttachmentThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: COLORS.border,
+  },
+  questAttachmentText: {
+    color: COLORS.textPrimary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   metaRow: {
     flexDirection: 'row',

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 
 import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
@@ -59,6 +61,8 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [maxParticipants, setMaxParticipants] = useState<number>(1);
   const [isAutoAccept, setIsAutoAccept] = useState(true);
   const [tokenBounty, setTokenBounty] = useState(DEFAULT_APPRAISAL.tokenBounty);
+  const [image, setImage] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [blockInfo, setBlockInfo] = useState<{ reason?: string; category?: ModerationCategory } | null>(null);
@@ -95,10 +99,41 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     setTokenBounty(appraisal.tokenBounty);
   }, [appraisal.tokenBounty]);
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.6,
+      base64: true,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null);
+    }
+  };
+
+  const uploadImage = async (base64Str: string) => {
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+    
+    const { error } = await supabase.storage
+      .from('quest-images') 
+      .upload(fileName, decode(base64Str), {
+        contentType: 'image/jpeg',
+      });
+
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('quest-images')
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  };
+
   const changeTokens = useCallback((delta: number) => {
     setTokenBounty((v) => {
       const next = v + delta;
-      // Minimum is either TOKEN_MIN or the AI recommended amount, whichever is higher
       const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
       if (next < minimumAllowed) return minimumAllowed;
       if (next > TOKEN_MAX) return TOKEN_MAX;
@@ -172,8 +207,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) throw new Error('You must be logged in to post.');
 
+      let finalImageUrl = null;
+      if (image && imageBase64) {
+        finalImageUrl = await uploadImage(imageBase64);
+      }
+
       // Default CIT University fallback
-      let lat = 10.2975; 
+      let lat = 10.2975;
       let lon = 123.8803;
 
       try {
@@ -203,6 +243,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         p_longitude: lon,
         p_max_participants: maxParticipants,
         p_is_auto_accept: isAutoAccept,
+        p_image_url: finalImageUrl,
       });
 
       if (error) {
@@ -365,6 +406,28 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             </View>
 
             <View style={styles.section}>
+              <Text style={styles.label}>ATTACHMENT (OPTIONAL)</Text>
+              <Pressable
+                style={[styles.imageUploadBox, image && { borderStyle: 'solid' }]}
+                onPress={image ? undefined : pickImage}
+              >
+                {image ? (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image source={{ uri: image }} style={styles.imagePreview} />
+                    <Pressable style={styles.removeImageBtn} onPress={() => { setImage(null); setImageBase64(null); }}>
+                      <Ionicons name="close-circle" size={24} color={colors.error} />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles.uploadPlaceholder}>
+                    <Ionicons name="camera-outline" size={28} color={colors.textSecondary} />
+                    <Text style={styles.uploadPlaceholderText}>Add a photo to help helpers</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
+            <View style={styles.section}>
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>QUEST TITLE</Text>
@@ -472,7 +535,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <View style={styles.toggleTextCol}>
                   <Text style={styles.toggleTitle}>Auto-Accept Applicants</Text>
                   <Text style={styles.toggleSub}>
-                    {maxParticipants > 3 
+                    {maxParticipants > 3
                       ? `Warning: Auto-accepting ${maxParticipants} helpers might fill your quest instantly. Are you sure?`
                       : "If off, you will manually review and approve applicants before the quest starts."}
                   </Text>
@@ -1077,5 +1140,43 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   alertIcon: {
     width: 18,
     height: 18,
+  },
+  imageUploadBox: {
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+  },
+  uploadPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 20,
+  },
+  uploadPlaceholderText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontFamily: 'DMSans-Regular',
+  },
+  imagePreviewContainer: {
+    flex: 1,
+    width: '100%',
+    height: 160,
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: colors.bg,
+    borderRadius: 12,
   },
 });
