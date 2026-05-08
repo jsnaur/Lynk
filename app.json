@@ -34,7 +34,8 @@
           "locationAlwaysAndWhenInUsePermission": "Allow LYNK to use your location to find nearby quests."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ]
   }
 }
