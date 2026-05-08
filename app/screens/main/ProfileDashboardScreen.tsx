@@ -10,6 +10,7 @@ import {
     View,
 } from 'react-native';
 import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import ProfileSkeleton from '../../components/cards/ProfileSkeleton';
@@ -26,6 +27,7 @@ const QuestIcon = require("../../../assets/ProfileAssets/Scroll_Icon.png");
 
 import BadgeSelectorModal from './BadgeSelectorModal';
 import EditProfileModal from './EditProfileModal';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 const ASSETS = {
     badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
@@ -226,6 +228,19 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         void fetchQuestCounts();
         return unsubscribe;
     }, [fetchProfile, refreshBalance, fetchQuestCounts, navigation]);
+
+    // Level-up sound trigger: detect when totalXP crosses a threshold
+    const prevLevelRef = useRef<number>(calculateLevelFromXP(totalXP).currentLevel);
+    useEffect(() => {
+        const newLevel = calculateLevelFromXP(totalXP).currentLevel;
+        if (newLevel > prevLevelRef.current) {
+            try {
+                void appSoundManager.play(AppSoundCategory.LevelUps, { force: true });
+                setTimeout(() => { void appSoundManager.play(AppSoundCategory.Fanfares, { force: true, volume: 0.9 }); }, 120);
+            } catch (e) {}
+        }
+        prevLevelRef.current = newLevel;
+    }, [totalXP]);
 
     useEffect(() => {
         let channel: any;
