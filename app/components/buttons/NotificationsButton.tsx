@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type NotificationsButtonProps = {
   count?: number;
@@ -13,6 +14,25 @@ export default function NotificationsButton({
   count = 0,
   onPress,
 }: NotificationsButtonProps) {
+  const prevCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prevCountRef.current == null) {
+      prevCountRef.current = count;
+      return;
+    }
+
+    if (count > prevCountRef.current) {
+      void appSoundManager.play(AppSoundCategory.GlassBells, {
+        volume: 0.92,
+        rate: 1.08,
+        debounceMs: 300,
+      });
+    }
+
+    prevCountRef.current = count;
+  }, [count]);
+
   return (
     <TouchableOpacity
       style={styles.container}

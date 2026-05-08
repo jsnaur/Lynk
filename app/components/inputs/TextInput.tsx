@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   TextInput as RNTextInput,
@@ -9,6 +9,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type InputState = 'default' | 'focus' | 'success' | 'error' | 'disabled';
 
@@ -37,6 +38,21 @@ export default function TextInput({
 }: TextInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isSecure, setIsSecure] = useState(secureTextEntry);
+  const previousHasErrorRef = useRef(false);
+
+  const hasValidationError =
+    state === 'error' || Boolean(errorMessage?.trim().length);
+
+  useEffect(() => {
+    if (hasValidationError && !previousHasErrorRef.current) {
+      void appSoundManager.play(AppSoundCategory.Buzzes, {
+        volume: 0.72,
+        debounceMs: 350,
+      });
+    }
+
+    previousHasErrorRef.current = hasValidationError;
+  }, [hasValidationError]);
 
   const getBackgroundColor = () => {
     if (state === 'disabled') return COLORS.bg;
