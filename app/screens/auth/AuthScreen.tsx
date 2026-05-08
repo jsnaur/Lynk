@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import TextureSvg from '../../../assets/AuthAssets/texture.svg';
 import {
-    ActivityIndicator,
     Alert,
     Image,
     ImageBackground,
@@ -23,21 +22,50 @@ import { supabase } from '../../lib/supabase';
 import OtpVerificationScreen from './OtpVerificationScreen';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
-import appSoundManager from '../../lib/SoundManager';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { Button, InlineCtaButton } from '../../components/buttons';
+import { AuthTab } from '../../components/inputs';
 
-type AuthTab = 'login' | 'register';
+type AuthMode = 'Left' | 'Right';
 
 const ASSETS = {
     background:
         'https://www.figma.com/api/mcp/asset/320eb0a8-8dec-4b42-afb2-4d9554882dbd',
 };
 
+/**
+ * Standardized icon-only button that handles sound feedback and provides consistent behavior.
+ * Used for small interactive icons like password visibility toggles.
+ */
+interface IconButtonProps {
+  iconName: any;
+  size: number;
+  color: string;
+  onPress: () => void;
+  disabled?: boolean;
+}
+
+function IconButton({ iconName, size, color, onPress, disabled = false }: IconButtonProps) {
+  const handlePress = () => {
+    if (disabled) return;
+    void appSoundManager.play(AppSoundCategory.UIClicks);
+    onPress();
+  };
+
+  return (
+    <Pressable onPress={handlePress} disabled={disabled}>
+      <Ionicons name={iconName} size={size} color={color} />
+    </Pressable>
+  );
+}
+
 type Props = NativeStackScreenProps<AuthStackParamList, 'Auth'>;
 
 export default function AuthScreen({ navigation }: Props) {
     const { width, height } = useWindowDimensions();
     const scrollRef = useRef<ScrollView>(null);
-    const [activeTab, setActiveTab] = useState<AuthTab>('login');
+    const [activeTab, setActiveTab] = useState<'Left' | 'Right'>('Left');
+    const [switcherWidth, setSwitcherWidth] = useState(0);
 
     // Form State
     const [email, setEmail] = useState('');
@@ -70,7 +98,7 @@ export default function AuthScreen({ navigation }: Props) {
 
     // Real-time Form Validation
     const isPasswordValid = password.length >= 6; // Supabase defaults to min 6 chars
-    const doPasswordsMatch = activeTab === 'login' || password === confirmPassword;
+    const doPasswordsMatch = activeTab === 'Left' || password === confirmPassword;
     const isFormReady = isValidEmail && isPasswordValid && doPasswordsMatch;
 
     // ── OTP screen: hand off entirely to OtpVerificationScreen ───────────────
@@ -80,7 +108,7 @@ export default function AuthScreen({ navigation }: Props) {
                 email={trimmedEmail}
                 onVerified={() => {
                     setIsVerifying(false);
-                    setActiveTab('login'); // Reset background tab state
+                    setActiveTab('Left'); // Reset background tab state
                     setPassword('');
                     setConfirmPassword('');
                     // AppNavigator handles auto-routing to ProfileSetup.
@@ -96,7 +124,7 @@ export default function AuthScreen({ navigation }: Props) {
 
         setLoading(true);
 
-        if (activeTab === 'login') {
+        if (activeTab === 'Left') {
             const { error } = await supabase.auth.signInWithPassword({
                 email: trimmedEmail,
                 password: password,
@@ -128,7 +156,7 @@ export default function AuthScreen({ navigation }: Props) {
                     return;
                 }
 
-                setActiveTab('login'); // Reset background tab state
+                setActiveTab('Left'); // Reset background tab state
                 setPassword('');
                 setConfirmPassword('');
                 // AppNavigator handles auto-routing to ProfileSetup.
@@ -152,6 +180,14 @@ export default function AuthScreen({ navigation }: Props) {
 
         setLoading(false);
     }
+
+    const handleTabChange = (tab: 'Left' | 'Right') => {
+        setActiveTab(tab);
+        setShowForgotLink(false);
+        // Clear form fields when switching tabs for better UX
+        setPassword('');
+        setConfirmPassword('');
+    };
 
     return (
         <KeyboardAvoidingView
@@ -192,42 +228,17 @@ export default function AuthScreen({ navigation }: Props) {
                             </View>
 
                             {/* ── Tab Switcher ── */}
-                            <View style={styles.switcherContainer}>
-                                <View style={styles.switcher}>
-                                    <Pressable
-                                        onPress={() => { setActiveTab('login'); setShowForgotLink(false); }}
-                                        style={[
-                                            styles.switchTab,
-                                            activeTab === 'login' && styles.switchTabActive,
-                                        ]}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.switchTabText,
-                                                activeTab === 'login' && styles.switchTabTextActive,
-                                            ]}
-                                        >
-                                            Log In
-                                        </Text>
-                                    </Pressable>
-
-                                    <Pressable
-                                        onPress={() => { setActiveTab('register'); setShowForgotLink(false); }}
-                                        style={[
-                                            styles.switchTab,
-                                            activeTab === 'register' && styles.switchTabActive,
-                                        ]}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.switchTabText,
-                                                activeTab === 'register' && styles.switchTabTextActive,
-                                            ]}
-                                        >
-                                            Register
-                                        </Text>
-                                    </Pressable>
-                                </View>
+                            <View
+                                style={styles.switcherContainer}
+                                onLayout={(event) => setSwitcherWidth(event.nativeEvent.layout.width)}
+                            >
+                                <AuthTab
+                                    activeTab={activeTab}
+                                    leftLabel="Log In"
+                                    rightLabel="Register"
+                                    onTabChange={handleTabChange}
+                                    style={{ width: switcherWidth > 0 ? Math.min(switcherWidth, 326) : 326 }}
+                                />
                             </View>
 
                             {/* ── Form ── */}
@@ -297,16 +308,15 @@ export default function AuthScreen({ navigation }: Props) {
                                         }}
                                         onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                                     />
-                                    <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                                        <Ionicons
-                                            name={showPassword ? 'eye' : 'eye-off'}
-                                            size={18}
-                                            color={COLORS.textSecondary}
-                                        />
-                                    </Pressable>
+                                    <IconButton
+                                        iconName={showPassword ? 'eye' : 'eye-off'}
+                                        size={18}
+                                        color={COLORS.textSecondary}
+                                        onPress={() => setShowPassword((prev) => !prev)}
+                                    />
                                 </View>
 
-                                {activeTab === 'register' && (
+                                {activeTab === 'Right' && (
                                     <View style={styles.inputShell}>
                                         <Ionicons
                                             name="lock-closed"
@@ -324,43 +334,35 @@ export default function AuthScreen({ navigation }: Props) {
                                             onChangeText={setConfirmPassword}
                                             onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                                         />
-                                        <Pressable onPress={() => setShowConfirmPassword((prev) => !prev)}>
-                                            <Ionicons
-                                                name={showConfirmPassword ? 'eye' : 'eye-off'}
-                                                size={18}
-                                                color={COLORS.textSecondary}
-                                            />
-                                        </Pressable>
+                                        <IconButton
+                                            iconName={showConfirmPassword ? 'eye' : 'eye-off'}
+                                            size={18}
+                                            color={COLORS.textSecondary}
+                                            onPress={() => setShowConfirmPassword((prev) => !prev)}
+                                        />
                                     </View>
                                 )}
 
-                                {activeTab === 'login' && showForgotLink && (
-                                    <Pressable style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPass1')}>
-                                        <Text style={styles.forgotText}>Forgot password?</Text>
-                                    </Pressable>
+                                {activeTab === 'Left' && showForgotLink && (
+                                    <InlineCtaButton
+                                        state="Active"
+                                        label="Forgot password?"
+                                        onPress={() => navigation.navigate('ForgotPass1')}
+                                    />
                                 )}
                             </View>
 
                             {/* ── CTA ── */}
                             <View style={styles.ctaBlock}>
-                                <Pressable
-                                    style={[
-                                        styles.loginButton, 
-                                        (!isFormReady || loading) && { opacity: 0.5 } // Visual feedback when disabled
-                                    ]}
+                                <Button
+                                    label={activeTab === 'Left' ? 'Log In' : 'Create Account'}
                                     onPress={handleAuth}
                                     disabled={!isFormReady || loading}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color={COLORS.bg} />
-                                    ) : (
-                                        <Text style={styles.loginButtonText}>
-                                            {activeTab === 'login' ? 'Log In' : 'Create Account'}
-                                        </Text>
-                                    )}
-                                </Pressable>
+                                    loading={loading}
+                                    style={{ minHeight: 52, borderRadius: 14 }}
+                                />
 
-                                {activeTab === 'register' && (
+                                {activeTab === 'Right' && (
                                     <Text style={styles.termsText}>
                                         By registering, you agree to our{' '}
                                         <Text style={styles.termsLink}>Terms & Privacy Policy</Text>

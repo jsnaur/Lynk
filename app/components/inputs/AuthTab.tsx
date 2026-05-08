@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { COLORS } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type AuthTabProps = {
   activeTab?: 'Left' | 'Right';
   leftLabel?: string;
   rightLabel?: string;
   onTabChange?: (tab: 'Left' | 'Right') => void;
+  style?: StyleProp<ViewStyle>;
 };
 
 export default function AuthTab({
@@ -15,37 +17,41 @@ export default function AuthTab({
   leftLabel = 'Log In',
   rightLabel = 'Register',
   onTabChange,
+  style,
 }: AuthTabProps) {
   const isLeft = activeTab === 'Left';
 
+  const handleTabChange = (tab: 'Left' | 'Right') => {
+    if (tab !== activeTab) {
+      void appSoundManager.play(AppSoundCategory.UIClicks);
+      onTabChange?.(tab);
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      {isLeft && (
-        <View style={styles.activeTab}>
-          <Text style={styles.activeTabText}>{leftLabel}</Text>
-        </View>
-      )}
+    <View style={[styles.container, style]}>
       <TouchableOpacity
-        style={isLeft ? styles.inactiveTab : styles.activeTab}
-        onPress={() => onTabChange?.('Left')}
+        style={[styles.tab, isLeft && styles.activeTab]}
+        onPress={() => handleTabChange('Left')}
         activeOpacity={0.7}
       >
-        <Text style={isLeft ? styles.inactiveTabText : styles.activeTabText}>
+        <Text
+          style={[styles.tabText, isLeft ? styles.activeTabText : styles.inactiveTabText]}
+          numberOfLines={1}
+        >
           {leftLabel}
         </Text>
       </TouchableOpacity>
 
-      {!isLeft && (
-        <View style={styles.activeTab}>
-          <Text style={styles.activeTabText}>{rightLabel}</Text>
-        </View>
-      )}
       <TouchableOpacity
-        style={!isLeft ? styles.inactiveTab : styles.activeTab}
-        onPress={() => onTabChange?.('Right')}
+        style={[styles.tab, !isLeft && styles.activeTab]}
+        onPress={() => handleTabChange('Right')}
         activeOpacity={0.7}
       >
-        <Text style={!isLeft ? styles.inactiveTabText : styles.activeTabText}>
+        <Text
+          style={[styles.tabText, !isLeft ? styles.activeTabText : styles.inactiveTabText]}
+          numberOfLines={1}
+        >
           {rightLabel}
         </Text>
       </TouchableOpacity>
@@ -60,15 +66,27 @@ const styles = StyleSheet.create({
     padding: 4,
     flexDirection: 'row',
     gap: 4,
-    width: '100%',
     height: 44,
+    width: '100%',
+  },
+  tab: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   activeTab: {
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
     backgroundColor: COLORS.surface2,
     borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
     // iOS shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -77,22 +95,17 @@ const styles = StyleSheet.create({
     // Android elevation
     elevation: 4,
   },
-  inactiveTab: {
-    flex: 1,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
+  tabText: {
+    fontSize: 15,
+    fontFamily: FONTS.body,
+    textAlign: 'center',
   },
   activeTabText: {
     color: COLORS.textPrimary,
-    fontSize: 15,
     fontWeight: '600',
-    fontFamily: FONTS.body,
   },
   inactiveTabText: {
     color: COLORS.textSecondary,
-    fontSize: 15,
     fontWeight: '400',
-    fontFamily: FONTS.body,
   },
 });

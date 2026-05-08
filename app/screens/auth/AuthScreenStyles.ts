@@ -62,43 +62,11 @@ export const styles = StyleSheet.create({
 	},
 	switcherContainer: {
 		width: '100%',
-		maxWidth: 326,
 		marginBottom: 24,
-	},
-	switcher: {
-		height: 44,
-		borderRadius: 12,
-		backgroundColor: COLORS.surface,
-		padding: 4,
-		flexDirection: 'row',
-		gap: 4,
-	},
-	switchTab: {
-		flex: 1,
-		borderRadius: 9,
-		justifyContent: 'center',
 		alignItems: 'center',
-	},
-	switchTabActive: {
-		backgroundColor: COLORS.surface2,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.35,
-		shadowRadius: 7,
-		elevation: 3,
-	},
-	switchTabText: {
-		color: COLORS.textSecondary,
-		fontSize: 15,
-		fontWeight: '400',
-	},
-	switchTabTextActive: {
-		color: COLORS.textPrimary,
-		fontWeight: '600',
 	},
 	formBlock: {
 		width: '100%',
-		maxWidth: 326,
 		gap: 14,
 		marginBottom: 20,
 	},
@@ -128,33 +96,9 @@ export const styles = StyleSheet.create({
 		fontSize: 15,
 		paddingVertical: 12,
 	},
-	forgotWrap: {
-		alignSelf: 'flex-end',
-		paddingHorizontal: 2,
-		paddingTop: 2,
-	},
-	forgotText: {
-		color: COLORS.accent,
-		fontSize: 13,
-		fontWeight: '400',
-	},
 	ctaBlock: {
 		width: '100%',
-		maxWidth: 326,
 		gap: 16,
-	},
-	loginButton: {
-		minHeight: 52,
-		borderRadius: 14,
-		backgroundColor: COLORS.accent,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	loginButtonText: {
-		color: COLORS.accentText,
-		fontSize: 16,
-		fontWeight: '700',
-		letterSpacing: 0.2,
 	},
 	termsText: {
 		color: COLORS.textPrimary,
