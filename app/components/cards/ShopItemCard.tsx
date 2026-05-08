@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
@@ -13,10 +14,24 @@ export interface ShopItemProps {
 }
 
 export default function ShopItemCard({ name, price, isOwned = false, onPress }: ShopItemProps) {
+  const handlePress = async () => {
+    if (!onPress) return;
+    try {
+      const res = onPress();
+      if (res && typeof (res as any).then === 'function') {
+        await res;
+      }
+      void appSoundManager.play(AppSoundCategory.KaChings);
+    } catch (err) {
+      void appSoundManager.play(AppSoundCategory.Thuds);
+      throw err;
+    }
+  };
+
   return (
     <TouchableOpacity 
       style={styles.card} 
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
       <View style={styles.imagePlaceholder}>

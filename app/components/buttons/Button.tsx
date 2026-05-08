@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
 import { COLORS } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 export type ButtonVariant = 'Primary' | 'Secondary' | 'Outline' | 'Danger';
 
@@ -53,6 +54,15 @@ export default function Button({
     }
   };
 
+  const handlePress = () => {
+    if (!onPress || disabled || loading) {
+      return;
+    }
+
+    void appSoundManager.play(AppSoundCategory.UIClicks);
+    onPress();
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -64,7 +74,7 @@ export default function Button({
         },
         style,
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       activeOpacity={0.7}
     >

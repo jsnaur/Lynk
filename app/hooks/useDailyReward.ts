@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useTokenBalance } from '../contexts/TokenContext';
+import appSoundManager, { AppSoundCategory } from '../lib/SoundManager';
 
 export type ClaimResult = {
   cycle_day: number;
@@ -90,6 +91,12 @@ export function useDailyReward() {
       setLastClaimResult(result);
       setAlreadyClaimed(true);
       await markDismissedToday();
+      // Play a swelling chime on actual successful claim
+      try {
+        void appSoundManager.play(AppSoundCategory.ChestOpens, { force: true });
+      } catch (e) {
+        // noop
+      }
       // TokenContext realtime listener picks up the DB update.
       return result;
     } finally {

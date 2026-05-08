@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 // 1. Updated types to strictly match the Supabase Trigger output
 export type NotificationType =
@@ -104,10 +105,39 @@ export default function NotificationRow({
 }: NotificationRowProps) {
     const icon = getNotificationIcon(type);
     const backgroundColor = getBackgroundColor(type, state);
+    const isFirstRenderRef = React.useRef(true);
+    const previousStateRef = React.useRef<NotificationState>(state);
+    const previousTimestampRef = React.useRef(timestamp);
     const translateX = React.useRef(new Animated.Value(0)).current;
     const touchStartRef = React.useRef({ x: 0, y: 0 });
     const latestDxRef = React.useRef(0);
     const isDraggingRef = React.useRef(false);
+
+    React.useEffect(() => {
+        const isUnread = state === 'Unread';
+        const becameUnread = previousStateRef.current !== 'Unread' && isUnread;
+        const justArrivedUnread =
+            isFirstRenderRef.current &&
+            isUnread &&
+            timestamp.toLowerCase() === 'just now';
+        const justNowTimestampUpdated =
+            !isFirstRenderRef.current &&
+            isUnread &&
+            timestamp.toLowerCase() === 'just now' &&
+            previousTimestampRef.current !== timestamp;
+
+        if (becameUnread || justArrivedUnread || justNowTimestampUpdated) {
+            void appSoundManager.play(AppSoundCategory.GlassBells, {
+                volume: 0.92,
+                rate: 1.08,
+                debounceMs: 300,
+            });
+        }
+
+        previousStateRef.current = state;
+        previousTimestampRef.current = timestamp;
+        isFirstRenderRef.current = false;
+    }, [state, timestamp]);
 
     const deleteOpacity = translateX.interpolate({
         inputRange: [-90, -24, 0],

@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -192,8 +193,11 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3 }: B
         setBadges((prev) =>
             prev.map((badge) => {
                 if (badge.id === badgeId) {
-                    if (badge.state === 'selected') return { ...badge, state: 'default' };
-                    else if (selectedCount < maxBadges) return { ...badge, state: 'selected' };
+                        if (badge.state === 'selected') return { ...badge, state: 'default' };
+                        else if (selectedCount < maxBadges) {
+                            try { void appSoundManager.play(AppSoundCategory.Clinks, { force: true }); } catch (e) {}
+                            return { ...badge, state: 'selected' };
+                        }
                 }
                 return badge;
             })

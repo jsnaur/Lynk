@@ -8,6 +8,7 @@ import UncheckedIcon from '../../../assets/ForgotPassAssets/Unchecked_icon.svg';
 import { forgotStyles } from './ForgotPass.styles';
 import { supabase } from '../../lib/supabase';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import appSoundManager from '../../lib/SoundManager';
 
 // Safety net: if Supabase's recovery-session updateUser promise hangs (a known
 // edge case where the password is updated server-side but the client never
@@ -46,6 +47,11 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
     }, 1000);
     return () => clearInterval(timerId);
   }, [isRecoveryMode]);
+
+  useEffect(() => {
+    if (!success) return;
+    void appSoundManager.playAuthSuccessChime();
+  }, [success]);
 
   const timerLabel = useMemo(() => {
     const minutes = Math.floor(timeLeftSec / 60);

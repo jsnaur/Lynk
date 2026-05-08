@@ -7,6 +7,7 @@ import { withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { FONTS } from '../../constants/fonts';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ type DailyRewardSheetProps = {
   alreadyClaimed: boolean;
   rewards?: DayReward[];
   onClose: () => void;
-  onClaim: () => void;
+  onClaim: () => Promise<any>;
 };
 
 // Mirrors RPC: tokens = 5 + (day-1)*2, xp = day*10
@@ -216,13 +217,36 @@ export default function DailyRewardSheet({
   const glow = useGlow();
   const [showSuccess, setShowSuccess] = useState(false);
   const successAnim = useEnter(showSuccess);
+  const lastSparkleAt = useRef<number | null>(null);
+
+  const triggerSparkles = (count: number) => {
+    const now = Date.now();
+    if (lastSparkleAt.current && now - lastSparkleAt.current < 400) return;
+    lastSparkleAt.current = now;
+    const plays = Math.min(6, Math.max(1, Math.floor(count)));
+    for (let i = 0; i < plays; i++) {
+      setTimeout(() => {
+        try { void appSoundManager.play(AppSoundCategory.Sparkles, { force: true, volume: 0.9 }); } catch (e) {}
+      }, i * 70);
+    }
+    // final ding
+    setTimeout(() => { try { void appSoundManager.play(AppSoundCategory.KaChings, { force: true, volume: 1 }); } catch (e) {} }, plays * 70 + 40);
+  };
 
   const currentReward = rewards.find((r) => r.day === currentDay);
   const claimActive = !alreadyClaimed && !!currentReward;
 
-  const handleClaim = () => {
-    onClaim();
-    setShowSuccess(true);
+  const handleClaim = async () => {
+    try {
+      const res = await onClaim();
+      if (res) {
+        // trigger sparkles tied to the visual counter incrementing
+        triggerSparkles(res.tokens_awarded ?? currentReward?.tokens ?? 1);
+        setShowSuccess(true);
+      }
+    } catch (e) {
+      // claim failed or was already claimed - do nothing
+    }
   };
   const handleClose = () => {
     setShowSuccess(false);

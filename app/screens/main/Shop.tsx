@@ -12,6 +12,7 @@ import { withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { useTheme } from '../../contexts/ThemeContext';
 import { FONTS } from '../../constants/fonts';
 
@@ -102,9 +103,14 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     if (ownedIds.has(item.id)) return;
     if (item.price > 0) {
       const didSpend = await spendTokens(item.price);
-      if (!didSpend) { Alert.alert('Not enough tokens', 'Complete quests to earn more tokens.'); return; }
+      if (!didSpend) {
+        void appSoundManager.play(AppSoundCategory.Thuds);
+        Alert.alert('Not enough tokens', 'Complete quests to earn more tokens.');
+        return;
+      }
     }
     setOwnedIds((prev) => new Set(prev).add(item.id));
+    void appSoundManager.play(AppSoundCategory.KaChings);
   }, [ownedIds, spendTokens]);
 
   return (

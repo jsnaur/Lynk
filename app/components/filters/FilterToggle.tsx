@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { COLORS, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type FilterToggleProps = {
   label: string;
@@ -18,6 +19,7 @@ export default function FilterToggle({ label, selected, onPress }: FilterToggleP
     const newState = !isSelected;
     if (selected === undefined) {
       setInternalSelected(newState);
+      void appSoundManager.play(AppSoundCategory.Swishes, { debounceMs: 0 });
     }
     onPress?.(newState);
   };
