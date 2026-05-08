@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 import { supabase } from '../../lib/supabase'; 
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 import { 
   ACCESSORY_ITEMS, 
@@ -173,6 +174,7 @@ export default function CustomizeScreen({
       delete newAppliedState[slotToUpdate];
     } else {
       newAppliedState[slotToUpdate] = selectedAccessory.id;
+      void appSoundManager.play(AppSoundCategory.Snaps);
     }
     
     setAppliedAccessories(newAppliedState);
