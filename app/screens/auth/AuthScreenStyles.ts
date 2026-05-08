@@ -106,11 +106,13 @@ export const styles = StyleSheet.create({
 		lineHeight: 18,
 		textAlign: 'center',
 		opacity: 0.9,
+		marginTop: 8,
 	},
 	termsLink: {
 		color: COLORS.accent,
 		fontSize: 12,
 		lineHeight: 18,
+		
 	},
 	errorRow: {
 		flexDirection: 'row',
