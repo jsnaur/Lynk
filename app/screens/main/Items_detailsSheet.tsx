@@ -1,4 +1,4 @@
-import React, { type ComponentType, useMemo } from 'react';
+import React, { type ComponentType, useEffect, useMemo, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -43,6 +44,18 @@ export default function ItemsDetailsSheet({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
+  const previousVisibleRef = useRef(false);
+
+  useEffect(() => {
+    if (visible && !previousVisibleRef.current) {
+      void appSoundManager.play(AppSoundCategory.Whooshes, { debounceMs: 0 });
+    } else if (!visible && previousVisibleRef.current) {
+      void appSoundManager.play(AppSoundCategory.Swooshes, { debounceMs: 0 });
+    }
+
+    previousVisibleRef.current = visible;
+  }, [visible]);
+
   if (!item) return null;
 
   const canAfford = item.price === 0 || balance >= item.price;

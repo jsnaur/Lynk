@@ -3,6 +3,7 @@ import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 interface NavItemProps {
   label: string;
@@ -16,10 +17,18 @@ export default function NavItem({ label, iconName, isActive, onPress }: NavItemP
   const inactiveColor = COLORS.textSecondary;
   const color = isActive ? activeColor : inactiveColor;
 
+  const handlePress = () => {
+    if (!isActive) {
+      void appSoundManager.play(AppSoundCategory.Thumps, { debounceMs: 0 });
+    }
+
+    onPress();
+  };
+
   return (
     <TouchableOpacity 
       style={styles.container} 
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
       <View style={styles.iconContainer}>

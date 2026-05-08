@@ -18,6 +18,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import NotificationRow from '../../components/rows/NotificationRow';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -60,6 +61,7 @@ export default function NotificationSheet({
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const { alert } = useCustomAlert();
     const navigation = useNavigation<any>();
+    const previousVisibleRef = useRef(false);
 
     const validClickableTypes = [
         'new_quest',
@@ -162,6 +164,9 @@ export default function NotificationSheet({
 
     useEffect(() => {
         if (visible) {
+            if (!previousVisibleRef.current) {
+                void appSoundManager.play(AppSoundCategory.Whooshes, { debounceMs: 0 });
+            }
             fetchNotifications();
             // Pop-out Animation
             Animated.parallel([
@@ -177,9 +182,14 @@ export default function NotificationSheet({
                 }),
             ]).start();
         } else {
+            if (previousVisibleRef.current) {
+                void appSoundManager.play(AppSoundCategory.Swooshes, { debounceMs: 0 });
+            }
             scaleAnim.setValue(0);
             opacityAnim.setValue(0);
         }
+
+        previousVisibleRef.current = visible;
     }, [visible]);
 
     const fetchNotifications = async () => {

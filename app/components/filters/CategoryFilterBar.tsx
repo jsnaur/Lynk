@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import FilterToggle from './FilterToggle';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 const CATEGORIES = ['All', 'Favor', 'Study', 'Item'];
 
@@ -21,6 +22,10 @@ export default function CategoryFilterBar({
     let newFilter = category;
     if (activeFilter === category && category !== 'All') {
       newFilter = 'All';
+    }
+
+    if (newFilter !== activeFilter) {
+      void appSoundManager.play(AppSoundCategory.Swishes, { debounceMs: 0 });
     }
     
     setActiveFilter(newFilter);

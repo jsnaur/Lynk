@@ -16,6 +16,7 @@ import ProfileInactive from '../../assets/NavAssets/ProfileInactive.svg';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { withOpacity } from '../constants/colors';
+import appSoundManager, { AppSoundCategory } from '../lib/SoundManager';
 
 export type MainTab = 'Feed' | 'Quests' | 'Post' | 'Shop' | 'Profile';
 
@@ -85,6 +86,9 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 							key={item.label}
 							style={styles.item}
 							onPress={() => {
+								if (selectedTab !== tab) {
+									void appSoundManager.play(AppSoundCategory.Thumps, { debounceMs: 0 });
+								}
 								setSelectedTab(tab);
 								onTabPress?.(tab);
 							}}

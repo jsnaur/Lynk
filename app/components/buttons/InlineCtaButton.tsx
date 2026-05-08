@@ -3,6 +3,7 @@ import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
 import { COLORS, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 import LoadingDots from '../loading/LoadingDots';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 type ButtonState = 'Disabled' | 'Active' | 'Loading';
 
@@ -20,6 +21,15 @@ const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({
   const isDisabled = state === 'Disabled';
   const isActive = state === 'Active';
   const isLoading = state === 'Loading';
+
+  const handlePress = () => {
+    if (isDisabled || isLoading || !onPress) {
+      return;
+    }
+
+    void appSoundManager.play(AppSoundCategory.UIClicks);
+    onPress();
+  };
 
   const styles = StyleSheet.create({
     button: {
@@ -61,7 +71,7 @@ const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({
   return (
     <TouchableOpacity
       style={styles.button}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={isDisabled}
       activeOpacity={isDisabled ? 1 : 0.7}
     >
