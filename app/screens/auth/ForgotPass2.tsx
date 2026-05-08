@@ -13,6 +13,7 @@ import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
 import EnvelopePixelSprite from '../../../assets/ForgotPassAssets/Envelope_Pixel_Sprite.svg';
 import { forgotStyles } from './ForgotPass.styles';
 import { supabase } from '../../lib/supabase';
+import appSoundManager from '../../lib/SoundManager';
 
 const OTP_LENGTH = 6;
 
@@ -68,6 +69,7 @@ export default function ForgotPass2({ navigation, route }: any) {
     const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'recovery' });
     setLoading(false);
     if (error) {
+      void appSoundManager.playAuthErrorBuzz();
       setError('Invalid or expired code. Please try again.');
       setDigits(Array(OTP_LENGTH).fill(''));
       refs.current[0]?.focus();

@@ -34,6 +34,8 @@ export type PlaySoundOptions = {
   debounceMs?: number;
   force?: boolean;
   replayFromStart?: boolean;
+  rate?: number;
+  shouldCorrectPitch?: boolean;
 };
 
 export type PreloadSoundOptions = {
@@ -213,6 +215,18 @@ class SoundManager {
       const volume = options.volume ?? definition.volume;
       await sound.setVolumeAsync(Math.max(0, Math.min(1, volume)));
 
+      if (options.rate != null) {
+        const clampedRate = Math.max(0.5, Math.min(2, options.rate));
+        try {
+          await sound.setRateAsync(
+            clampedRate,
+            options.shouldCorrectPitch ?? true,
+          );
+        } catch {
+          // Some runtimes do not support rate changes for all codecs/devices.
+        }
+      }
+
       if (options.replayFromStart ?? true) {
         await sound.replayAsync();
       } else {
@@ -263,6 +277,51 @@ class SoundManager {
   public async unloadAll(): Promise<void> {
     const categories = Array.from(this.loadedSounds.keys());
     await Promise.all(categories.map(async (category) => this.unload(category)));
+  }
+
+  public async playAuthSuccessChime(): Promise<void> {
+    await this.play(AppSoundCategory.GlassBells, {
+      force: true,
+      debounceMs: 0,
+      volume: 0.88,
+      rate: 1.03,
+    });
+    await this.delay(120);
+    await this.play(AppSoundCategory.Chimes, {
+      force: true,
+      debounceMs: 0,
+      volume: 0.92,
+      rate: 1.17,
+    });
+  }
+
+  public async playAuthErrorBuzz(): Promise<void> {
+    await this.play(AppSoundCategory.Buzzes, {
+      force: true,
+      debounceMs: 0,
+      volume: 0.68,
+      rate: 1.0,
+      shouldCorrectPitch: false,
+    });
+    await this.delay(90);
+    await this.play(AppSoundCategory.Buzzes, {
+      force: true,
+      debounceMs: 0,
+      volume: 0.58,
+      rate: 0.82,
+      shouldCorrectPitch: false,
+    });
+  }
+
+  public async playProgressDing(progressRatio = 0): Promise<void> {
+    const clamped = Math.max(0, Math.min(1, progressRatio));
+    const rate = 1.02 + clamped * 0.26;
+    await this.play(AppSoundCategory.Chimes, {
+      force: true,
+      debounceMs: 0,
+      volume: 0.82,
+      rate,
+    });
   }
 
   private isDebounced(category: AppSoundCategory, debounceMs: number): boolean {
@@ -337,6 +396,12 @@ class SoundManager {
     } catch (error) {
       console.warn("[SoundManager] Failed to configure audio mode.", error);
     }
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 }
 

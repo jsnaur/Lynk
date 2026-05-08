@@ -23,6 +23,7 @@ import { supabase } from '../../lib/supabase';
 import OtpVerificationScreen from './OtpVerificationScreen';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
+import appSoundManager from '../../lib/SoundManager';
 
 type AuthTab = 'login' | 'register';
 
@@ -102,6 +103,7 @@ export default function AuthScreen({ navigation }: Props) {
             });
 
             if (error) {
+                void appSoundManager.playAuthErrorBuzz();
                 Alert.alert('Login Failed', error.message);
                 // Supabase returns "Invalid login credentials" for wrong email OR wrong password.
                 // Reveal the Forgot password? link so the user can recover if it was the password.
@@ -109,6 +111,8 @@ export default function AuthScreen({ navigation }: Props) {
                 if (msg.includes('invalid') && msg.includes('credentials')) {
                     setShowForgotLink(true);
                 }
+            } else {
+                void appSoundManager.playAuthSuccessChime();
             }
         } else {
             if (isGmail(trimmedEmail)) {

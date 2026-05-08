@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import appSoundManager from '../../lib/SoundManager';
 
 interface OtpVerificationScreenProps {
     email: string;
@@ -40,6 +41,7 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
 
     async function handleVerify() {
         if (code.length !== 6) {
+            void appSoundManager.playAuthErrorBuzz();
             Alert.alert('Invalid Code', 'Please enter the 6-digit code sent to your email.');
             return;
         }
@@ -56,8 +58,10 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
         setLoading(false);
 
         if (error) {
+            void appSoundManager.playAuthErrorBuzz();
             Alert.alert('Verification Failed', error.message);
         } else {
+            void appSoundManager.playAuthSuccessChime();
             onVerified();
         }
     }

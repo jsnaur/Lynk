@@ -11,6 +11,7 @@ import { FONTS } from "../../constants/fonts";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS } from "../../constants/accessories";
 import Button from "../../components/buttons/Button";
+import appSoundManager from "../../lib/SoundManager";
 
 import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
 
@@ -108,6 +109,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
     setDisplayNameError("");
     setMajorOpen(false);
     setYearOpen(false);
+    void appSoundManager.playProgressDing(0.45);
 
     navigation.navigate("ProfileSetupB", {
       displayName: displayName.trim(),

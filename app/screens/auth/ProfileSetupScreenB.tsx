@@ -9,6 +9,7 @@ import { FONTS } from "../../constants/fonts";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from "../../constants/accessories";
 import Button from "../../components/buttons/Button";
+import appSoundManager from "../../lib/SoundManager";
 
 import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
 
@@ -147,6 +148,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
         return;
       }
 
+      void appSoundManager.playProgressDing(1);
       navigation.reset({ index: 0, routes: [{ name: "Main" as never }] });
     } catch (err) {
       console.error(err);
