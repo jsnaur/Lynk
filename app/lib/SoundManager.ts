@@ -1,23 +1,27 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 
 export enum AppSoundCategory {
-  UIClicks = "ui_clicks",
-  Thumps = "thumps",
-  Swishes = "swishes",
-  Whooshes = "whooshes",
-  Fanfares = "fanfares",
-  Sparkles = "sparkles",
+  Buzzes = "buzzes",
+  Chimes = "chimes",
+  AuthBuzzes = "auth_buzzes",
+  GlassBells = "glass_bells",
+  SetupPings = "setup_pings",
+  Clinks = "clinks",
   ChestOpens = "chest_opens",
   LevelUps = "level_ups",
-  Clinks = "clinks",
+  Fanfares = "fanfares",
+  Sparkles = "sparkles",
+  ItemEquips = "item_equips",
+  PurchaseErrors = "purchase_errors",
   KaChings = "ka_chings",
-  Thuds = "thuds",
   Snaps = "snaps",
-  Pops = "pops",
   Swooshes = "swooshes",
-  Chimes = "chimes",
-  Buzzes = "buzzes",
-  GlassBells = "glass_bells",
+  Pops = "pops",
+  UIClicks = "ui_clicks",
+  Thuds = "thuds",
+  Thumps = "thumps",
+  Whooshes = "whooshes",
+  Swishes = "swishes",
 }
 
 type SoundAsset = number;
@@ -43,41 +47,41 @@ export type PreloadSoundOptions = {
 };
 
 const SOUND_CATALOG: Record<AppSoundCategory, SoundDefinition> = {
-  [AppSoundCategory.UIClicks]: {
-    source: require("../../assets/sfx/ui/button_press.wav"),
+  [AppSoundCategory.Buzzes]: {
+    source: require("../../assets/sfx/alerts/alert_error.wav"),
     volume: 1,
-    defaultDebounceMs: 50,
-    notes: "Primary tap/click interactions.",
+    defaultDebounceMs: 180,
+    notes: "Warning/error feedback.",
   },
-  [AppSoundCategory.Thumps]: {
-    source: require("../../assets/sfx/ui/modal_open.wav"),
-    volume: 0.9,
-    defaultDebounceMs: 120,
-    notes: "Heavier impact-style transitions.",
-  },
-  [AppSoundCategory.Swishes]: {
-    source: require("../../assets/sfx/ui/tab_switch.wav"),
-    volume: 0.9,
-    defaultDebounceMs: 80,
-    notes: "Light directional movement cues.",
-  },
-  [AppSoundCategory.Whooshes]: {
-    source: require("../../assets/sfx/ui/nav_switch.wav"),
+  [AppSoundCategory.Chimes]: {
+    source: require("../../assets/sfx/alerts/notification.wav"),
     volume: 0.95,
-    defaultDebounceMs: 100,
-    notes: "Fast navigation movement cues.",
+    defaultDebounceMs: 180,
+    notes: "Notification and gentle success cues.",
   },
-  [AppSoundCategory.Fanfares]: {
-    source: require("../../assets/sfx/gamification/quest_complete.wav"),
-    volume: 1,
-    defaultDebounceMs: 300,
-    notes: "Quest completion or celebratory moments.",
+  [AppSoundCategory.AuthBuzzes]: {
+    source: require("../../assets/sfx/auth/auth_error.wav"),
+    volume: 0.82,
+    defaultDebounceMs: 140,
+    notes: "Authentication error feedback.",
   },
-  [AppSoundCategory.Sparkles]: {
-    source: require("../../assets/sfx/gamification/xp_gain.wav"),
+  [AppSoundCategory.GlassBells]: {
+    source: require("../../assets/sfx/auth/auth_success.wav"),
     volume: 0.9,
-    defaultDebounceMs: 45,
-    notes: "Rapid XP tick and sparkle-like feedback.",
+    defaultDebounceMs: 220,
+    notes: "Delicate success or confirmation cue.",
+  },
+  [AppSoundCategory.SetupPings]: {
+    source: require("../../assets/sfx/auth/setup_progress.wav"),
+    volume: 0.84,
+    defaultDebounceMs: 70,
+    notes: "Progress feedback during setup flows.",
+  },
+  [AppSoundCategory.Clinks]: {
+    source: require("../../assets/sfx/gamification/badge_equip.wav"),
+    volume: 0.85,
+    defaultDebounceMs: 100,
+    notes: "Small metallic success cue.",
   },
   [AppSoundCategory.ChestOpens]: {
     source: require("../../assets/sfx/gamification/daily_reward.wav"),
@@ -91,11 +95,29 @@ const SOUND_CATALOG: Record<AppSoundCategory, SoundDefinition> = {
     defaultDebounceMs: 500,
     notes: "Level-up progression cue.",
   },
-  [AppSoundCategory.Clinks]: {
-    source: require("../../assets/sfx/gamification/badge_equip.wav"),
-    volume: 0.85,
-    defaultDebounceMs: 100,
-    notes: "Small metallic success cue.",
+  [AppSoundCategory.Fanfares]: {
+    source: require("../../assets/sfx/gamification/quest_complete.wav"),
+    volume: 1,
+    defaultDebounceMs: 300,
+    notes: "Quest completion or celebratory moments.",
+  },
+  [AppSoundCategory.Sparkles]: {
+    source: require("../../assets/sfx/gamification/xp_gain.wav"),
+    volume: 0.9,
+    defaultDebounceMs: 45,
+    notes: "Rapid XP tick and sparkle-like feedback.",
+  },
+  [AppSoundCategory.ItemEquips]: {
+    source: require("../../assets/sfx/shop/item_equip.wav"),
+    volume: 0.92,
+    defaultDebounceMs: 120,
+    notes: "Equipping shop items.",
+  },
+  [AppSoundCategory.PurchaseErrors]: {
+    source: require("../../assets/sfx/shop/purchase_error.wav"),
+    volume: 0.92,
+    defaultDebounceMs: 140,
+    notes: "Purchase failure or insufficient funds.",
   },
   [AppSoundCategory.KaChings]: {
     source: require("../../assets/sfx/shop/purchase_success.wav"),
@@ -103,23 +125,11 @@ const SOUND_CATALOG: Record<AppSoundCategory, SoundDefinition> = {
     defaultDebounceMs: 200,
     notes: "Purchase/currency success cue.",
   },
-  [AppSoundCategory.Thuds]: {
-    source: require("../../assets/sfx/ui/modal_close.wav"),
-    volume: 0.9,
-    defaultDebounceMs: 120,
-    notes: "Muted impact cue.",
-  },
   [AppSoundCategory.Snaps]: {
     source: require("../../assets/sfx/social/like_post.wav"),
     volume: 0.85,
     defaultDebounceMs: 80,
     notes: "Quick affirmation cue.",
-  },
-  [AppSoundCategory.Pops]: {
-    source: require("../../assets/sfx/social/post_sent.wav"),
-    volume: 0.9,
-    defaultDebounceMs: 90,
-    notes: "Message/post completion cue.",
   },
   [AppSoundCategory.Swooshes]: {
     source: require("../../assets/sfx/social/post_expand.wav"),
@@ -127,23 +137,41 @@ const SOUND_CATALOG: Record<AppSoundCategory, SoundDefinition> = {
     defaultDebounceMs: 100,
     notes: "Panel/card expansion transitions.",
   },
-  [AppSoundCategory.Chimes]: {
-    source: require("../../assets/sfx/alerts/notification.wav"),
-    volume: 0.95,
-    defaultDebounceMs: 180,
-    notes: "Notification and gentle success cues.",
-  },
-  [AppSoundCategory.Buzzes]: {
-    source: require("../../assets/sfx/alerts/alert_error.wav"),
-    volume: 1,
-    defaultDebounceMs: 180,
-    notes: "Warning/error feedback.",
-  },
-  [AppSoundCategory.GlassBells]: {
-    source: require("../../assets/sfx/auth/auth_success.wav"),
+  [AppSoundCategory.Pops]: {
+    source: require("../../assets/sfx/social/post_sent.wav"),
     volume: 0.9,
-    defaultDebounceMs: 220,
-    notes: "Delicate success or confirmation cue.",
+    defaultDebounceMs: 90,
+    notes: "Message/post completion cue.",
+  },
+  [AppSoundCategory.UIClicks]: {
+    source: require("../../assets/sfx/ui/button_press.wav"),
+    volume: 1,
+    defaultDebounceMs: 50,
+    notes: "Primary tap/click interactions.",
+  },
+  [AppSoundCategory.Thuds]: {
+    source: require("../../assets/sfx/ui/modal_close.wav"),
+    volume: 0.9,
+    defaultDebounceMs: 120,
+    notes: "Muted impact cue.",
+  },
+  [AppSoundCategory.Thumps]: {
+    source: require("../../assets/sfx/ui/modal_open.wav"),
+    volume: 0.9,
+    defaultDebounceMs: 120,
+    notes: "Heavier impact-style transitions.",
+  },
+  [AppSoundCategory.Whooshes]: {
+    source: require("../../assets/sfx/ui/nav_switch.wav"),
+    volume: 0.95,
+    defaultDebounceMs: 100,
+    notes: "Fast navigation movement cues.",
+  },
+  [AppSoundCategory.Swishes]: {
+    source: require("../../assets/sfx/ui/tab_switch.wav"),
+    volume: 0.9,
+    defaultDebounceMs: 80,
+    notes: "Light directional movement cues.",
   },
 };
 
@@ -296,7 +324,7 @@ class SoundManager {
   }
 
   public async playAuthErrorBuzz(): Promise<void> {
-    await this.play(AppSoundCategory.Buzzes, {
+    await this.play(AppSoundCategory.AuthBuzzes, {
       force: true,
       debounceMs: 0,
       volume: 0.68,
@@ -304,7 +332,7 @@ class SoundManager {
       shouldCorrectPitch: false,
     });
     await this.delay(90);
-    await this.play(AppSoundCategory.Buzzes, {
+    await this.play(AppSoundCategory.AuthBuzzes, {
       force: true,
       debounceMs: 0,
       volume: 0.58,
@@ -316,7 +344,7 @@ class SoundManager {
   public async playProgressDing(progressRatio = 0): Promise<void> {
     const clamped = Math.max(0, Math.min(1, progressRatio));
     const rate = 1.02 + clamped * 0.26;
-    await this.play(AppSoundCategory.Chimes, {
+    await this.play(AppSoundCategory.SetupPings, {
       force: true,
       debounceMs: 0,
       volume: 0.82,
