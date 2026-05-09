@@ -20,6 +20,8 @@ const Stack = createNativeStackNavigator();
 const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('Feed');
   const tabBeforePostRef = useRef<MainTab>('Feed');
+  const [highlightQuestId, setHighlightQuestId] = useState<string | null>(null);
+  const [feedRefreshSignal, setFeedRefreshSignal] = useState(0);
   
   // Daily Reward Logic
   const {
@@ -66,7 +68,12 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
   const postNavigation = useMemo(() => ({
     ...navigation,
     goBack: () => setActiveTab(tabBeforePostRef.current),
-    onPublishSuccess: () => invalidateFeedCache(),
+    onPublishSuccess: (questId?: string | null) => {
+      invalidateFeedCache();
+      setFeedRefreshSignal((v) => v + 1);
+      setHighlightQuestId(questId ? String(questId) : null);
+      setActiveTab('Feed');
+    },
   }), [navigation]);
 
   const renderContent = () => {
@@ -81,6 +88,9 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
           onTabPress={handleTabPress}
           dailyRewardClaimable={!alreadyClaimed}
           onOpenDailyReward={openSheet}
+          highlightQuestId={highlightQuestId}
+          feedRefreshSignal={feedRefreshSignal}
+          onHighlightConsumed={() => setHighlightQuestId(null)}
         />
       );
     }
