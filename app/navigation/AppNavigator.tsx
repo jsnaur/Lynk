@@ -90,7 +90,7 @@ const AppNavigator = () => {
     // The screen calls this directly when the user taps "Go to Login".
     const exitRecovery = async () => {
       try {
-        await supabase.auth.signOut();
+        supabase.auth.signOut().catch(() => {});
       } catch {
         // ignore — we still force-exit recovery below
       }

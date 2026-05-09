@@ -153,7 +153,9 @@ export default function HomeFeedScreen({
             if (error) throw error;
             setUnreadNotifCount(count ?? 0);
         } catch (e: any) {
-            console.error('fetchUnreadNotifCount error:', e?.message ?? e);
+            if (e?.message !== 'Auth session missing!') {
+                console.error('fetchUnreadNotifCount error:', e?.message ?? e);
+            }
         }
     };
 
@@ -244,7 +246,9 @@ export default function HomeFeedScreen({
 
             notifChannelRef.current = channel;
         } catch (e: any) {
-            console.error('ensureNotificationsSubscription error:', e?.message ?? e);
+            if (e?.message !== 'Auth session missing!') {
+                console.error('ensureNotificationsSubscription error:', e?.message ?? e);
+            }
         }
     }, []);
 

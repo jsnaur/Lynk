@@ -13,7 +13,7 @@ import appSoundManager from '../../lib/SoundManager';
 // Safety net: if Supabase's recovery-session updateUser promise hangs (a known
 // edge case where the password is updated server-side but the client never
 // resolves the await), surface a clear UI instead of an indefinite spinner.
-const RESET_TIMEOUT_MS = 12000;
+const RESET_TIMEOUT_MS = 3500;
 
 export default function ForgotPass3({ navigation, route, onExitRecovery }: any) {
   const { alert } = useCustomAlert();
@@ -48,10 +48,7 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
     return () => clearInterval(timerId);
   }, [isRecoveryMode]);
 
-  useEffect(() => {
-    if (!success) return;
-    void appSoundManager.playAuthSuccessChime();
-  }, [success]);
+
 
   const timerLabel = useMemo(() => {
     const minutes = Math.floor(timeLeftSec / 60);
@@ -63,15 +60,23 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
     if (!canSubmit) return;
     setLoading(true);
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let authSub: any;
     try {
+      const updatedPromise = new Promise<void>((resolve) => {
+        const { data } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'USER_UPDATED') resolve();
+        });
+        authSub = data.subscription;
+      });
+
       const updatePromise = supabase.auth.updateUser({ password });
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error('TIMEOUT')), RESET_TIMEOUT_MS);
       });
-      const result = (await Promise.race([updatePromise, timeoutPromise])) as Awaited<typeof updatePromise>;
+      const result = await Promise.race([updatePromise, updatedPromise, timeoutPromise]) as any;
       if (timeoutId) clearTimeout(timeoutId);
 
-      if (result.error) {
+      if (result && typeof result === 'object' && 'error' in result && result.error) {
         alert('Error', result.error.message, [{ text: 'OK', style: 'default' }]);
         return;
       }
@@ -90,6 +95,7 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
         ]);
       }
     } finally {
+      if (authSub) authSub.unsubscribe();
       setLoading(false);
     }
   };
@@ -105,12 +111,23 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
     }
     // Fallback (non-recovery routes): just sign out and navigate back.
     try {
-      await supabase.auth.signOut();
+      supabase.auth.signOut().catch(() => {});
     } catch {
       // ignore
     }
     if (navigation?.navigate) navigation.navigate('Auth');
   };
+
+  useEffect(() => {
+    if (!success) return;
+    void appSoundManager.playAuthSuccessChime();
+    
+    // Automatically redirect after a short delay
+    const timerId = setTimeout(() => {
+      handleGoToLogin();
+    }, 2500);
+    return () => clearTimeout(timerId);
+  }, [success]);
 
   if (success) {
     return (
