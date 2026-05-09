@@ -201,6 +201,8 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
                 placeholder="New password"
                 placeholderTextColor="#71758A"
                 secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
                 style={forgotStyles.passInputField}
               />
               <Pressable onPress={() => setShowPassword((prev) => !prev)}>
@@ -252,6 +254,8 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
                 placeholder="Confirm new password"
                 placeholderTextColor="#71758A"
                 secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
                 style={forgotStyles.passInputField}
               />
               <Pressable onPress={() => setShowConfirmPassword((prev) => !prev)}>
