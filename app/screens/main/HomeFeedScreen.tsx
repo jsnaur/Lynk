@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     FlatList,
+    InteractionManager,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -30,6 +31,9 @@ type HomeFeedScreenProps = {
     navigation?: any;
     dailyRewardClaimable?: boolean;
     onOpenDailyReward?: () => void;
+    highlightQuestId?: string | null;
+    onHighlightConsumed?: () => void;
+    feedRefreshSignal?: number;
 };
 
 function withAlpha(hexColor: string, alpha: number) {
@@ -82,7 +86,15 @@ export function invalidateFeedCache() {
     HAS_FETCHED_INITIALLY = false;
 }
 
-export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClaimable, onOpenDailyReward }: HomeFeedScreenProps) {
+export default function HomeFeedScreen({
+    onTabPress,
+    navigation,
+    dailyRewardClaimable,
+    onOpenDailyReward,
+    highlightQuestId,
+    onHighlightConsumed,
+    feedRefreshSignal,
+}: HomeFeedScreenProps) {
     const { theme, colors } = useTheme();
     const styles = useMemo(() => getStyles(colors), [colors]);
 
@@ -103,6 +115,8 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
     const [unreadNotifCount, setUnreadNotifCount] = useState(0);
     const notifChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
     const flatListRef = useRef<FlatList>(null);
+    const [highlightedQuestId, setHighlightedQuestId] = useState<string | null>(null);
+    const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const fetchProfile = async (forceRefresh = false) => {
         if (HAS_FETCHED_INITIALLY && !forceRefresh) return;
@@ -242,6 +256,22 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
     }, []);
 
     useEffect(() => {
+        return () => {
+            if (highlightTimeoutRef.current) {
+                clearTimeout(highlightTimeoutRef.current);
+                highlightTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!feedRefreshSignal) return;
+        setRefreshing(true);
+        fetchProfile(true);
+        fetchQuests(true);
+    }, [feedRefreshSignal]);
+
+    useEffect(() => {
         const unsubscribe = navigation?.addListener?.('focus', () => {
             fetchUnreadNotifCount();
         });
@@ -279,6 +309,47 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
         }
         return quests.filter((quest) => quest.category === activeFilter);
     }, [activeFilter, quests]);
+
+    useEffect(() => {
+        if (!highlightQuestId) return;
+        // Ensure quest is visible (remove category filter)
+        if (activeFilter !== 'all') setActiveFilter('all');
+    }, [highlightQuestId, activeFilter]);
+
+    useEffect(() => {
+        if (!highlightQuestId) return;
+        if (activeFilter !== 'all') return;
+
+        const targetId = String(highlightQuestId);
+        const index = quests.findIndex((q) => String(q?.id) === targetId);
+        if (index < 0) return;
+
+        if (highlightTimeoutRef.current) {
+            clearTimeout(highlightTimeoutRef.current);
+            highlightTimeoutRef.current = null;
+        }
+
+        setHighlightedQuestId(targetId);
+        onHighlightConsumed?.();
+
+        InteractionManager.runAfterInteractions(() => {
+            try {
+                flatListRef.current?.scrollToIndex({
+                    index,
+                    animated: true,
+                    viewPosition: 0.18,
+                });
+            } catch {
+                // `onScrollToIndexFailed` will handle the fallback
+            }
+        });
+
+        highlightTimeoutRef.current = setTimeout(() => {
+            setHighlightedQuestId(null);
+            highlightTimeoutRef.current = null;
+        }, 4500);
+    }, [highlightQuestId, quests, onHighlightConsumed, activeFilter]);
+
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -394,6 +465,17 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                         keyExtractor={(item) => item.id.toString()}
                         contentContainerStyle={styles.feedContent}
                         showsVerticalScrollIndicator={false}
+                        onScrollToIndexFailed={(info) => {
+                            const approxOffset = info.averageItemLength * info.index;
+                            flatListRef.current?.scrollToOffset({ offset: approxOffset, animated: true });
+                            setTimeout(() => {
+                                flatListRef.current?.scrollToIndex({
+                                    index: info.index,
+                                    animated: true,
+                                    viewPosition: 0.18,
+                                });
+                            }, 250);
+                        }}
                         refreshControl={
                             <RefreshControl 
                                 refreshing={refreshing} 
@@ -411,10 +493,17 @@ export default function HomeFeedScreen({ onTabPress, navigation, dailyRewardClai
                             </View>
                         }
                         renderItem={({ item }) => (
-                            <PostCard
-                                quest={item as any}
-                                onPress={() => navigation?.navigate?.('QuestDetail', { quest: item })}
-                            />
+                            <View
+                                style={[
+                                    styles.postCardWrap,
+                                    String(item.id) === String(highlightedQuestId) && styles.postCardHighlighted,
+                                ]}
+                            >
+                                <PostCard
+                                    quest={item as any}
+                                    onPress={() => navigation?.navigate?.('QuestDetail', { quest: item })}
+                                />
+                            </View>
                         )}
                         initialNumToRender={5}
                         maxToRenderPerBatch={5}
@@ -589,4 +678,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     notificationBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: colors.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.bg, paddingHorizontal: 4, zIndex: 2 },
     notificationBadgeText: { color: colors.textPrimary, fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    postCardWrap: { borderRadius: 16 },
+    postCardHighlighted: {
+        backgroundColor: withAlpha(colors.favor, 0.12),
+        borderWidth: 1.5,
+        borderColor: withAlpha(colors.favor, 0.55),
+        padding: 6,
+    },
 });

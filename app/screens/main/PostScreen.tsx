@@ -232,7 +232,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         console.log("Location fetch caught, using default fallback.", locErr.message);
       }
 
-      const { error } = await supabase.rpc('create_quest_with_bounty', {
+      const { data: createdData, error } = await supabase.rpc('create_quest_with_bounty', {
         p_category: category?.toLowerCase(),
         p_title: titleTrim,
         p_description: descTrim,
@@ -259,8 +259,27 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         throw error;
       }
 
+      const createdQuestId =
+        (createdData as any)?.id ??
+        (createdData as any)?.quest_id ??
+        (Array.isArray(createdData) ? (createdData as any)?.[0]?.id ?? (createdData as any)?.[0]?.quest_id : null);
+
+      // Fallback: if RPC doesn't return id, fetch most recent quest by this user (best-effort)
+      let questIdForHighlight: string | null = createdQuestId ? String(createdQuestId) : null;
+      if (!questIdForHighlight) {
+        const { data: newestQuest } = await supabase
+          .from('quests')
+          .select('id, title, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (newestQuest?.id) questIdForHighlight = String(newestQuest.id);
+      }
+
       await refreshBalance();
-      navigation.onPublishSuccess?.();
+      navigation.onPublishSuccess?.(questIdForHighlight);
       navigation.goBack();
     } catch (error: any) {
       const isMissingRpc =
