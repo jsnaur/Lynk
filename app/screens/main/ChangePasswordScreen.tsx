@@ -73,9 +73,19 @@ export default function ChangePasswordScreen({ navigation }: any) {
         throw error;
       }
 
-      // Navigate back before Supabase's auth state refresh event can unmount this screen,
-      // which would leave the button stuck in a loading state indefinitely.
-      navigation.goBack();
+      setLoading(false);
+
+      Alert.alert(
+        'Password Updated',
+        'Your password has been changed successfully.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ],
+        { cancelable: false }
+      );
 
     } catch (error: any) {
       setLoading(false);
