@@ -15,22 +15,22 @@ web-build/
 agents.md
 AGENTS.md
 
-# Claude Code
+
 CLAUDE.md
 .claude/
 
-# GitNexus & Copilot Linking
+
 .gitnexus/
 .ladybug/
 gitnexus.log
 ladybug.log
 .gitnexus-cache/
 .gitnexus-index/
-# Promptscript / Skill files
+
 *.prs
 promptscript.json
 
-# AI Instructions (Commonly contains GitNexus tool references)
+
 .github/copilot-instructions.md
 .copilot-instructions.md
 .cursorrules

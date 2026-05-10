@@ -57,7 +57,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
   const navigation = useNavigation<any>();
-  const { balance, spendTokens } = useTokenBalance();
+  const { balance } = useTokenBalance();
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
   const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
@@ -67,22 +67,33 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     let mounted = true;
     let profileChannel: ReturnType<typeof supabase.channel> | null = null;
 
-    const fetchProfileAccessories = async () => {
+    const fetchProfileAndInventory = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !mounted) return;
-      const { data, error } = await supabase.from('profiles').select('equipped_accessories').eq('id', user.id).single();
-      if (!mounted || error) return;
-      setAppliedAccessories(normalizeAccessories(data?.equipped_accessories));
+
+      const [profileResult, inventoryResult] = await Promise.all([
+        supabase.from('profiles').select('equipped_accessories').eq('id', user.id).single(),
+        supabase.from('user_inventory').select('item_id').eq('user_id', user.id),
+      ]);
+
+      if (!mounted) return;
+
+      if (!profileResult.error && profileResult.data) {
+        setAppliedAccessories(normalizeAccessories(profileResult.data.equipped_accessories));
+      }
+      if (!inventoryResult.error && inventoryResult.data) {
+        setOwnedIds(new Set(inventoryResult.data.map((row) => row.item_id)));
+      }
 
       if (!profileChannel) {
-        profileChannel = supabase.channel(`profiles:equipped_accessories=eq.${user.id}`)
+        profileChannel = supabase.channel(`profiles:shop:${user.id}`)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, async () => {
               const { data: refreshedData } = await supabase.from('profiles').select('equipped_accessories').eq('id', user.id).single();
               if (mounted) setAppliedAccessories(normalizeAccessories(refreshedData?.equipped_accessories));
           }).subscribe();
       }
     };
-    void fetchProfileAccessories();
+    void fetchProfileAndInventory();
     return () => { mounted = false; if (profileChannel) supabase.removeChannel(profileChannel); };
   }, []);
 
@@ -101,17 +112,19 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
   const completePurchase = useCallback(async (item: AccessoryItem) => {
     if (ownedIds.has(item.id)) return;
-    if (item.price > 0) {
-      const didSpend = await spendTokens(item.price);
-      if (!didSpend) {
-        void appSoundManager.play(AppSoundCategory.Thuds);
+    const { error } = await supabase.rpc('purchase_item', { p_item_id: item.id, p_price: item.price });
+    if (error) {
+      void appSoundManager.play(AppSoundCategory.Thuds);
+      if (error.message.includes('Insufficient')) {
         Alert.alert('Not enough tokens', 'Complete quests to earn more tokens.');
-        return;
+      } else {
+        Alert.alert('Purchase failed', 'Please try again.');
       }
+      return;
     }
     setOwnedIds((prev) => new Set(prev).add(item.id));
     void appSoundManager.play(AppSoundCategory.KaChings);
-  }, [ownedIds, spendTokens]);
+  }, [ownedIds]);
 
   return (
     <View style={styles.root}>
