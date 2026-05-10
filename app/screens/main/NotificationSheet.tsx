@@ -19,6 +19,7 @@ import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import NotificationRow from '../../components/rows/NotificationRow';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { useNotificationPreferences } from '../../contexts/NotificationPreferencesContext';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -53,6 +54,7 @@ export default function NotificationSheet({
 }: NotificationSheetProps) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+    const { isTypeAllowed } = useNotificationPreferences();
 
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
@@ -328,7 +330,8 @@ export default function NotificationSheet({
     };
 
     const displayNotifications = useMemo<Notification[]>(() => {
-        if (!dailyRewardClaimable) return notifications;
+        const filtered = notifications.filter(n => isTypeAllowed(n.type));
+        if (!dailyRewardClaimable || !isTypeAllowed('daily_reward')) return filtered;
         const synthetic: Notification = {
             id: DAILY_REWARD_NOTIF_ID,
             created_at: new Date().toISOString(),
@@ -337,8 +340,8 @@ export default function NotificationSheet({
             is_read: false,
             type: 'daily_reward',
         };
-        return [synthetic, ...notifications];
-    }, [dailyRewardClaimable, notifications]);
+        return [synthetic, ...filtered];
+    }, [dailyRewardClaimable, notifications, isTypeAllowed]);
 
     const renderItem = ({ item }: { item: Notification }) => (
         <NotificationRow
