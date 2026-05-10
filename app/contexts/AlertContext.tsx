@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
+import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { withOpacity } from '../constants/colors';
 import { useTheme } from './ThemeContext';
 import { FONTS } from './../constants/fonts';
@@ -52,7 +52,15 @@ export function AlertProvider({ children }: { children: ReactNode }) {
               <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>{config?.message}</Text>
             )}
 
-            {!!config?.content && <View style={styles.modalContentBody}>{config.content}</View>}
+            {!!config?.content && (
+              <ScrollView
+                style={styles.modalContentBody}
+                contentContainerStyle={styles.modalContentBodyInner}
+                showsVerticalScrollIndicator
+              >
+                {config.content}
+              </ScrollView>
+            )}
             
             <View style={styles.modalButtonRow}>
               {config?.buttons && config.buttons.length > 0 ? (
@@ -121,6 +129,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 340,
+    maxHeight: '85%',
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
@@ -142,6 +151,10 @@ const styles = StyleSheet.create({
   modalContentBody: {
     width: '100%',
     marginBottom: 24,
+    flexShrink: 1,
+  },
+  modalContentBodyInner: {
+    width: '100%',
   },
   modalButtonRow: {
     flexDirection: 'row',

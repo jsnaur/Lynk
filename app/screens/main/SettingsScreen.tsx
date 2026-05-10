@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
 // ============================================================================
 // REUSABLE COMPONENTS
@@ -229,6 +230,7 @@ const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
 export default function SettingsScreen({ navigation }: any) {
   const { theme, toggleTheme, colors } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+  const { alert } = useCustomAlert();
 
   const [questActivityEnabled, setQuestActivityEnabled] = useState(true);
   const [commentsEnabled, setCommentsEnabled] = useState(true);
@@ -434,7 +436,11 @@ export default function SettingsScreen({ navigation }: any) {
             rightValue="v1.0.0"
             isLast
             onPress={() => {
-              Alert.alert('About LYNK', 'Version 1.0.0\n\nLynk Platform', [{ text: 'OK' }]);
+              alert(
+                'About LYNK',
+                'LYNK is an exclusive campus questing mobile application designed specifically for the students of the Cebu Institute of Technology - University (CIT - U). By merging social connectivity with engaging real-world and digital challenges, LYNK transforms the university experience into an interactive adventure. To ensure a safe, localized, and authentic community, registration is strictly restricted to users with a valid @cit.edu institutional email address.\n\nStudents can interact with a dynamic feed, tackle exciting campus-centric challenges, customize their profiles with unique avatars and badges, and earn rewards through our in-app shop.',
+                [{ text: 'OK' }]
+              );
             }}
           />
         </SettingsSection>
