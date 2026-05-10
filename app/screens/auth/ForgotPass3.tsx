@@ -48,7 +48,10 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
     return () => clearInterval(timerId);
   }, [isRecoveryMode]);
 
-
+  useEffect(() => {
+    if (!success) return;
+    void appSoundManager.playAuthSuccessChime();
+  }, [success]);
 
   const timerLabel = useMemo(() => {
     const minutes = Math.floor(timeLeftSec / 60);
