@@ -13,6 +13,7 @@ import { TokenBalanceProvider } from './app/contexts/TokenContext';
 import { AlertProvider } from './app/contexts/AlertContext';
 import { ThemeProvider, useTheme } from './app/contexts/ThemeContext';
 import { COLORS } from './app/constants/colors';
+import BadgeUnlockListener from './app/components/badges/BadgeUnlockListener';
 
 // Separate inner component to consume the ThemeContext
 function MainApp() {
@@ -32,6 +33,7 @@ function MainApp() {
         <NavigationContainer theme={customTheme}>
           <AppNavigator />
         </NavigationContainer>
+        <BadgeUnlockListener />
       </View>
     </TokenBalanceProvider>
   );
