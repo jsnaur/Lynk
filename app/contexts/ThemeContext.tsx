@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightColors, darkColors } from '../constants/colors';
+import { FONTS } from '../constants/fonts';
 
 type ThemeType = 'light' | 'dark';
 
@@ -12,6 +13,23 @@ interface ThemeContextProps {
   colors: ColorsType;
   toggleTheme: () => void;
 }
+
+export const screenHeaderTheme = {
+  layout: {
+    height: 64,
+    horizontalPadding: 20,
+    topPadding: 8,
+    bottomPadding: 12,
+  },
+  text: {
+    title: {
+      fontFamily: FONTS.display,
+      fontSize: 16,
+      lineHeight: 34,
+      letterSpacing: 0.2,
+    },
+  },
+} as const;
 
 const ThemeContext = createContext<ThemeContextProps>({
   theme: 'dark',
