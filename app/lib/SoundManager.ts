@@ -163,7 +163,7 @@ const SOUND_CATALOG: Record<AppSoundCategory, SoundDefinition> = {
   },
   [AppSoundCategory.Whooshes]: {
     source: require("../../assets/sfx/ui/nav_switch.wav"),
-    volume: 0.95,
+    volume: 0.65,
     defaultDebounceMs: 100,
     notes: "Fast navigation movement cues.",
   },
@@ -311,15 +311,8 @@ class SoundManager {
     await this.play(AppSoundCategory.GlassBells, {
       force: true,
       debounceMs: 0,
-      volume: 0.88,
+      volume: 1,
       rate: 1.03,
-    });
-    await this.delay(120);
-    await this.play(AppSoundCategory.Chimes, {
-      force: true,
-      debounceMs: 0,
-      volume: 0.92,
-      rate: 1.17,
     });
   }
 
@@ -327,16 +320,8 @@ class SoundManager {
     await this.play(AppSoundCategory.AuthBuzzes, {
       force: true,
       debounceMs: 0,
-      volume: 0.68,
+      volume: 1,
       rate: 1.0,
-      shouldCorrectPitch: false,
-    });
-    await this.delay(90);
-    await this.play(AppSoundCategory.AuthBuzzes, {
-      force: true,
-      debounceMs: 0,
-      volume: 0.58,
-      rate: 0.82,
       shouldCorrectPitch: false,
     });
   }
