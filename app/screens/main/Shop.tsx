@@ -13,7 +13,7 @@ import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
-import { useTheme } from '../../contexts/ThemeContext';
+import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { FONTS } from '../../constants/fonts';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
@@ -220,9 +220,9 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: screenHeaderTheme.layout.height, paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, borderBottomWidth: 1, borderBottomColor: colors.border },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { fontSize: 20, fontFamily: FONTS.display, color: colors.textPrimary },
+  title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
   balanceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.45)', backgroundColor: withOpacity(colors.token, 0.18) },
   balanceText: { fontSize: 15, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: colors.token },
   previewCard: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
