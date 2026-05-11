@@ -11,10 +11,11 @@ import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
-import { useTheme } from '../../contexts/ThemeContext';
+import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
+import { FONTS } from '../../constants/fonts';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -263,7 +264,9 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
 const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safeArea: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingTop: SPACING.lg, paddingBottom: 112 },
+  header: { height: 68, paddingHorizontal: 20, justifyContent: 'flex-end', paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  title: { fontFamily: FONTS.display, color: colors.textPrimary, fontSize: 20, lineHeight: 34, fontWeight: '700', letterSpacing: 0.2 },
+  content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 112 },
   segmentedControl: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, padding: 4, gap: 4, position: 'relative' },
   segmentIndicator: { position: 'absolute', top: 4, left: 4, height: 38, borderRadius: 10, backgroundColor: theme === 'dark' ? colors.border : '#FFFFFF', elevation: theme === 'light' ? 2 : 0, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2 },
   segment: { flex: 1, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
