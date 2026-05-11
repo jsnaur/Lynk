@@ -57,5 +57,19 @@ export const lightColors = {
   heart: '#E03E6C',
 } as const;
 
+export const SCREEN_HEADER = {
+  container: {
+    height: 68,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+  },
+  title: {
+    fontSize: 20,
+    lineHeight: 34,
+    fontWeight: '700' as const,
+    letterSpacing: 0.2,
+  },
+} as const;
+
 // Fallback for files not yet using the theme context
 export const COLORS = darkColors;
