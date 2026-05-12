@@ -25,6 +25,7 @@ import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
 import NotificationSheet from './NotificationSheet';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
@@ -104,6 +105,7 @@ export default function HomeFeedScreen({
     onOptimisticRemovalConsumed,
 }: HomeFeedScreenProps) {
     const { theme, colors } = useTheme();
+    const { alert } = useCustomAlert();
     const styles = useMemo(() => getStyles(colors), [colors]);
 
     const FILTER_ACTIVE_COLORS: Record<FeedCategory, string> = useMemo(() => ({
@@ -631,14 +633,14 @@ export default function HomeFeedScreen({
                                 .single();
 
                             if (!data) {
-                                Alert.alert(
+                                alert(
                                     'Quest no longer available',
                                     'This quest has been deleted or is no longer accessible.',
                                     [
                                         { text: 'Dismiss', style: 'cancel' },
                                         {
-                                            text: 'Remove notification',
-                                            style: 'destructive',
+                                            text: 'Remove',
+                                            style: 'default',
                                             onPress: async () => {
                                                 await supabase
                                                     .from('notifications')
@@ -672,7 +674,7 @@ export default function HomeFeedScreen({
                             }
 
                             if (data.status !== 'open' && !isPoster && !isAcceptedParticipant) {
-                                Alert.alert(
+                                alert(
                                     'Quest unavailable',
                                     'This quest is closed to the public and cannot be opened from notifications.',
                                 );
