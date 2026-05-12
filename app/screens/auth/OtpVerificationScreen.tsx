@@ -5,7 +5,6 @@ import {
     TextInput,
     Pressable,
     ActivityIndicator,
-    Alert,
     StyleSheet,
     SafeAreaView,
     KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import appSoundManager from '../../lib/SoundManager';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
 interface OtpVerificationScreenProps {
     email: string;
@@ -22,6 +22,7 @@ interface OtpVerificationScreenProps {
 }
 
 export default function OtpVerificationScreen({ email, onVerified, onBack }: OtpVerificationScreenProps) {
+    const { alert } = useCustomAlert();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     
@@ -42,7 +43,7 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
     async function handleVerify() {
         if (code.length !== 6) {
             void appSoundManager.playAuthErrorBuzz();
-            Alert.alert('Invalid Code', 'Please enter the 6-digit code sent to your email.');
+            alert('Invalid Code', 'Please enter the 6-digit code sent to your email.');
             return;
         }
 
@@ -59,7 +60,7 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
 
         if (error) {
             void appSoundManager.playAuthErrorBuzz();
-            Alert.alert('Verification Failed', error.message);
+            alert('Verification Failed', error.message);
         } else {
             void appSoundManager.playAuthSuccessChime();
             onVerified();
@@ -80,9 +81,9 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
         });
 
         if (error) {
-            Alert.alert('Failed to Resend', error.message);
+            alert('Failed to Resend', error.message);
         } else {
-            Alert.alert('Code Sent', 'A new 6-digit code has been sent to your email.');
+            alert('Code Sent', 'A new 6-digit code has been sent to your email.');
         }
     }
 

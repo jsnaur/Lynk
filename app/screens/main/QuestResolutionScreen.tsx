@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View, ActivityIndicator, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
 import ThumbUpIcon from '../../../assets/QuestScreenAssets/ThumbUp.svg';
 import ThumbDownIcon from '../../../assets/QuestScreenAssets/Thumb_down_Icon.svg';
@@ -48,6 +49,7 @@ const QuestResolutionSheetModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { refreshBalance } = useTokenBalance();
+  const { alert } = useCustomAlert();
 
   useEffect(() => {
     let mounted = true;
@@ -194,7 +196,7 @@ const QuestResolutionSheetModal = ({
       }, 1000);
     } catch (error: any) {
       console.error('Failed to resolve quest:', error);
-      Alert.alert('Error', error.message || 'Failed to resolve the quest. Please try again.');
+      alert('Error', error.message || 'Failed to resolve the quest. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

@@ -7,13 +7,13 @@ import {
     StyleSheet,
     TextInput,
     ScrollView,
-    Alert,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 import { FONTS } from '../../constants/fonts';
 import { preCheckContent, type ModerationCategory } from '../../services/ModeratorService';
 import { ContentBlockedModal } from '../../components/modals';
@@ -55,6 +55,7 @@ export default function EditProfileModal({
     },
 }: EditProfileModalProps) {
     const { colors } = useTheme();
+    const { alert } = useCustomAlert();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const slideAnim = useRef(new Animated.Value(36)).current;
@@ -134,7 +135,7 @@ export default function EditProfileModal({
     };
 
     const handleShopPress = () => {
-        Alert.alert('Shop', 'Opening Shop...');
+        alert('Shop', 'Opening Shop...');
     };
 
     return (

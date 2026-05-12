@@ -5,7 +5,6 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
-  Alert,
   Platform,
   Linking,
   Modal,
@@ -244,17 +243,17 @@ export default function SettingsScreen({ navigation }: any) {
       await supabase.auth.signOut();
       setLogoutModalVisible(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to log out.');
+      alert('Error', 'Failed to log out.');
     }
   };
 
   const handleDeleteAccount = async () => {
     try {
-      Alert.alert('Account Deleted', 'Your account has been deleted.');
+      alert('Account Deleted', 'Your account has been deleted.');
       setDeleteModalVisible(false);
       await supabase.auth.signOut();
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete account.');
+      alert('Error', 'Failed to delete account.');
     }
   };
 
@@ -263,7 +262,7 @@ export default function SettingsScreen({ navigation }: any) {
     const subject = 'LYNK Feedback';
     const url = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
     await Linking.openURL(url).catch(() =>
-      Alert.alert('Error', 'Could not open email client')
+      alert('Error', 'Could not open email client')
     );
   };
 
@@ -272,7 +271,7 @@ export default function SettingsScreen({ navigation }: any) {
     const subject = 'LYNK Bug Report';
     const url = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
     await Linking.openURL(url).catch(() =>
-      Alert.alert('Error', 'Could not open email client')
+      alert('Error', 'Could not open email client')
     );
   };
 

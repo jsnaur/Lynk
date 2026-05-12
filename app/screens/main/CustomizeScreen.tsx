@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -18,6 +18,7 @@ import {
 } from '../../constants/accessories';
 import { withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 
 type UI_CATEGORY = 'Base' | 'Wearables';
 
@@ -33,6 +34,7 @@ export default function CustomizeScreen({
   onApplyAccessory,
 }: CustomizeScreenProps) {
   const { colors, theme } = useTheme();
+  const { alert } = useCustomAlert();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
   const navigation = useNavigation<any>();
@@ -66,7 +68,7 @@ export default function CustomizeScreen({
       } = await supabase.auth.getUser();
 
       if (!user) {
-        Alert.alert('Error', 'You need to be signed in to save changes.');
+        alert('Error', 'You need to be signed in to save changes.');
         return;
       }
 
@@ -77,7 +79,7 @@ export default function CustomizeScreen({
 
       if (error) {
         console.error('Failed to save avatar:', error);
-        Alert.alert('Error', 'Failed to save your avatar. Please try again.');
+        alert('Error', 'Failed to save your avatar. Please try again.');
         return;
       }
 
@@ -85,7 +87,7 @@ export default function CustomizeScreen({
       navigation.goBack();
     } catch (err) {
       console.error('Error saving avatar:', err);
-      Alert.alert('Error', 'An error occurred while saving.');
+      alert('Error', 'An error occurred while saving.');
     } finally {
       setIsSaving(false);
     }
@@ -159,7 +161,7 @@ export default function CustomizeScreen({
     if (!selectedAccessory) return;
 
     if (!ownedIds.has(selectedAccessory.id)) {
-      Alert.alert('Item locked', 'Purchase this accessory in Shop before applying it.');
+      alert('Item locked', 'Purchase this accessory in Shop before applying it.');
       return;
     }
 
@@ -167,7 +169,7 @@ export default function CustomizeScreen({
     const wasApplied = appliedAccessories[slotToUpdate] === selectedAccessory.id;
 
     if (wasApplied && slotToUpdate === 'Body') {
-      Alert.alert('Body required', 'You always need a body equipped. Choose another body tone to change your look.');
+      alert('Body required', 'You always need a body equipped. Choose another body tone to change your look.');
       return;
     }
 

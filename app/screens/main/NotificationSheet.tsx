@@ -9,7 +9,6 @@ import {
     Dimensions,
     Animated,
     ActivityIndicator,
-    Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -277,7 +276,7 @@ export default function NotificationSheet({
             console.error('delete notification error:', error.message);
             setNotifications(prev);
             onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
-            Alert.alert('Error', 'Failed to delete notification.');
+            alert('Error', 'Failed to delete notification.');
         }
     };
 
@@ -305,7 +304,7 @@ export default function NotificationSheet({
                             console.error('clear notifications error:', error.message);
                             setNotifications(prev);
                             onUnreadCountHint?.(prev.reduce((acc, n) => acc + (!n.is_read ? 1 : 0), 0));
-                            Alert.alert('Error', 'Failed to clear notifications.');
+                            alert('Error', 'Failed to clear notifications.');
                         }
                     },
                 },
