@@ -91,7 +91,7 @@ export default function ForgotPass1({ navigation }: any) {
           >
             {loading
               ? <ActivityIndicator color="#0F0F14" />
-              : <Text style={forgotStyles.actionText}>Send reset link</Text>
+              : <Text style={forgotStyles.actionText}>Send One-Time Password</Text>
             }
           </Pressable>
         </View>

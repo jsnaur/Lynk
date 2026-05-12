@@ -8,12 +8,13 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase'; 
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
-import { 
-  ACCESSORY_ITEMS, 
-  AvatarSlot, 
-  ALL_SLOTS_Z_ORDER, 
-  BASE_TRAIT_SLOTS, 
-  WEARABLE_SLOTS 
+import {
+  ACCESSORY_ITEMS,
+  AvatarSlot,
+  ALL_SLOTS_Z_ORDER,
+  BASE_TRAIT_SLOTS,
+  WEARABLE_SLOTS,
+  DEFAULT_OWNED_IDS,
 } from '../../constants/accessories';
 import { withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -36,11 +37,7 @@ export default function CustomizeScreen({
 
   const navigation = useNavigation<any>();
   
-  // TESTING OVERRIDE: Automatically set all items as "Owned"
-  const ownedIds = useMemo(
-    () => new Set(ACCESSORY_ITEMS.map(item => item.id)),
-    []
-  );
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set(DEFAULT_OWNED_IDS));
 
   const [activeCategory, setActiveCategory] = useState<UI_CATEGORY>('Base');
   const [activeSlot, setActiveSlot] = useState<AvatarSlot>('Body');
@@ -97,34 +94,31 @@ export default function CustomizeScreen({
   useEffect(() => {
     let isMounted = true;
 
-    const loadSavedAccessories = async () => {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
+    const loadProfileAndInventory = async () => {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) return;
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('equipped_accessories')
-        .eq('id', user.id)
-        .maybeSingle();
+      const [profileResult, inventoryResult] = await Promise.all([
+        supabase.from('profiles').select('equipped_accessories').eq('id', user.id).maybeSingle(),
+        supabase.from('user_inventory').select('item_id').eq('user_id', user.id),
+      ]);
 
-      if (error || !data || !isMounted) return;
+      if (!isMounted) return;
 
-      if (data.equipped_accessories) {
-        const nextAccessories = data.equipped_accessories as Partial<Record<AvatarSlot, string>>;
+      if (!profileResult.error && profileResult.data?.equipped_accessories) {
+        const nextAccessories = profileResult.data.equipped_accessories as Partial<Record<AvatarSlot, string>>;
         setAppliedAccessories(nextAccessories);
         setSavedAccessories(nextAccessories);
       }
+
+      if (!inventoryResult.error && inventoryResult.data) {
+        setOwnedIds(new Set(inventoryResult.data.map((row) => row.item_id)));
+      }
     };
 
-    loadSavedAccessories();
+    loadProfileAndInventory();
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   const currentSlots = activeCategory === 'Base' ? BASE_TRAIT_SLOTS : WEARABLE_SLOTS;

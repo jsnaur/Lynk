@@ -388,8 +388,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}>
           <View {...headerPanResponder.panHandlers}>
@@ -420,10 +419,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
             bounces
             overScrollMode="always"
             scrollEventThrottle={16}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
             onScroll={(event) => {
               const y = event.nativeEvent.contentOffset.y;
               if (y <= -DISMISS_PULL_THRESHOLD) {

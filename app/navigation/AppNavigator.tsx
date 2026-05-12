@@ -46,21 +46,26 @@ const AppNavigator = () => {
       setLoading(false);
     };
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       // verifyOtp with type:'recovery' fires this event — switch to the reset screen
       if (_event === 'PASSWORD_RECOVERY') {
         setIsPasswordRecovery(true);
         setLoading(false);
         return;
       }
-      await checkSessionAndProfile(session);
-      setSession(session);
-      setLoading(false);
-      if (_event === 'SIGNED_OUT') {
-        setSession(null);
-        setIsNewUser(false);
-        setIsPasswordRecovery(false);
-      }
+      
+      // Use setTimeout to avoid deadlocking the Supabase auth listener
+      // when making database queries in checkSessionAndProfile
+      setTimeout(async () => {
+        await checkSessionAndProfile(session);
+        setSession(session);
+        setLoading(false);
+        if (_event === 'SIGNED_OUT') {
+          setSession(null);
+          setIsNewUser(false);
+          setIsPasswordRecovery(false);
+        }
+      }, 0);
     });
 
     initializeAuth();
@@ -85,7 +90,7 @@ const AppNavigator = () => {
     // The screen calls this directly when the user taps "Go to Login".
     const exitRecovery = async () => {
       try {
-        await supabase.auth.signOut();
+        supabase.auth.signOut().catch(() => {});
       } catch {
         // ignore — we still force-exit recovery below
       }

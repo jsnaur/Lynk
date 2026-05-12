@@ -18,11 +18,15 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#1A1A1F",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
+        "foregroundImage": "./assets/logo.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.lynk2026.LYNK"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,6 +40,12 @@
       ],
       "expo-font",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "451572f8-ddff-491a-94f4-05474bac1854"
+      }
+    },
+    "owner": "lynk2026"
   }
 }

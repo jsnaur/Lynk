@@ -434,7 +434,11 @@ export default function AuthScreen({ navigation }: Props) {
                                     <InlineCtaButton
                                         state="Active"
                                         label="Forgot password?"
-                                        onPress={() => navigation.navigate('ForgotPass1')}
+                                        onPress={() => {
+                                            setPassword('');
+                                            setConfirmPassword('');
+                                            navigation.navigate('ForgotPass1');
+                                        }}
                                     />
                                 )}
                             </View>

@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import { useNotificationPreferences } from '../../contexts/NotificationPreferencesContext';
 
 // ============================================================================
 // REUSABLE COMPONENTS
@@ -232,11 +233,7 @@ export default function SettingsScreen({ navigation }: any) {
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const { alert } = useCustomAlert();
 
-  const [questActivityEnabled, setQuestActivityEnabled] = useState(true);
-  const [commentsEnabled, setCommentsEnabled] = useState(true);
-  const [ratingsEnabled, setRatingsEnabled] = useState(true);
-  const [xpLevelUpEnabled, setXpLevelUpEnabled] = useState(true);
-  const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(true);
+  const { prefs, setPrefs } = useNotificationPreferences();
   const [profileVisibilityEnabled, setProfileVisibilityEnabled] = useState(true);
   const [onlineStatusEnabled, setOnlineStatusEnabled] = useState(true);
 
@@ -317,52 +314,42 @@ export default function SettingsScreen({ navigation }: any) {
         {/* SECTION 2: NOTIFICATIONS */}
         <SettingsSection label="NOTIFICATIONS">
           <SettingsToggleRow
-            icon="bell"
+            icon="sword-cross"
+            iconBgColor={withOpacity(colors.favor, 0.12)}
+            iconColor={colors.favor}
+            title="Quest Activity"
+            subtitle="Accepted, started, completed, applicants"
+            value={prefs.questActivity}
+            onToggle={(v) => setPrefs({ questActivity: v })}
+          />
+          <SettingsToggleRow
+            icon="comment-text-outline"
+            iconBgColor={withOpacity(colors.item, 0.12)}
+            iconColor={colors.item}
+            title="Comments"
+            subtitle="New replies on your quests"
+            value={prefs.comments}
+            onToggle={(v) => setPrefs({ comments: v })}
+          />
+          <SettingsToggleRow
+            icon="star-outline"
             iconBgColor={withOpacity(colors.xp, 0.12)}
             iconColor={colors.xp}
-            title="Push Notifications"
-            subtitle="Allow LYNK to send notifications"
-            value={pushNotificationsEnabled}
-            onToggle={setPushNotificationsEnabled}
+            title="Ratings"
+            subtitle="When someone rates your help"
+            value={prefs.ratings}
+            onToggle={(v) => setPrefs({ ratings: v })}
           />
-
-          {pushNotificationsEnabled && (
-            <>
-              <SettingsToggleRow
-                title="Quest Activity"
-                subtitle="Accepted, completed, pending"
-                value={questActivityEnabled}
-                onToggle={setQuestActivityEnabled}
-                isSub
-              />
-              <SettingsToggleRow
-                title="Comments"
-                subtitle="New replies on your quests"
-                value={commentsEnabled}
-                onToggle={setCommentsEnabled}
-                isSub
-              />
-              <SettingsToggleRow
-                title="Ratings"
-                subtitle="When someone rates your help"
-                value={ratingsEnabled}
-                onToggle={setRatingsEnabled}
-                isSub
-              />
-              <SettingsToggleRow
-                title="XP & Level-ups"
-                subtitle="Milestone and reward alerts"
-                value={xpLevelUpEnabled}
-                onToggle={setXpLevelUpEnabled}
-                isSub
-                isLast
-              />
-            </>
-          )}
-
-          {!pushNotificationsEnabled && (
-            <View style={styles.toggleRowBorder} />
-          )}
+          <SettingsToggleRow
+            icon="lightning-bolt"
+            iconBgColor={withOpacity(colors.token, 0.12)}
+            iconColor={colors.token}
+            title="XP & Level-ups"
+            subtitle="Daily rewards and milestone alerts"
+            value={prefs.xpLevelUp}
+            onToggle={(v) => setPrefs({ xpLevelUp: v })}
+            isLast
+          />
         </SettingsSection>
 
         {/* SECTION 3: PRIVACY */}
