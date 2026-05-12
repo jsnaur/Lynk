@@ -34,6 +34,10 @@ type HomeFeedScreenProps = {
     highlightQuestId?: string | null;
     onHighlightConsumed?: () => void;
     feedRefreshSignal?: number;
+    optimisticQuest?: any | null;
+    optimisticRemovalId?: string | null;
+    onOptimisticQuestConsumed?: () => void;
+    onOptimisticRemovalConsumed?: () => void;
 };
 
 function withAlpha(hexColor: string, alpha: number) {
@@ -94,6 +98,10 @@ export default function HomeFeedScreen({
     highlightQuestId,
     onHighlightConsumed,
     feedRefreshSignal,
+    optimisticQuest,
+    optimisticRemovalId,
+    onOptimisticQuestConsumed,
+    onOptimisticRemovalConsumed,
 }: HomeFeedScreenProps) {
     const { theme, colors } = useTheme();
     const styles = useMemo(() => getStyles(colors), [colors]);
@@ -117,6 +125,7 @@ export default function HomeFeedScreen({
     const flatListRef = useRef<FlatList>(null);
     const [highlightedQuestId, setHighlightedQuestId] = useState<string | null>(null);
     const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const highlightRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const fetchProfile = async (forceRefresh = false) => {
         if (HAS_FETCHED_INITIALLY && !forceRefresh) return;
@@ -261,6 +270,10 @@ export default function HomeFeedScreen({
                 clearTimeout(highlightTimeoutRef.current);
                 highlightTimeoutRef.current = null;
             }
+            if (highlightRetryTimeoutRef.current) {
+                clearTimeout(highlightRetryTimeoutRef.current);
+                highlightRetryTimeoutRef.current = null;
+            }
         };
     }, []);
 
@@ -270,6 +283,29 @@ export default function HomeFeedScreen({
         fetchProfile(true);
         fetchQuests(true);
     }, [feedRefreshSignal]);
+
+    useEffect(() => {
+        if (!optimisticQuest) return;
+        const optimisticId = String(optimisticQuest.id);
+        setQuests((prev) => {
+            if (prev.some((q) => String(q?.id) === optimisticId)) return prev;
+            const next = [optimisticQuest, ...prev];
+            CACHED_QUESTS = next;
+            return next;
+        });
+        onOptimisticQuestConsumed?.();
+    }, [optimisticQuest, onOptimisticQuestConsumed]);
+
+    useEffect(() => {
+        if (!optimisticRemovalId) return;
+        const removalId = String(optimisticRemovalId);
+        setQuests((prev) => {
+            const next = prev.filter((q) => String(q?.id) !== removalId);
+            CACHED_QUESTS = next;
+            return next;
+        });
+        onOptimisticRemovalConsumed?.();
+    }, [optimisticRemovalId, onOptimisticRemovalConsumed]);
 
     useEffect(() => {
         const unsubscribe = navigation?.addListener?.('focus', () => {
@@ -322,11 +358,25 @@ export default function HomeFeedScreen({
 
         const targetId = String(highlightQuestId);
         const index = quests.findIndex((q) => String(q?.id) === targetId);
-        if (index < 0) return;
+        if (index < 0) {
+            if (highlightRetryTimeoutRef.current) {
+                clearTimeout(highlightRetryTimeoutRef.current);
+            }
+            // Newly posted quest can take a moment to appear in feed RPC results.
+            highlightRetryTimeoutRef.current = setTimeout(() => {
+                setRefreshing(true);
+                fetchQuests(true);
+            }, 650);
+            return;
+        }
 
         if (highlightTimeoutRef.current) {
             clearTimeout(highlightTimeoutRef.current);
             highlightTimeoutRef.current = null;
+        }
+        if (highlightRetryTimeoutRef.current) {
+            clearTimeout(highlightRetryTimeoutRef.current);
+            highlightRetryTimeoutRef.current = null;
         }
 
         setHighlightedQuestId(targetId);
@@ -499,6 +549,11 @@ export default function HomeFeedScreen({
                                     String(item.id) === String(highlightedQuestId) && styles.postCardHighlighted,
                                 ]}
                             >
+                                {!!item?.isOptimistic && (
+                                    <View style={styles.optimisticBadge}>
+                                        <Text style={styles.optimisticBadgeText}>Posting...</Text>
+                                    </View>
+                                )}
                                 <PostCard
                                     quest={item as any}
                                     onPress={() => navigation?.navigate?.('QuestDetail', { quest: item })}
@@ -514,7 +569,7 @@ export default function HomeFeedScreen({
             </SafeAreaView>
 
             <BottomNav activeTab="Feed" onTabPress={handleBottomNavPress} />
-            
+
             {isNotifOpen && (
                 <NotificationSheet
                     visible={isNotifOpen}
@@ -684,5 +739,22 @@ const getStyles = (colors: any) => StyleSheet.create({
         borderWidth: 1.5,
         borderColor: withAlpha(colors.favor, 0.55),
         padding: 6,
+    },
+    optimisticBadge: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 5,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: withAlpha(colors.warning, 0.18),
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    optimisticBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: colors.textPrimary,
     },
 });
