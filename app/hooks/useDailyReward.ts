@@ -93,7 +93,7 @@ export function useDailyReward() {
       await markDismissedToday();
       // Play a swelling chime on actual successful claim
       try {
-        void appSoundManager.play(AppSoundCategory.ChestOpens, { force: true });
+        void appSoundManager.play(AppSoundCategory.DailyReward, { force: true });
       } catch (e) {
         // noop
       }

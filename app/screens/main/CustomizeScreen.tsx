@@ -179,7 +179,7 @@ export default function CustomizeScreen({
       delete newAppliedState[slotToUpdate];
     } else {
       newAppliedState[slotToUpdate] = selectedAccessory.id;
-      void appSoundManager.play(AppSoundCategory.Snaps);
+      void appSoundManager.play(AppSoundCategory.LikePost);
     }
     
     setAppliedAccessories(newAppliedState);

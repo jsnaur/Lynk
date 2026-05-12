@@ -21,9 +21,9 @@ export default function ShopItemCard({ name, price, isOwned = false, onPress }: 
       if (res && typeof (res as any).then === 'function') {
         await res;
       }
-      void appSoundManager.play(AppSoundCategory.KaChings);
+      void appSoundManager.play(AppSoundCategory.PurchaseSuccess);
     } catch (err) {
-      void appSoundManager.play(AppSoundCategory.Thuds);
+      void appSoundManager.play(AppSoundCategory.ModalClose);
       throw err;
     }
   };

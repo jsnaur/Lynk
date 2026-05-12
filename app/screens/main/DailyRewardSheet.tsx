@@ -226,11 +226,11 @@ export default function DailyRewardSheet({
     const plays = Math.min(6, Math.max(1, Math.floor(count)));
     for (let i = 0; i < plays; i++) {
       setTimeout(() => {
-        try { void appSoundManager.play(AppSoundCategory.Sparkles, { force: true, volume: 0.9 }); } catch (e) {}
+        try { void appSoundManager.play(AppSoundCategory.XpGain, { force: true, volume: 0.9 }); } catch (e) {}
       }, i * 70);
     }
     // final ding
-    setTimeout(() => { try { void appSoundManager.play(AppSoundCategory.KaChings, { force: true, volume: 1 }); } catch (e) {} }, plays * 70 + 40);
+    setTimeout(() => { try { void appSoundManager.play(AppSoundCategory.PurchaseSuccess, { force: true, volume: 1 }); } catch (e) {} }, plays * 70 + 40);
   };
 
   const currentReward = rewards.find((r) => r.day === currentDay);

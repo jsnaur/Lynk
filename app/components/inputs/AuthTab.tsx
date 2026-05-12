@@ -23,7 +23,7 @@ export default function AuthTab({
 
   const handleTabChange = (tab: 'Left' | 'Right') => {
     if (tab !== activeTab) {
-      void appSoundManager.play(AppSoundCategory.UIClicks);
+      void appSoundManager.play(AppSoundCategory.ButtonPress);
       onTabChange?.(tab);
     }
   };

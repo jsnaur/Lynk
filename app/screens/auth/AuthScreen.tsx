@@ -110,7 +110,7 @@ interface IconButtonProps {
 function IconButton({ iconName, size, color, onPress, disabled = false }: IconButtonProps) {
   const handlePress = () => {
     if (disabled) return;
-    void appSoundManager.play(AppSoundCategory.UIClicks);
+    void appSoundManager.play(AppSoundCategory.ButtonPress);
     onPress();
   };
 

@@ -87,7 +87,7 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 							style={styles.item}
 							onPress={() => {
 								if (selectedTab !== tab) {
-									void appSoundManager.play(AppSoundCategory.Thumps, { debounceMs: 0 });
+									void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
 								}
 								setSelectedTab(tab);
 								onTabPress?.(tab);
