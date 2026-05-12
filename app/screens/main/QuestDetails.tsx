@@ -7,8 +7,7 @@ import {
   Text,
   TextInput,
   View,
-  Alert,
-  KeyboardAvoidingView, 
+  KeyboardAvoidingView,
   Platform,
   PanResponder,
   Animated,
@@ -650,7 +649,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               await refreshBalance();
               if (navigation?.goBack) navigation.goBack();
             } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to delete quest.");
+              alert("Error", error.message || "Failed to delete quest.");
             } finally {
               setLoading(false);
             }
@@ -669,12 +668,12 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       if (error) throw error;
       await fetchQuestData(currentUserId);
       if (newStatus === 'accepted') {
-        Alert.alert('Quest Accepted', 'You have successfully joined the quest!');
+        alert('Quest Accepted', 'You have successfully joined the quest!');
       } else {
-        Alert.alert('Application Sent', 'Your application is pending poster approval.');
+        alert('Application Sent', 'Your application is pending poster approval.');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to apply for quest.');
+      alert('Error', error.message || 'Failed to apply for quest.');
     } finally {
       setLoading(false);
     }
@@ -682,14 +681,13 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   const handleDropQuest = () => {
     if (!currentUserId || !questData?.id) return;
-    Alert.alert(
+    alert(
       'Drop Quest',
       'Are you sure you want to drop this quest? The poster will be notified.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Drop Quest',
-          style: 'destructive',
           onPress: async () => {
             try {
               setLoading(true);
@@ -698,7 +696,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               setParticipants(prev => prev.map(p => p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p));
               await fetchQuestData(currentUserId);
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to drop quest.');
+              alert('Error', error.message || 'Failed to drop quest.');
             } finally {
               setLoading(false);
             }
@@ -710,14 +708,13 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
   const handleCancelApplication = () => {
     if (!currentUserId || !questData?.id) return;
-    Alert.alert(
+    alert(
       'Cancel Application',
       'Are you sure you want to cancel your application for this quest?',
       [
         { text: 'Keep Application', style: 'cancel' },
         {
           text: 'Cancel Application',
-          style: 'destructive',
           onPress: async () => {
             try {
               setLoading(true);
@@ -726,7 +723,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               setParticipants(prev => prev.filter(p => p.user_id !== currentUserId));
               await fetchQuestData(currentUserId);
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to cancel application.');
+              alert('Error', error.message || 'Failed to cancel application.');
             } finally {
               setLoading(false);
             }
@@ -745,9 +742,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         .eq('quest_id', questData.id)
         .eq('user_id', applicantId);
       if (error) throw error;
-      await fetchQuestData(currentUserId!); 
+      await fetchQuestData(currentUserId!);
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      alert("Error", error.message);
     } finally {
       setLoading(false);
     }
@@ -758,10 +755,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setLoading(true);
       const { error } = await supabase.rpc('start_manual_quest', { p_quest_id: questData.id });
       if (error) throw error;
-      Alert.alert("Quest Started", "The quest is now in progress!");
+      alert("Quest Started", "The quest is now in progress!");
       await fetchQuestData(currentUserId!);
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      alert("Error", error.message);
     } finally {
       setLoading(false);
     }
@@ -853,7 +850,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setReplyTo(null);
       fetchQuestData(currentUserId);
     } catch (err: any) {
-      Alert.alert('Error', 'Failed to post: ' + err.message);
+      alert('Error', 'Failed to post: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -897,7 +894,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               setComments((prev) => prev.filter((c) => c.id !== selectedComment.id));
               closeCommentActions();
             } catch (err: any) {
-              Alert.alert('Error', err.message || 'Failed to delete comment.');
+              alert('Error', err.message || 'Failed to delete comment.');
             } finally {
               setLoading(false);
             }

@@ -2,7 +2,6 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Alert,
     FlatList,
     InteractionManager,
     Pressable,
@@ -655,7 +654,7 @@ export default function HomeFeedScreen({
                             }
 
                             if (error) {
-                                Alert.alert('Error', 'Failed to load quest. Please try again.');
+                                alert('Error', 'Failed to load quest. Please try again.');
                                 return;
                             }
 
@@ -710,7 +709,7 @@ export default function HomeFeedScreen({
                             navigation?.navigate?.('QuestDetail', { quest: questForNav, scrollToComments: shouldScrollToComments });
                         } catch (e: any) {
                             console.error('Notification press handler error:', e?.message ?? e);
-                            Alert.alert('Error', 'Something went wrong. Please try again.');
+                            alert('Error', 'Something went wrong. Please try again.');
                         }
                     }}
                 />

@@ -7,18 +7,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   Keyboard,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 import TextInput from '../../components/inputs/TextInput';
 import Button from '../../components/buttons/Button';
 import PasswordStrengthIndicator from '../../components/inputs/PasswordStrengthIndicator';
 
 export default function ChangePasswordScreen({ navigation }: any) {
   const { colors, theme } = useTheme();
+  const { alert } = useCustomAlert();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
   const [newPassword, setNewPassword] = useState('');
@@ -48,17 +49,17 @@ export default function ChangePasswordScreen({ navigation }: any) {
     Keyboard.dismiss();
 
     if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      alert('Error', 'Please fill in all fields.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      alert('Error', 'Passwords do not match.');
       return;
     }
 
     if (strength === 'Weak') {
-      Alert.alert('Weak Password', 'Please choose a stronger password before proceeding.');
+      alert('Weak Password', 'Please choose a stronger password before proceeding.');
       return;
     }
 
@@ -75,7 +76,7 @@ export default function ChangePasswordScreen({ navigation }: any) {
 
       setLoading(false);
 
-      Alert.alert(
+      alert(
         'Password Updated',
         'Your password has been changed successfully.',
         [
@@ -84,12 +85,11 @@ export default function ChangePasswordScreen({ navigation }: any) {
             onPress: () => navigation.goBack(),
           },
         ],
-        { cancelable: false }
       );
 
     } catch (error: any) {
       setLoading(false);
-      Alert.alert('Error', error.message || 'Failed to update password.');
+      alert('Error', error.message || 'Failed to update password.');
     }
   };
 

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
@@ -11,6 +11,7 @@ import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, A
 import { withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
@@ -58,6 +59,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
   const navigation = useNavigation<any>();
   const { balance } = useTokenBalance();
+  const { alert } = useCustomAlert();
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
   const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
@@ -116,9 +118,9 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     if (error) {
       void appSoundManager.play(AppSoundCategory.Thuds);
       if (error.message.includes('Insufficient')) {
-        Alert.alert('Not enough tokens', 'Complete quests to earn more tokens.');
+        alert('Not enough tokens', 'Complete quests to earn more tokens.');
       } else {
-        Alert.alert('Purchase failed', 'Please try again.');
+        alert('Purchase failed', 'Please try again.');
       }
       return;
     }

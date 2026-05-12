@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import TextureSvg from '../../../assets/AuthAssets/texture.svg';
 import {
-    Alert,
     Image,
     ImageBackground,
     KeyboardAvoidingView,
@@ -196,7 +195,7 @@ export default function AuthScreen({ navigation }: Props) {
 
             if (error) {
                 void appSoundManager.playAuthErrorBuzz();
-                Alert.alert('Login Failed', error.message);
+                alert('Login Failed', error.message);
                 // Supabase returns "Invalid login credentials" for wrong email OR wrong password.
                 // Reveal the Forgot password? link so the user can recover if it was the password.
                 const msg = (error.message || '').toLowerCase();
@@ -215,7 +214,7 @@ export default function AuthScreen({ navigation }: Props) {
                 });
 
                 if (error) {
-                    Alert.alert('Registration Failed', error.message);
+                    alert('Registration Failed', error.message);
                     setLoading(false);
                     return;
                 }
@@ -233,7 +232,7 @@ export default function AuthScreen({ navigation }: Props) {
                 });
 
                 if (signUpError) {
-                    Alert.alert('Registration Failed', signUpError.message);
+                    alert('Registration Failed', signUpError.message);
                     setLoading(false);
                     return;
                 }
