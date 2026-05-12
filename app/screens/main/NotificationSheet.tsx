@@ -107,7 +107,7 @@ export default function NotificationSheet({
             .single();
 
         if (!data || error) {
-            Alert.alert(
+            alert(
                 'Destination not available',
                 'This notification destination is no longer available.',
             );
@@ -127,7 +127,7 @@ export default function NotificationSheet({
         }
 
         if (data.status !== 'open' && !isPoster && !isAcceptedParticipant) {
-            Alert.alert(
+            alert(
                 'Quest unavailable',
                 'This quest is closed to the public and cannot be opened from notifications.',
             );
