@@ -14,6 +14,7 @@ import {
   Animated,
   Easing,
   Image,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -50,9 +51,7 @@ type QuestDetailParams = {
     is_auto_accept?: boolean;
     max_participants?: number;
     status?: string;
-    image_url?: string | null;
   };
-  scrollToComments?: boolean;
 };
 
 type QuestDetailsProps = {
@@ -374,7 +373,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const inputRef = useRef<TextInput | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
-  const [shouldScrollToComments, setShouldScrollToComments] = useState(false);
   
   const [comments, setComments] = useState<UIComment[]>([]);
   const [replyTo, setReplyTo] = useState<UIComment | null>(null);
@@ -496,12 +494,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   }, [quest?.id]);
 
   useEffect(() => {
-    if (route?.params?.scrollToComments) {
-      setShouldScrollToComments(true);
-    }
-  }, [route?.params?.scrollToComments]);
-
-  useEffect(() => {
     let mounted = true;
     let commentSubscription: any = null;
 
@@ -570,16 +562,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       if (commentSubscription) supabase.removeChannel(commentSubscription);
     };
   }, [quest?.id, fetchQuestData]);
-
-  useEffect(() => {
-    if (!shouldScrollToComments || comments.length === 0) return;
-
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    });
-
-    setShouldScrollToComments(false);
-  }, [shouldScrollToComments, comments.length]);
 
   useEffect(() => {
     if (!currentUserId || !questData?.id || currentUserId !== questData?.user_id) return;
@@ -796,7 +778,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const ago = quest?.ago ?? 'Just now';
   const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
   const token = questData?.token_bounty ?? quest?.token ?? 25;
-  const questImageUrl = questData?.image_url ?? quest?.image_url ?? null;
   
   const isPoster = currentUserId === questData?.user_id;
   const isAutoAccept = questData?.is_auto_accept ?? true;
@@ -856,53 +837,19 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
       const { error } = await supabase
         .from('comments')
-        .insert([{
-          quest_id: questData.id,
-          user_id: currentUserId,
+        .insert([{ 
+          quest_id: questData.id, 
+          user_id: currentUserId, 
           content: finalContent,
           image_url: uploadedUrl,
-          visibility: targetVisibility
+          visibility: targetVisibility 
         }]);
-
+        
       if (error) throw error;
-
-      // Send notifications client-side to avoid duplicates from DB trigger + moderation UPDATE
-      const questPosterId: string | undefined = questData.user_id;
-      const commenterName: string = currentUserProfile?.display_name || 'Someone';
-      const questId: string = questData.id;
-      const isReply = !!replyTo;
-      const replyTargetUserId: string | undefined = replyTo?.userId;
-      const posterIsReplyTarget = isReply && replyTargetUserId === questPosterId;
-
-      // Notify quest poster of new activity (skip if they are the commenter)
-      if (questPosterId && questPosterId !== currentUserId && !posterIsReplyTarget) {
-        await supabase.from('notifications').insert({
-          recipient_id: questPosterId,
-          sender_id: currentUserId,
-          type: 'new_comment',
-          title: 'New Comment',
-          description: `${commenterName} commented on your quest.`,
-          reference_id: questId,
-          is_read: false,
-        });
-      }
-
-      // Notify comment author of reply (skip if they are the replier)
-      if (isReply && replyTargetUserId && replyTargetUserId !== currentUserId) {
-        await supabase.from('notifications').insert({
-          recipient_id: replyTargetUserId,
-          sender_id: currentUserId,
-          type: 'new_reply',
-          title: 'New Reply',
-          description: `${commenterName} replied to your comment.`,
-          reference_id: questId,
-          is_read: false,
-        });
-      }
 
       setMessage('');
       setSelectedImage(null);
-      setImageBase64(null);
+      setImageBase64(null); 
       setReplyTo(null);
       fetchQuestData(currentUserId);
     } catch (err: any) {
@@ -1013,6 +960,64 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     if (trimmed.length <= 90) return trimmed;
     return `${trimmed.slice(0, 90)}…`;
   }, [replyTo?.text, parseReplyEncodedContent]);
+
+  const DISMISS_PULL_THRESHOLD = 70;
+  const DISMISS_ANIMATION_MS = 240;
+  const SCREEN_HEIGHT = Dimensions.get('window').height;
+
+  const sheetTranslateY = useRef(new Animated.Value(0)).current;
+  const isDismissingRef = useRef(false);
+
+  const animateDismiss = useCallback(() => {
+    if (isDismissingRef.current) return;
+    isDismissingRef.current = true;
+
+    Animated.timing(sheetTranslateY, {
+      toValue: SCREEN_HEIGHT,
+      duration: DISMISS_ANIMATION_MS,
+      useNativeDriver: true,
+    }).start(() => {
+      navigation?.goBack?.();
+    });
+  }, [navigation, sheetTranslateY]);
+
+  const headerPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dy) > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        onPanResponderMove: (_, gestureState) => {
+          if (isDismissingRef.current) return;
+          if (gestureState.dy > 0) sheetTranslateY.setValue(gestureState.dy * 0.9);
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (isDismissingRef.current) return;
+          if (gestureState.dy >= DISMISS_PULL_THRESHOLD) {
+            animateDismiss();
+            return;
+          }
+
+          Animated.spring(sheetTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 22,
+            bounciness: 0,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          if (isDismissingRef.current) return;
+          Animated.spring(sheetTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 22,
+            bounciness: 0,
+          }).start();
+        },
+      }),
+    [animateDismiss, sheetTranslateY],
+  );
+
+  const sheetAnimatedStyle = useMemo(() => ({ transform: [{ translateY: sheetTranslateY }] }), [sheetTranslateY]);
 
   const openCommentActions = (comment: UIComment) => {
     setSelectedComment(comment);
@@ -1136,9 +1141,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
-      <View style={styles.sheet}>
+      <Animated.View style={[styles.sheet, sheetAnimatedStyle]}>
         
-        <View style={styles.header}>
+        <View style={styles.header} {...headerPanResponder.panHandlers}>
           <Pressable style={styles.iconButton} onPress={() => navigation?.goBack?.()}>
             <BackIcon width={18} height={18} />
             <Text style={styles.backText}>Feed</Text>
@@ -1198,17 +1203,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.preview}>{preview}</Text>
-
-              {/* ── Quest Attached Image (NEW) ─────────────────────────────────── */}
-              {questImageUrl && (
-                <Pressable
-                  style={styles.questAttachmentBtn}
-                  onPress={() => setFullscreenImage(questImageUrl)}
-                >
-                  <Image source={{ uri: questImageUrl }} style={styles.questAttachmentThumb} />
-                  <Text style={styles.questAttachmentText}>View Image</Text>
-                </Pressable>
-              )}
 
               <View style={styles.metaRow}>
                 <Pressable 
@@ -1586,7 +1580,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           </Pressable>
         </Modal>
 
-      </View>
+      </Animated.View>
       <ContentBlockedModal
         visible={!!blockInfo}
         onClose={() => setBlockInfo(null)}
@@ -1693,30 +1687,6 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 21,
     fontSize: 14,
-  },
-  questAttachmentBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 6,
-    paddingRight: 12,
-    borderRadius: 8,
-    backgroundColor: COLORS.surface2,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginTop: 4,
-  },
-  questAttachmentThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    backgroundColor: COLORS.border,
-  },
-  questAttachmentText: {
-    color: COLORS.textPrimary,
-    fontSize: 12,
-    fontWeight: '600',
   },
   metaRow: {
     flexDirection: 'row',
