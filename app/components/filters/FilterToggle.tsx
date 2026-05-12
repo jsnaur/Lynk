@@ -19,7 +19,7 @@ export default function FilterToggle({ label, selected, onPress }: FilterToggleP
     const newState = !isSelected;
     if (selected === undefined) {
       setInternalSelected(newState);
-      void appSoundManager.play(AppSoundCategory.Swishes, { debounceMs: 0 });
+      void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
     }
     onPress?.(newState);
   };

@@ -48,9 +48,9 @@ export default function ItemsDetailsSheet({
 
   useEffect(() => {
     if (visible && !previousVisibleRef.current) {
-      void appSoundManager.play(AppSoundCategory.Whooshes, { debounceMs: 0 });
+      void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
     } else if (!visible && previousVisibleRef.current) {
-      void appSoundManager.play(AppSoundCategory.Swooshes, { debounceMs: 0 });
+      void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
     }
 
     previousVisibleRef.current = visible;

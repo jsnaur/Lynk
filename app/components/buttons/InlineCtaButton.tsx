@@ -27,7 +27,7 @@ const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({
       return;
     }
 
-    void appSoundManager.play(AppSoundCategory.UIClicks);
+    void appSoundManager.play(AppSoundCategory.ButtonPress);
     onPress();
   };
 

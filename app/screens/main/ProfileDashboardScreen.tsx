@@ -235,8 +235,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         const newLevel = calculateLevelFromXP(totalXP).currentLevel;
         if (newLevel > prevLevelRef.current) {
             try {
-                void appSoundManager.play(AppSoundCategory.LevelUps, { force: true });
-                setTimeout(() => { void appSoundManager.play(AppSoundCategory.Fanfares, { force: true, volume: 0.9 }); }, 120);
+                void appSoundManager.play(AppSoundCategory.LevelUp, { force: true });
+                setTimeout(() => { void appSoundManager.play(AppSoundCategory.QuestComplete, { force: true, volume: 0.9 }); }, 120);
             } catch (e) {}
         }
         prevLevelRef.current = newLevel;

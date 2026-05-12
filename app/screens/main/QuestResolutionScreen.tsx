@@ -178,14 +178,14 @@ const QuestResolutionSheetModal = ({
       await refreshBalance();
       setIsSubmitted(true);
       // triumphant mini fanfare for success
-      try { void appSoundManager.play(AppSoundCategory.Fanfares, { force: true }); } catch (e) {}
+      try { void appSoundManager.play(AppSoundCategory.QuestComplete, { force: true }); } catch (e) {}
       // rapid sparkle sequence for visual counters
       try {
         const xpPlays = Math.min(6, Math.max(1, Math.floor(xpReward || 1)));
         for (let i = 0; i < xpPlays; i++) {
-          setTimeout(() => { void appSoundManager.play(AppSoundCategory.Sparkles, { force: true, volume: 0.9 }); }, i * 60);
+          setTimeout(() => { void appSoundManager.play(AppSoundCategory.XpGain, { force: true, volume: 0.9 }); }, i * 60);
         }
-        setTimeout(() => { void appSoundManager.play(AppSoundCategory.KaChings, { force: true }); }, xpPlays * 60 + 40);
+        setTimeout(() => { void appSoundManager.play(AppSoundCategory.PurchaseSuccess, { force: true }); }, xpPlays * 60 + 40);
       } catch (e) {}
       onComplete?.();
 

@@ -195,7 +195,7 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3 }: B
                 if (badge.id === badgeId) {
                         if (badge.state === 'selected') return { ...badge, state: 'default' };
                         else if (selectedCount < maxBadges) {
-                            try { void appSoundManager.play(AppSoundCategory.Clinks, { force: true }); } catch (e) {}
+                            try { void appSoundManager.play(AppSoundCategory.BadgeEquip, { force: true }); } catch (e) {}
                             return { ...badge, state: 'selected' };
                         }
                 }

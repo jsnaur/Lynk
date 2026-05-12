@@ -127,7 +127,7 @@ export default function NotificationRow({
             previousTimestampRef.current !== timestamp;
 
         if (becameUnread || justArrivedUnread || justNowTimestampUpdated) {
-            void appSoundManager.play(AppSoundCategory.GlassBells, {
+            void appSoundManager.play(AppSoundCategory.AuthSuccess, {
                 volume: 0.92,
                 rate: 1.08,
                 debounceMs: 300,

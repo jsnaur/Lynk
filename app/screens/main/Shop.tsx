@@ -114,7 +114,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     if (ownedIds.has(item.id)) return;
     const { error } = await supabase.rpc('purchase_item', { p_item_id: item.id, p_price: item.price });
     if (error) {
-      void appSoundManager.play(AppSoundCategory.Thuds);
+      void appSoundManager.play(AppSoundCategory.ModalClose);
       if (error.message.includes('Insufficient')) {
         Alert.alert('Not enough tokens', 'Complete quests to earn more tokens.');
       } else {
@@ -123,7 +123,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       return;
     }
     setOwnedIds((prev) => new Set(prev).add(item.id));
-    void appSoundManager.play(AppSoundCategory.KaChings);
+    void appSoundManager.play(AppSoundCategory.PurchaseSuccess);
   }, [ownedIds]);
 
   return (
