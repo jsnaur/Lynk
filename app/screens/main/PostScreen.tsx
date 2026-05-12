@@ -201,8 +201,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
     [animateDismiss, sheetTranslateY],
   );
 
-  const publishToSupabase = async () => {
-    setIsPublishing(true);
+  const publishToSupabase = async (tempQuestId?: string | null) => {
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) throw new Error('You must be logged in to post.');
@@ -279,9 +278,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       }
 
       await refreshBalance();
-      navigation.onPublishSuccess?.(questIdForHighlight);
-      navigation.goBack();
+      navigation.onPublishSuccess?.(questIdForHighlight, tempQuestId);
     } catch (error: any) {
+      navigation.onPublishFailure?.(tempQuestId);
       const isMissingRpc =
         error?.code === '42883' ||
         (typeof error?.message === 'string' &&
@@ -295,8 +294,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       } else {
         alert('Error', error.message || 'Failed to publish quest.');
       }
-    } finally {
-      setIsPublishing(false);
     }
   };
 
@@ -341,11 +338,51 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       undefined,
       [
         { text: 'Keep Editing', style: 'cancel' },
-        { text: 'Publish', onPress: publishToSupabase },
+        {
+          text: 'Publish',
+          onPress: async () => {
+            setIsPublishing(true);
+            const tempQuestId = `temp-${Date.now()}`;
+            const optimisticQuest = {
+              id: tempQuestId,
+              user_id: 'optimistic',
+              isOptimistic: true,
+              category: String(category).toLowerCase(),
+              ago: 'Just now',
+              title: titleTrim,
+              description: descTrim,
+              preview: descTrim,
+              posterName: 'You',
+              posterAccessories: {},
+              xp: GUILD_BASE_XP + appraisal.bonusXp,
+              token: tokenBounty,
+              token_bounty: tokenBounty,
+              bonus_xp: appraisal.bonusXp,
+              status: 'open',
+              max_participants: maxParticipants,
+              is_auto_accept: isAutoAccept,
+            };
+
+            navigation.onPublishOptimistic?.(optimisticQuest, tempQuestId);
+            navigation.goBack();
+            publishToSupabase(tempQuestId);
+          },
+        },
       ],
       publishTable,
     );
-  }, [isValid, category, appraisal, tokenBounty, publishToSupabase, titleTrim, descTrim]);
+  }, [
+    isValid,
+    category,
+    appraisal,
+    tokenBounty,
+    publishToSupabase,
+    titleTrim,
+    descTrim,
+    maxParticipants,
+    isAutoAccept,
+    navigation,
+  ]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

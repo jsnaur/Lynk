@@ -20,8 +20,11 @@ const Stack = createNativeStackNavigator();
 const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('Feed');
   const tabBeforePostRef = useRef<MainTab>('Feed');
+  const didPublishFromPostRef = useRef(false);
   const [highlightQuestId, setHighlightQuestId] = useState<string | null>(null);
   const [feedRefreshSignal, setFeedRefreshSignal] = useState(0);
+  const [optimisticQuest, setOptimisticQuest] = useState<any | null>(null);
+  const [optimisticRemovalId, setOptimisticRemovalId] = useState<string | null>(null);
   
   // Daily Reward Logic
   const {
@@ -67,11 +70,31 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
 
   const postNavigation = useMemo(() => ({
     ...navigation,
-    goBack: () => setActiveTab(tabBeforePostRef.current),
-    onPublishSuccess: (questId?: string | null) => {
+    goBack: () => {
+      // Prevent publish success flow from being overridden by the normal post dismissal goBack.
+      if (didPublishFromPostRef.current) {
+        didPublishFromPostRef.current = false;
+        return;
+      }
+      setActiveTab(tabBeforePostRef.current);
+    },
+    onPublishOptimistic: (quest: any, tempId?: string | null) => {
+      didPublishFromPostRef.current = true;
+      if (quest) setOptimisticQuest(quest);
+      // Do not highlight while still posting. Highlight only after server confirms success.
+      setActiveTab('Feed');
+    },
+    onPublishSuccess: (questId?: string | null, tempId?: string | null) => {
+      didPublishFromPostRef.current = true;
       invalidateFeedCache();
       setFeedRefreshSignal((v) => v + 1);
       setHighlightQuestId(questId ? String(questId) : null);
+      if (tempId) setOptimisticRemovalId(String(tempId));
+      setActiveTab('Feed');
+    },
+    onPublishFailure: (tempId?: string | null) => {
+      didPublishFromPostRef.current = true;
+      if (tempId) setOptimisticRemovalId(String(tempId));
       setActiveTab('Feed');
     },
   }), [navigation]);
@@ -91,6 +114,10 @@ const MainTabsScreen = ({ navigation, route }: { navigation: any; route: any }) 
           highlightQuestId={highlightQuestId}
           feedRefreshSignal={feedRefreshSignal}
           onHighlightConsumed={() => setHighlightQuestId(null)}
+          optimisticQuest={optimisticQuest}
+          optimisticRemovalId={optimisticRemovalId}
+          onOptimisticQuestConsumed={() => setOptimisticQuest(null)}
+          onOptimisticRemovalConsumed={() => setOptimisticRemovalId(null)}
         />
       );
     }
