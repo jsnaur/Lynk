@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { withOpacity } from '../../constants/colors';
-import { useTheme } from '../../contexts/ThemeContext';
+import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { useNotificationPreferences } from '../../contexts/NotificationPreferencesContext';
 
@@ -234,8 +234,6 @@ export default function SettingsScreen({ navigation }: any) {
   const { alert } = useCustomAlert();
 
   const { prefs, setPrefs } = useNotificationPreferences();
-  const [profileVisibilityEnabled, setProfileVisibilityEnabled] = useState(true);
-  const [onlineStatusEnabled, setOnlineStatusEnabled] = useState(true);
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -280,12 +278,22 @@ export default function SettingsScreen({ navigation }: any) {
 
   return (
     <View style={styles.root}>
+      {/* ── Header ── */}
       <View style={styles.header}>
+        {/* Back button — left-anchored, never grows */}
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="chevron-left" size={16} color={colors.favor} />
-          <Text style={styles.backLabel}>Profile</Text>
+          <MaterialCommunityIcons name="chevron-left" size={18} color={colors.textPrimary} />
+          <Text style={styles.backLabel} numberOfLines={1}>
+            Profile
+          </Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
+
+        {/* Title — absolutely centred over the full header width, non-interactive */}
+        <Text style={styles.headerTitle} numberOfLines={1} pointerEvents="none">
+          Settings
+        </Text>
+
+        {/* Right spacer — mirrors back button width so title stays centred */}
         <View style={styles.headerSpacer} />
       </View>
 
@@ -352,30 +360,7 @@ export default function SettingsScreen({ navigation }: any) {
           />
         </SettingsSection>
 
-        {/* SECTION 3: PRIVACY */}
-        <SettingsSection label="PRIVACY">
-          <SettingsToggleRow
-            icon="eye"
-            iconBgColor={withOpacity(colors.textSecondary, 0.12)}
-            iconColor={colors.textSecondary}
-            title="Profile Visibility"
-            subtitle={profileVisibilityEnabled ? "Visible to all verified students" : "Limited visibility"}
-            value={profileVisibilityEnabled}
-            onToggle={setProfileVisibilityEnabled}
-          />
-          <SettingsToggleRow
-            icon="circle"
-            iconBgColor={withOpacity(colors.textSecondary, 0.12)}
-            iconColor={colors.textSecondary}
-            title="Show Online Status"
-            subtitle="Let others see when you're active"
-            value={onlineStatusEnabled}
-            onToggle={setOnlineStatusEnabled}
-            isLast
-          />
-        </SettingsSection>
-
-        {/* SECTION 4: APP */}
+        {/* SECTION 3: APP */}
         <SettingsSection label="APP">
           <SettingsNavRow
             icon={theme === 'dark' ? 'weather-night' : 'weather-sunny'}
@@ -398,7 +383,7 @@ export default function SettingsScreen({ navigation }: any) {
           />
         </SettingsSection>
 
-        {/* SECTION 5: SUPPORT */}
+        {/* SECTION 4: SUPPORT */}
         <SettingsSection label="SUPPORT">
           <SettingsNavRow
             icon="message-text-outline"
@@ -432,7 +417,7 @@ export default function SettingsScreen({ navigation }: any) {
           />
         </SettingsSection>
 
-        {/* SECTION 6: ACCOUNT ACTIONS */}
+        {/* SECTION 5: ACCOUNT ACTIONS */}
         <View style={styles.accountActionsGap} />
         <SettingsSection label="">
           <SettingsNavRow
@@ -488,46 +473,71 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
-    paddingTop: Platform.OS === 'ios' ? 0 : 0,
   },
+
+  // ── Header ──────────────────────────────────────────────────────────────
+  // Key fix: `position: 'relative'` on the container so the absolutely-
+  // positioned title is constrained to the header bounds, not the screen.
   header: {
+    height: screenHeaderTheme.layout.height,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    paddingHorizontal: 20,
-    paddingBottom: 14,
+    alignItems: 'flex-end',
+    paddingTop: screenHeaderTheme.layout.topPadding,
+    paddingHorizontal: screenHeaderTheme.layout.horizontalPadding,
+    paddingBottom: screenHeaderTheme.layout.bottomPadding,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    // Required so the absolute title is clipped to this View
+    position: 'relative',
   },
+
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    height: 44,
-    width: 44,
-    justifyContent: 'center',
+    gap: 2,
+    // Give the button a fixed width that matches headerSpacer.
+    // 112 comfortably fits "< Profile" on all phones.
+    width: 112,
+    height: 34,
+    justifyContent: 'flex-start',
+    // Sits above the title in z-order so taps are captured correctly
+    zIndex: 1,
   },
+
   backLabel: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: colors.favor,
-    fontFamily: 'DM_Sans-Regular',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...screenHeaderTheme.text.title,
     color: colors.textPrimary,
-    fontFamily: 'DM_Sans-Bold',
+    flexShrink: 1,
   },
+
+  // Absolutely-centred title — never nudged by sibling widths
+  headerTitle: {
+    ...screenHeaderTheme.text.title,
+    color: colors.textPrimary,
+    // Fill the full header width and centre the text
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: screenHeaderTheme.layout.bottomPadding,
+    textAlign: 'center',
+    // Sit below the back button so touches pass through to it
+    zIndex: 0,
+  },
+
+  // Mirror of backButton width — keeps title visually centred
   headerSpacer: {
-    width: 44,
+    width: 112,
+    zIndex: 1,
   },
+
+  // ── Scroll ───────────────────────────────────────────────────────────────
   scrollContainer: {
     flex: 1,
     backgroundColor: colors.bg,
     paddingVertical: 20,
   },
+
+  // ── Sections ─────────────────────────────────────────────────────────────
   section: {
     marginHorizontal: 0,
     marginBottom: 8,
@@ -551,6 +561,8 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+
+  // ── Nav rows ─────────────────────────────────────────────────────────────
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -604,6 +616,8 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: 'DM_Sans-Regular',
   },
+
+  // ── Toggle rows ───────────────────────────────────────────────────────────
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -634,6 +648,8 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   toggleSwitch: {
     marginLeft: 'auto',
   },
+
+  // ── Modals ────────────────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -710,6 +726,8 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: 'DM_Sans-Medium',
   },
+
+  // ── Misc ─────────────────────────────────────────────────────────────────
   accountActionsGap: {
     height: 24,
   },

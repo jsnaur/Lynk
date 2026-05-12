@@ -151,6 +151,10 @@ export default function CustomizeScreen({
     !!selectedAccessory && 
     ownedIds.has(selectedAccessory.id);
 
+  /** Body must always stay equipped — only switch between body options. */
+  const bodyUnequipBlocked =
+    !!selectedAccessory && isSelectedApplied && selectedAccessory.slot === 'Body';
+
   const toggleSelectedAccessory = () => {
     if (!selectedAccessory) return;
 
@@ -161,6 +165,11 @@ export default function CustomizeScreen({
 
     const slotToUpdate = selectedAccessory.slot;
     const wasApplied = appliedAccessories[slotToUpdate] === selectedAccessory.id;
+
+    if (wasApplied && slotToUpdate === 'Body') {
+      Alert.alert('Body required', 'You always need a body equipped. Choose another body tone to change your look.');
+      return;
+    }
 
     // Instant local state update
     const newAppliedState = { ...appliedAccessories };
@@ -317,18 +326,20 @@ export default function CustomizeScreen({
         <View style={styles.footer}>
           <Pressable
             onPress={toggleSelectedAccessory}
-            disabled={!canInteract}
+            disabled={!canInteract || bodyUnequipBlocked}
             style={({ pressed }) => [
               styles.applyBtn,
-              isSelectedApplied && styles.unequipBtn, 
-              !canInteract && styles.applyBtnDisabled,
-              pressed && canInteract && { opacity: 0.9 },
+              isSelectedApplied && !bodyUnequipBlocked && styles.unequipBtn,
+              (!canInteract || bodyUnequipBlocked) && styles.applyBtnDisabled,
+              pressed && canInteract && !bodyUnequipBlocked && { opacity: 0.9 },
             ]}
           >
-            <Text style={[styles.applyBtnText, isSelectedApplied && styles.unequipBtnText]}>
+            <Text style={[styles.applyBtnText, isSelectedApplied && !bodyUnequipBlocked && styles.unequipBtnText]}>
               {!selectedAccessory 
                 ? 'Select an Item' 
-                : isSelectedApplied 
+                : bodyUnequipBlocked
+                  ? 'Body is always equipped'
+                  : isSelectedApplied 
                   ? `Unequip ${selectedAccessory.slot}` 
                   : `Equip to ${selectedAccessory.slot}`
               }
