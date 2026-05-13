@@ -133,7 +133,7 @@ const SOUND_CATALOG: Record<AppSoundCategory, SoundDefinition> = {
   },
   [AppSoundCategory.PostExpand]: {
     source: require("../../assets/sfx/social/post_expand.wav"),
-    volume: 0.9,
+    volume: 0.4,
     defaultDebounceMs: 100,
     notes: "Panel/card expansion transitions.",
   },
@@ -169,7 +169,7 @@ const SOUND_CATALOG: Record<AppSoundCategory, SoundDefinition> = {
   },
   [AppSoundCategory.TabSwitch]: {
     source: require("../../assets/sfx/ui/tab_switch.wav"),
-    volume: 0.9,
+    volume: 0.6,
     defaultDebounceMs: 80,
     notes: "Light directional movement cues.",
   },
