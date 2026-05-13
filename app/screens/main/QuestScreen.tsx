@@ -11,6 +11,7 @@ import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
 import { TYPOGRAPHY } from '../../constants/typography';
@@ -80,7 +81,13 @@ function QuestCard({ item, onPress, onResolve, variant = 'active' }: { item: Que
               <ThumbUpIcon width={18} height={17} />
             </>
           ) : item.isActionable && onResolve ? (
-            <Pressable onPress={onResolve} style={({ pressed }) => [styles.resolveButton, pressed && styles.resolveButtonPressed]}>
+            <Pressable
+              onPress={() => {
+                void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
+                onResolve?.();
+              }}
+              style={({ pressed }) => [styles.resolveButton, pressed && styles.resolveButtonPressed]}
+            >
               <Text style={styles.resolveText}>Resolve</Text>
             </Pressable>
           ) : null}
@@ -221,7 +228,14 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           <View style={styles.segmentedControl} onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}>
             {segmentWidth > 0 && <Animated.View pointerEvents="none" style={[styles.segmentIndicator, { width: (segmentWidth - 12) / 2, transform: [{ translateX: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, (segmentWidth - 12) / 2 + 4] }) }] }]} />}
             {(['Active', 'History'] as const).map((label) => (
-              <Pressable key={label} onPress={() => setActiveSection(label)} style={({ pressed }) => [styles.segment, pressed && styles.segmentPressed]}>
+              <Pressable
+                key={label}
+                onPress={() => {
+                  void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                  setActiveSection(label);
+                }}
+                style={({ pressed }) => [styles.segment, pressed && styles.segmentPressed]}
+              >
                 <Text style={[styles.segmentText, activeSection === label && styles.segmentTextSelected]}>{label}</Text>
               </Pressable>
             ))}
@@ -234,7 +248,14 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           {activeSection === 'History' && (
             <View style={styles.filterRow}>
               {HISTORY_FILTERS.map((filter) => (
-                <Pressable key={filter} onPress={() => setHistoryFilter(filter)} style={({ pressed }) => [styles.filterChip, historyFilter === filter && styles.filterChipSelected, pressed && styles.filterChipPressed]}>
+                <Pressable
+                  key={filter}
+                  onPress={() => {
+                    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                    setHistoryFilter(filter);
+                  }}
+                  style={({ pressed }) => [styles.filterChip, historyFilter === filter && styles.filterChipSelected, pressed && styles.filterChipPressed]}
+                >
                   <Text style={[styles.filterChipText, historyFilter === filter && styles.filterChipTextSelected]}>{filter}</Text>
                 </Pressable>
               ))}
@@ -247,7 +268,12 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
             ) : (
               filteredHistoryQuests.map((q) => (
                 <QuestCard key={q.id} item={q} variant={activeSection === 'History' ? 'history' : 'active'}
-                  onPress={() => { if (activeSection === 'Active') navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 }}); }}
+                  onPress={() => {
+                    if (activeSection === 'Active') {
+                      void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
+                      navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 }});
+                    }
+                  }}
                   onResolve={q.isActionable ? () => { setSelectedQuestId(q.id); setResolutionModalVisible(true); } : undefined}
                 />
               ))
