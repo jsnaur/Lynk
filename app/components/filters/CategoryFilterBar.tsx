@@ -25,7 +25,7 @@ export default function CategoryFilterBar({
     }
 
     if (newFilter !== activeFilter) {
-      void appSoundManager.play(AppSoundCategory.Swishes, { debounceMs: 0 });
+      void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
     }
     
     setActiveFilter(newFilter);

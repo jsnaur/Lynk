@@ -11,10 +11,12 @@ import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
-import { useTheme } from '../../contexts/ThemeContext';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
+import { FONTS } from '../../constants/fonts';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -79,7 +81,13 @@ function QuestCard({ item, onPress, onResolve, variant = 'active' }: { item: Que
               <ThumbUpIcon width={18} height={17} />
             </>
           ) : item.isActionable && onResolve ? (
-            <Pressable onPress={onResolve} style={({ pressed }) => [styles.resolveButton, pressed && styles.resolveButtonPressed]}>
+            <Pressable
+              onPress={() => {
+                void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
+                onResolve?.();
+              }}
+              style={({ pressed }) => [styles.resolveButton, pressed && styles.resolveButtonPressed]}
+            >
               <Text style={styles.resolveText}>Resolve</Text>
             </Pressable>
           ) : null}
@@ -220,7 +228,14 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           <View style={styles.segmentedControl} onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}>
             {segmentWidth > 0 && <Animated.View pointerEvents="none" style={[styles.segmentIndicator, { width: (segmentWidth - 12) / 2, transform: [{ translateX: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, (segmentWidth - 12) / 2 + 4] }) }] }]} />}
             {(['Active', 'History'] as const).map((label) => (
-              <Pressable key={label} onPress={() => setActiveSection(label)} style={({ pressed }) => [styles.segment, pressed && styles.segmentPressed]}>
+              <Pressable
+                key={label}
+                onPress={() => {
+                  void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                  setActiveSection(label);
+                }}
+                style={({ pressed }) => [styles.segment, pressed && styles.segmentPressed]}
+              >
                 <Text style={[styles.segmentText, activeSection === label && styles.segmentTextSelected]}>{label}</Text>
               </Pressable>
             ))}
@@ -233,7 +248,14 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
           {activeSection === 'History' && (
             <View style={styles.filterRow}>
               {HISTORY_FILTERS.map((filter) => (
-                <Pressable key={filter} onPress={() => setHistoryFilter(filter)} style={({ pressed }) => [styles.filterChip, historyFilter === filter && styles.filterChipSelected, pressed && styles.filterChipPressed]}>
+                <Pressable
+                  key={filter}
+                  onPress={() => {
+                    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                    setHistoryFilter(filter);
+                  }}
+                  style={({ pressed }) => [styles.filterChip, historyFilter === filter && styles.filterChipSelected, pressed && styles.filterChipPressed]}
+                >
                   <Text style={[styles.filterChipText, historyFilter === filter && styles.filterChipTextSelected]}>{filter}</Text>
                 </Pressable>
               ))}
@@ -246,7 +268,12 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
             ) : (
               filteredHistoryQuests.map((q) => (
                 <QuestCard key={q.id} item={q} variant={activeSection === 'History' ? 'history' : 'active'}
-                  onPress={() => { if (activeSection === 'Active') navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 }}); }}
+                  onPress={() => {
+                    if (activeSection === 'Active') {
+                      void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
+                      navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 }});
+                    }
+                  }}
                   onResolve={q.isActionable ? () => { setSelectedQuestId(q.id); setResolutionModalVisible(true); } : undefined}
                 />
               ))
@@ -263,7 +290,9 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
 const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safeArea: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingTop: SPACING.lg, paddingBottom: 112 },
+  header: { height: screenHeaderTheme.layout.height, paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, justifyContent: 'flex-end', borderBottomWidth: 1, borderBottomColor: colors.border },
+  title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
+  content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 112 },
   segmentedControl: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, padding: 4, gap: 4, position: 'relative' },
   segmentIndicator: { position: 'absolute', top: 4, left: 4, height: 38, borderRadius: 10, backgroundColor: theme === 'dark' ? colors.border : '#FFFFFF', elevation: theme === 'light' ? 2 : 0, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2 },
   segment: { flex: 1, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', zIndex: 1 },

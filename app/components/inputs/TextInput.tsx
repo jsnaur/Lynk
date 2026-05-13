@@ -45,7 +45,7 @@ export default function TextInput({
 
   useEffect(() => {
     if (hasValidationError && !previousHasErrorRef.current) {
-      void appSoundManager.play(AppSoundCategory.Buzzes, {
+      void appSoundManager.play(AppSoundCategory.AlertError, {
         volume: 0.72,
         debounceMs: 350,
       });

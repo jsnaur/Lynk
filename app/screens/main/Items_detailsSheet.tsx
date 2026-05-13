@@ -4,9 +4,13 @@ import { BlurView } from 'expo-blur';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
+import { ACCESSORY_ITEMS } from '../../constants/accessories';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { getAccessoryPreviewStyle } from '../../constants/accessories';
+import RarityBadge from '../../components/chips/RarityBadge';
+import { FONTS } from '../../constants/fonts';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -24,7 +28,7 @@ type ItemsDetailsSheetProps = {
   balance: number;
   owned: boolean;
   equipped: boolean;
-  Sprite: ComponentType<{ width?: number; height?: number }>;
+  Sprite: ComponentType<{ width?: number; height?: number; style?: any }>;
   onClose: () => void;
   onPurchase: () => void;
   onEquip: () => void;
@@ -45,12 +49,14 @@ export default function ItemsDetailsSheet({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const previousVisibleRef = useRef(false);
+  const accessory = useMemo(() => ACCESSORY_ITEMS.find((entry) => entry.id === item?.id) ?? null, [item?.id]);
+  const previewStyle = accessory ? getAccessoryPreviewStyle(accessory, 96) : undefined;
 
   useEffect(() => {
     if (visible && !previousVisibleRef.current) {
-      void appSoundManager.play(AppSoundCategory.Whooshes, { debounceMs: 0 });
+      void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
     } else if (!visible && previousVisibleRef.current) {
-      void appSoundManager.play(AppSoundCategory.Swooshes, { debounceMs: 0 });
+      void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
     }
 
     previousVisibleRef.current = visible;
@@ -83,7 +89,12 @@ export default function ItemsDetailsSheet({
 
           <View style={styles.hero}>
             <View style={styles.spriteRing}>
-              <Sprite width={96} height={96} />
+              <Sprite width={96} height={96} style={previewStyle} />
+              {accessory?.rarity && (
+                <View style={styles.rarityWrap} pointerEvents="none">
+                  <RarityBadge rarity={accessory.rarity as any} fontFamily={FONTS.display} />
+                </View>
+              )}
             </View>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{categoryLabel}</Text>
@@ -157,15 +168,20 @@ export default function ItemsDetailsSheet({
               <>
                 <Pressable
                   onPress={() => {
+                    if (!canAfford && item.price > 0) {
+                      void appSoundManager.play(AppSoundCategory.PurchaseError, { debounceMs: 0 });
+                      return;
+                    }
+
                     onPurchase();
                     onClose();
                   }}
-                  disabled={!canAfford && item.price > 0}
                   style={({ pressed }) => [
                     styles.primaryBtn,
                     (!canAfford && item.price > 0) && styles.primaryBtnDisabled,
                     pressed && styles.pressed,
                   ]}
+                  accessibilityState={{ disabled: !canAfford && item.price > 0 }}
                 >
                   <Text style={styles.primaryBtnText}>
                     {item.price === 0 ? 'Claim free' : `Buy for ${item.price} tokens`}
@@ -228,6 +244,11 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 16,
+  },
+  rarityWrap: {
+    position: 'absolute',
+    bottom: 8,
+    alignItems: 'center',
   },
   spriteRing: {
     width: 120,

@@ -8,17 +8,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import Button from '../../components/buttons/Button';
-import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
+import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot, getAccessoryPreviewStyle } from '../../constants/accessories';
 import { withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme, screenHeaderTheme } from '../../contexts/ThemeContext';
 import ScreenHeader from '../../components/navigation/ScreenHeader';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
+import { FONTS } from '../../constants/fonts';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
@@ -119,7 +120,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     if (ownedIds.has(item.id)) return;
     const { error } = await supabase.rpc('purchase_item', { p_item_id: item.id, p_price: item.price });
     if (error) {
-      void appSoundManager.play(AppSoundCategory.Thuds);
+      void appSoundManager.play(AppSoundCategory.ModalClose);
       if (error.message.includes('Insufficient')) {
         alert('Not enough tokens', 'Complete quests to earn more tokens.');
       } else {
@@ -128,7 +129,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       return;
     }
     setOwnedIds((prev) => new Set(prev).add(item.id));
-    void appSoundManager.play(AppSoundCategory.KaChings);
+    void appSoundManager.play(AppSoundCategory.PurchaseSuccess);
   }, [ownedIds]);
 
   return (
@@ -171,7 +172,10 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
             variant="Outline"
             color={colors.border}
             leftIcon={<Ionicons name="sparkles" size={18} color={colors.favor} />}
-            onPress={() => navigation.navigate('Customize')}
+            onPress={() => {
+              void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
+              navigation.navigate('Customize');
+            }}
             style={{ backgroundColor: colors.surface2 }}
           />
         </View>
@@ -182,7 +186,14 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
               const active = filter === key;
               const isLast = index === FILTERS.length - 1;
               return (
-                <Pressable key={key} onPress={() => setFilter(key)} style={[styles.filterPill, active && styles.filterPillActive, !isLast && styles.filterPillGap]}>
+                <Pressable
+                  key={key}
+                  onPress={() => {
+                    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                    setFilter(key);
+                  }}
+                  style={[styles.filterPill, active && styles.filterPillActive, !isLast && styles.filterPillGap]}
+                >
                   <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{label}</Text>
                 </Pressable>
               );
@@ -198,7 +209,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
               return (
                 <Pressable key={item.id} onPress={() => setDetailItem(item)} style={({ pressed }) => [styles.card, { width: columnWidth }, pressed && styles.cardPressed]}>
                   <View style={styles.cardPreview}>
-                    {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64 })}
+                    {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64, style: getAccessoryPreviewStyle(item, 64) })}
                     {owned && (
                       <View style={styles.ownedCorner}><Ionicons name="checkmark-circle" size={18} color={colors.item} /></View>
                     )}
@@ -230,6 +241,9 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safe: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: screenHeaderTheme.layout.height, paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, borderBottomWidth: 1, borderBottomColor: colors.border },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
   balanceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.45)', backgroundColor: withOpacity(colors.token, 0.18) },
   balanceText: { fontSize: 15, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: colors.token },
   previewCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.lg, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },

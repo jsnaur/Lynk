@@ -166,7 +166,7 @@ export default function NotificationSheet({
     useEffect(() => {
         if (visible) {
             if (!previousVisibleRef.current) {
-                void appSoundManager.play(AppSoundCategory.Whooshes, { debounceMs: 0 });
+                void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
             }
             fetchNotifications();
             // Pop-out Animation
@@ -184,7 +184,7 @@ export default function NotificationSheet({
             ]).start();
         } else {
             if (previousVisibleRef.current) {
-                void appSoundManager.play(AppSoundCategory.Swooshes, { debounceMs: 0 });
+                void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
             }
             scaleAnim.setValue(0);
             opacityAnim.setValue(0);

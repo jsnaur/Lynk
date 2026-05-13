@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TextStyle } from 'react-native';
 import { COLORS, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 
@@ -7,9 +7,10 @@ export type RarityLevel = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 
 interface RarityBadgeProps {
   rarity: RarityLevel;
+  fontFamily?: TextStyle['fontFamily'];
 }
 
-export default function RarityBadge({ rarity }: RarityBadgeProps) {
+export default function RarityBadge({ rarity, fontFamily }: RarityBadgeProps) {
   const getRarityColor = () => {
     switch (rarity) {
       case 'Common': return COLORS.textSecondary;
@@ -33,7 +34,7 @@ export default function RarityBadge({ rarity }: RarityBadgeProps) {
         }
       ]}
     >
-      <Text style={[styles.text, { color }]}>{rarity}</Text>
+      <Text style={[styles.text, { color, fontFamily: fontFamily ?? FONTS.body }]}>{rarity}</Text>
     </View>
   );
 }
@@ -49,9 +50,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   text: {
-    fontSize: 10,
-    fontFamily: FONTS.body,
-    fontWeight: '700',
+    fontSize: 8,
+    lineHeight: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

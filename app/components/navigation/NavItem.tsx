@@ -19,7 +19,7 @@ export default function NavItem({ label, iconName, isActive, onPress }: NavItemP
 
   const handlePress = () => {
     if (!isActive) {
-      void appSoundManager.play(AppSoundCategory.Thumps, { debounceMs: 0 });
+      void appSoundManager.play(AppSoundCategory.ModalOpen, { debounceMs: 0 });
     }
 
     onPress();

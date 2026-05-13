@@ -72,7 +72,7 @@ export default function Button({
       return;
     }
 
-    void appSoundManager.play(AppSoundCategory.UIClicks);
+    void appSoundManager.play(AppSoundCategory.ButtonPress);
     onPress();
   };
 
