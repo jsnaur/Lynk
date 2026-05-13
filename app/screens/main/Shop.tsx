@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import Button from '../../components/buttons/Button';
-import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
+import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot, getAccessoryPreviewStyle } from '../../constants/accessories';
 import { withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
@@ -172,7 +172,10 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
             variant="Outline"
             color={colors.border}
             leftIcon={<Ionicons name="sparkles" size={18} color={colors.favor} />}
-            onPress={() => navigation.navigate('Customize')}
+            onPress={() => {
+              void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
+              navigation.navigate('Customize');
+            }}
             style={{ backgroundColor: colors.surface2 }}
           />
         </View>
@@ -183,7 +186,14 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
               const active = filter === key;
               const isLast = index === FILTERS.length - 1;
               return (
-                <Pressable key={key} onPress={() => setFilter(key)} style={[styles.filterPill, active && styles.filterPillActive, !isLast && styles.filterPillGap]}>
+                <Pressable
+                  key={key}
+                  onPress={() => {
+                    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                    setFilter(key);
+                  }}
+                  style={[styles.filterPill, active && styles.filterPillActive, !isLast && styles.filterPillGap]}
+                >
                   <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{label}</Text>
                 </Pressable>
               );
@@ -199,7 +209,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
               return (
                 <Pressable key={item.id} onPress={() => setDetailItem(item)} style={({ pressed }) => [styles.card, { width: columnWidth }, pressed && styles.cardPressed]}>
                   <View style={styles.cardPreview}>
-                    {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64 })}
+                    {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64, style: getAccessoryPreviewStyle(item, 64) })}
                     {owned && (
                       <View style={styles.ownedCorner}><Ionicons name="checkmark-circle" size={18} color={colors.item} /></View>
                     )}
