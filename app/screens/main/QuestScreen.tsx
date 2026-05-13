@@ -6,11 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import QuestCardSkeleton from '../../components/cards/QuestCardSkeleton';
+import ScreenHeader from '../../components/navigation/ScreenHeader';
 import ThumbUpIcon from '../../../assets/RatingsAssets/ThumbUp.svg';
 import QuestResolutionSheetModal from './QuestResolutionScreen';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
-import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
@@ -214,7 +215,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
     <View style={styles.root}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.header}><Text style={styles.title}>My Quests</Text></View>
+        <ScreenHeader title="My Quests" />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={async () => { setIsRefreshing(true); await fetchQuests(); setIsRefreshing(false); }} tintColor={colors.item} />}>
           <View style={styles.segmentedControl} onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}>
             {segmentWidth > 0 && <Animated.View pointerEvents="none" style={[styles.segmentIndicator, { width: (segmentWidth - 12) / 2, transform: [{ translateX: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, (segmentWidth - 12) / 2 + 4] }) }] }]} />}
@@ -262,8 +263,6 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
 const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safeArea: { flex: 1 },
-  header: { height: screenHeaderTheme.layout.height, paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, justifyContent: 'flex-end', borderBottomWidth: 1, borderBottomColor: colors.border },
-  title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
   content: { paddingHorizontal: 24, paddingTop: SPACING.lg, paddingBottom: 112 },
   segmentedControl: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, padding: 4, gap: 4, position: 'relative' },
   segmentIndicator: { position: 'absolute', top: 4, left: 4, height: 38, borderRadius: 10, backgroundColor: theme === 'dark' ? colors.border : '#FFFFFF', elevation: theme === 'light' ? 2 : 0, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2 },

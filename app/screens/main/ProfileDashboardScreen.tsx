@@ -19,7 +19,8 @@ import { withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
-import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import ScreenHeader from '../../components/navigation/ScreenHeader';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
 
@@ -277,12 +278,14 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         <View style={styles.root}>
             <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
             <SafeAreaView style={styles.safeArea}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Profile</Text>
-                    <Pressable style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]} hitSlop={10} onPress={() => navigation?.navigate('Settings')}>
-                        <Ionicons name="settings-outline" size={24} color={colors.textPrimary} style={styles.settingsIcon} />
-                    </Pressable>
-                </View>
+                <ScreenHeader
+                    title="Profile"
+                    right={
+                        <Pressable style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]} hitSlop={10} onPress={() => navigation?.navigate('Settings')}>
+                            <Ionicons name="settings-outline" size={24} color={colors.textPrimary} style={styles.settingsIcon} />
+                        </Pressable>
+                    }
+                />
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     {initialLoading ? (
@@ -415,8 +418,6 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 const getStyles = (colors: any, theme: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.bg },
     safeArea: { flex: 1 },
-    header: { paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, height: screenHeaderTheme.layout.height, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-    headerTitle: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
     settingsButton: { height: 25, width: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     settingsIcon: { width: 24, height: 24 },
     scrollContent: { paddingBottom: 112 },
