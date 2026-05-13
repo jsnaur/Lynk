@@ -524,16 +524,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                         const iconColor = selected ? color : colors.textSecondary;
                         return <CategoryIcon width={20} height={20} color={iconColor} />;
                       })()}
-                      {(() => {
-                        const ICONS: Record<string, any> = {
-                          Favor: IconFavor,
-                          Study: IconStudy,
-                          Item: IconItem,
-                        };
-                        const CategoryIcon = ICONS[key] ?? IconFavor;
-                        const iconColor = selected ? color : colors.textSecondary;
-                        return <CategoryIcon width={20} height={20} color={iconColor} />;
-                      })()}
                       <Text style={[styles.categoryLabel, selected && { color: colors.textPrimary }]}>
                         {key}
                       </Text>
@@ -575,7 +565,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>QUEST TITLE</Text>
-                  {!titleTrim && <View style={styles.requiredDot} />}
                   {!titleTrim && <View style={styles.requiredDot} />}
                 </View>
                 <Text style={styles.counter}>
@@ -744,7 +733,6 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
                 <GradientDividerLabel label="SET REWARD" styles={styles} />
-                <GradientDividerLabel label="SET REWARD" styles={styles} />
                 <View style={styles.dividerLine} />
               </View>
               <Text style={styles.hint}>
@@ -754,19 +742,16 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
                   <Image source={StarIcon} style={styles.rewardIcon} resizeMode="contain" />
-                  <Image source={StarIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>XP reward</Text>
                     <Text style={styles.rewardSub}>Auto-set by Guild Appraiser: +{appraisal.bonusXp} XP</Text>
                   </View>
                 </View>
                 <Text style={styles.xpValue}>{appraisal.bonusXp}</Text>
-                <Text style={styles.xpValue}>{appraisal.bonusXp}</Text>
               </View>
 
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
-                  <Image source={CoinIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <Image source={CoinIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>Token bounty</Text>
