@@ -1,30 +1,40 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View, ViewStyle } from 'react-native';
 import { COLORS } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 export type ButtonVariant = 'Primary' | 'Secondary' | 'Outline' | 'Danger';
+export type ButtonSize = 'sm' | 'md';
 
 interface ButtonProps {
   label: string;
   onPress?: () => void;
   variant?: ButtonVariant;
+  size?: ButtonSize;
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  color?: string;
 }
 
 export default function Button({
   label,
   onPress,
   variant = 'Primary',
+  size = 'md',
   disabled = false,
   loading = false,
   style,
+  leftIcon,
+  rightIcon,
+  color,
 }: ButtonProps) {
   const getBackgroundColor = () => {
     if (disabled) return COLORS.surface2;
+    if (color && variant !== 'Outline') return color;
     switch (variant) {
       case 'Primary': return COLORS.favor;
       case 'Secondary': return COLORS.surface2;
@@ -36,9 +46,12 @@ export default function Button({
 
   const getBorderColor = () => {
     if (disabled) return 'transparent';
-    if (variant === 'Outline') return COLORS.border;
+    if (variant === 'Outline') return color ?? COLORS.border;
     return 'transparent';
   };
+
+  const sizeStyles = size === 'sm' ? styles.containerSm : styles.containerMd;
+  const labelStyles = size === 'sm' ? styles.labelSm : styles.labelMd;
 
   const getTextColor = () => {
     if (disabled) return COLORS.textSecondary;
@@ -67,6 +80,7 @@ export default function Button({
     <TouchableOpacity
       style={[
         styles.container,
+        sizeStyles,
         {
           backgroundColor: getBackgroundColor(),
           borderColor: getBorderColor(),
@@ -81,7 +95,11 @@ export default function Button({
       {loading ? (
         <ActivityIndicator color={getTextColor()} />
       ) : (
-        <Text style={[styles.label, { color: getTextColor() }]}>{label}</Text>
+        <>
+          {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
+          <Text style={[labelStyles, { color: getTextColor() }]}>{label}</Text>
+          {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
+        </>
       )}
     </TouchableOpacity>
   );
@@ -89,17 +107,38 @@ export default function Button({
 
 const styles = StyleSheet.create({
   container: {
-    height: 48,
-    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
     flexDirection: 'row',
   },
-  label: {
+  containerMd: {
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+  },
+  containerSm: {
+    height: 36,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+  },
+  labelMd: {
     fontSize: 18,
     fontFamily: FONTS.body,
     fontWeight: '600',
     textAlign: 'center',
   },
+  labelSm: {
+    fontSize: 14,
+    fontFamily: FONTS.body,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  iconLeft: {
+    marginRight: 8,
+  },
+  iconRight: {
+    marginLeft: 8,
+  },
 });
+// TODO: Migrate InlineCtaButton callers to this component once a `loading` variant
+// with the LoadingDots animation is added here. Until then, keep InlineCtaButton.

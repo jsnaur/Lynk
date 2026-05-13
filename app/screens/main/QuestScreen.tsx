@@ -12,6 +12,8 @@ import { useTokenBalance } from '../../contexts/TokenContext';
 import { supabase } from '../../lib/supabase';
 import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { getModerationUI, subscribeModerationStatus } from '../../services/ModeratorService';
+import { TYPOGRAPHY } from '../../constants/typography';
+import { SPACING } from '../../constants/spacing';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -262,7 +264,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   safeArea: { flex: 1 },
   header: { height: screenHeaderTheme.layout.height, paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, justifyContent: 'flex-end', borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
-  content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 112 },
+  content: { paddingHorizontal: 24, paddingTop: SPACING.lg, paddingBottom: 112 },
   segmentedControl: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, padding: 4, gap: 4, position: 'relative' },
   segmentIndicator: { position: 'absolute', top: 4, left: 4, height: 38, borderRadius: 10, backgroundColor: theme === 'dark' ? colors.border : '#FFFFFF', elevation: theme === 'light' ? 2 : 0, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2 },
   segment: { flex: 1, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
@@ -270,10 +272,10 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   segmentText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   segmentTextSelected: { color: colors.textPrimary },
   sectionHeaderRow: { marginTop: 34, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  sectionTitle: { ...TYPOGRAPHY.sectionTitleLg, color: colors.textPrimary },
   countBadge: { minWidth: 24, height: 24, paddingHorizontal: 8, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(57,255,20,0.18)', borderWidth: 1, borderColor: colors.item },
   countText: { color: colors.item, fontSize: 12, lineHeight: 12, fontWeight: '700' },
-  list: { gap: 12 },
+  list: { gap: SPACING.md },
   filterRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   filterChip: { height: 30, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(138,138,154,0.35)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.01)' },
   filterChipSelected: { borderColor: colors.favor, backgroundColor: 'rgba(0,245,255,0.12)' },
