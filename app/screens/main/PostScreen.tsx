@@ -3,15 +3,21 @@ import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MaskedView from '@react-native-masked-view/masked-view';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 
-import XpSpriteToken from '../../../assets/PostAssets/XP_Sprite (1).svg';
 import DecrementBtn from '../../../assets/PostAssets/Decrement_Btn.svg';
 import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
+import IconFavor from '../../../assets/PostAssets/icon_Favor.svg';
+import IconStudy from '../../../assets/PostAssets/icon_Study.svg';
+import IconItem from '../../../assets/PostAssets/icon_Item.svg';
 const ExperiencePixelIcon = require('../../../assets/ProfileAssets/Experience_Pixel.png');
 const CoinIcon = require('../../../assets/PostAssets/Coin_Icon.png');
+const StarIcon = require('../../../assets/PostAssets/Star_Icon.png');
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { withOpacity } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
@@ -39,6 +45,28 @@ function FieldError({ message, visible, colors, styles }: { message: string; vis
       <Ionicons name="alert-circle" size={14} color={colors.error} />
       <Text style={styles.fieldErrorText}>{message}</Text>
     </View>
+  );
+}
+
+function GradientDividerLabel({ label, styles }: { label: string; styles: any }) {
+  return (
+    <MaskedView
+      style={styles.dividerLabelMask}
+      maskElement={
+        <View style={styles.dividerLabelMask}>
+          <Text style={styles.dividerLabel} numberOfLines={1} ellipsizeMode="clip">
+            {label}
+          </Text>
+        </View>
+      }
+    >
+      <LinearGradient
+        colors={['#9333EA', '#D4AF37']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.dividerLabelGradient}
+      />
+    </MaskedView>
   );
 }
 
@@ -140,6 +168,20 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       return next;
     });
   }, [appraisal.tokenBounty]);
+
+  const playButtonPressSound = useCallback((rate?: number) => {
+    void appSoundManager.play(AppSoundCategory.ButtonPress, {
+      debounceMs: 0,
+      ...(rate != null ? { rate } : {}),
+    });
+  }, []);
+
+  const playPitchScaledButtonPress = useCallback((value: number, minValue: number, maxValue: number) => {
+    const range = Math.max(1, maxValue - minValue);
+    const normalized = Math.max(0, Math.min(1, (value - minValue) / range));
+    const rate = 0.96 + normalized * 0.5;
+    playButtonPressSound(rate);
+  }, [playButtonPressSound]);
 
   const changeMaxParticipants = useCallback((delta: number) => {
     setMaxParticipants((v) => {
@@ -280,6 +322,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       await refreshBalance();
       navigation.onPublishSuccess?.(questIdForHighlight, tempQuestId);
     } catch (error: any) {
+      void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
       navigation.onPublishFailure?.(tempQuestId);
       const isMissingRpc =
         error?.code === '42883' ||
@@ -299,16 +342,22 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
   const onPublish = useCallback(async () => {
     setSubmitAttempted(true);
-    if (!isValid) return;
+    if (!isValid) {
+      void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
+      return;
+    }
 
     setIsPublishing(true);
     const moderationCheck = preCheckContent(`${titleTrim} ${descTrim}`);
     if (!moderationCheck.allowed) {
       setIsPublishing(false);
       setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });
+        void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
       return;
     }
     setIsPublishing(false);
+
+    void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
 
     const publishTable = (
       <View style={styles.alertTable}>
@@ -341,6 +390,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
         {
           text: 'Publish',
           onPress: async () => {
+            void appSoundManager.play(AppSoundCategory.PostSent, { debounceMs: 0 });
             setIsPublishing(true);
             const tempQuestId = `temp-${Date.now()}`;
             const optimisticQuest = {
@@ -398,7 +448,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
             <View style={styles.navRow}>
             <Pressable
-              onPress={animateDismiss}
+              onPress={() => {
+                void appSoundManager.play(AppSoundCategory.ModalClose, { debounceMs: 0 });
+                animateDismiss();
+              }}
               style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
               disabled={isPublishing}
             >
@@ -435,7 +488,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             <View style={styles.section}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>CATEGORY</Text>
-                <View style={styles.requiredDot} />
+                {!category && <View style={styles.requiredDot} />}
               </View>
               <View style={styles.categoryRow}>
                 {CATEGORIES.map(({ key, color, bg }) => {
@@ -443,7 +496,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   return (
                     <Pressable
                       key={key}
-                      onPress={() => setCategory(key)}
+                      onPress={() => {
+                        void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                        setCategory(key);
+                      }}
                       style={[
                         styles.categoryChip,
                         { backgroundColor: colors.surface },
@@ -451,7 +507,16 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                         !selected && styles.categoryChipIdle,
                       ]}
                     >
-                      <View style={[styles.categoryDot, { backgroundColor: color }]} />
+                      {(() => {
+                        const ICONS: Record<string, any> = {
+                          Favor: IconFavor,
+                          Study: IconStudy,
+                          Item: IconItem,
+                        };
+                        const CategoryIcon = ICONS[key] ?? IconFavor;
+                        const iconColor = selected ? color : colors.textSecondary;
+                        return <CategoryIcon width={20} height={20} color={iconColor} />;
+                      })()}
                       <Text style={[styles.categoryLabel, selected && { color: colors.textPrimary }]}>
                         {key}
                       </Text>
@@ -466,7 +531,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <Text style={styles.label}>ATTACHMENT (OPTIONAL)</Text>
               <Pressable
                 style={[styles.imageUploadBox, image && { borderStyle: 'solid' }]}
-                onPress={image ? undefined : pickImage}
+                onPress={() => {
+                  playButtonPressSound();
+                  if (!image) {
+                    void pickImage();
+                  }
+                }}
               >
                 {image ? (
                   <View style={styles.imagePreviewContainer}>
@@ -488,7 +558,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>QUEST TITLE</Text>
-                  <View style={styles.requiredDot} />
+                  {!titleTrim && <View style={styles.requiredDot} />}
                 </View>
                 <Text style={styles.counter}>
                   {title.length} / {TITLE_MAX}
@@ -500,6 +570,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 placeholderTextColor={colors.textSecondary}
                 value={title}
                 onChangeText={(t) => setTitle(t.slice(0, TITLE_MAX))}
+                onPressIn={() => playButtonPressSound()}
                 maxLength={TITLE_MAX}
                 autoCorrect
               />
@@ -510,7 +581,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>DESCRIPTION</Text>
-                  <View style={styles.requiredDot} />
+                  {!descTrim && <View style={styles.requiredDot} />}
                 </View>
                 <Text style={styles.counter}>
                   {description.length} / {DESC_MAX}
@@ -522,6 +593,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 placeholderTextColor={colors.textSecondary}
                 value={description}
                 onChangeText={(t) => setDescription(t.slice(0, DESC_MAX))}
+                onPressIn={() => playButtonPressSound()}
                 maxLength={DESC_MAX}
                 multiline
                 textAlignVertical="top"
@@ -541,6 +613,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   placeholderTextColor={colors.textSecondary}
                   value={location}
                   onChangeText={setLocation}
+                  onPressIn={() => playButtonPressSound()}
                   autoCorrect
                 />
               </View>
@@ -549,13 +622,17 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             <View style={styles.section}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>MAX PARTICIPANTS (HELPERS NEEDED)</Text>
-                <View style={styles.requiredDot} />
+                {maxParticipants < 1 && <View style={styles.requiredDot} />}
               </View>
               
               <View style={styles.stepperContainer}>
                 <Pressable
                   hitSlop={8}
-                  onPress={() => changeMaxParticipants(-1)}
+                  onPress={() => {
+                    const next = Math.max(1, maxParticipants - 1);
+                    playPitchScaledButtonPress(next, 1, MAX_PARTICIPANTS_LIMIT);
+                    changeMaxParticipants(-1);
+                  }}
                   disabled={maxParticipants <= 1}
                   style={({ pressed }) => [
                     styles.stepperHit,
@@ -571,7 +648,11 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
                 <Pressable
                   hitSlop={8}
-                  onPress={() => changeMaxParticipants(1)}
+                  onPress={() => {
+                    const next = Math.min(MAX_PARTICIPANTS_LIMIT, maxParticipants + 1);
+                    playPitchScaledButtonPress(next, 1, MAX_PARTICIPANTS_LIMIT);
+                    changeMaxParticipants(1);
+                  }}
                   disabled={maxParticipants >= MAX_PARTICIPANTS_LIMIT}
                   style={({ pressed }) => [
                     styles.stepperHit,
@@ -599,7 +680,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 </View>
                 <Switch
                   value={isAutoAccept}
-                  onValueChange={setIsAutoAccept}
+                  onValueChange={(value) => {
+                    playButtonPressSound();
+                    setIsAutoAccept(value);
+                  }}
                   trackColor={{ false: colors.border, true: colors.xp }}
                 />
               </View>
@@ -641,7 +725,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerLabel}>SET REWARD</Text>
+                <GradientDividerLabel label="SET REWARD" styles={styles} />
                 <View style={styles.dividerLine} />
               </View>
               <Text style={styles.hint}>
@@ -650,16 +734,18 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
+                  <Image source={StarIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>XP reward</Text>
                     <Text style={styles.rewardSub}>Auto-set by Guild Appraiser: +{appraisal.bonusXp} XP</Text>
                   </View>
                 </View>
+                <Text style={styles.xpValue}>{appraisal.bonusXp}</Text>
               </View>
 
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
-                  <XpSpriteToken width={24} height={24} />
+                  <Image source={CoinIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>Token bounty</Text>
                     <Text style={styles.rewardSub}>Optional — uses your balance</Text>
@@ -668,7 +754,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <View style={styles.stepper}>
                   <Pressable
                     hitSlop={8}
-                    onPress={() => changeTokens(-1)}
+                    onPress={() => {
+                      const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
+                      const next = Math.max(minimumAllowed, tokenBounty - 1);
+                      playPitchScaledButtonPress(next, minimumAllowed, TOKEN_MAX);
+                      changeTokens(-1);
+                    }}
                     disabled={tokenBounty <= Math.max(TOKEN_MIN, appraisal.tokenBounty)}
                     style={({ pressed }) => [
                       styles.stepperHit,
@@ -680,7 +771,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <Text style={styles.tokenValue}>{tokenBounty}</Text>
                   <Pressable
                     hitSlop={8}
-                    onPress={() => changeTokens(1)}
+                    onPress={() => {
+                      const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
+                      const next = Math.min(TOKEN_MAX, tokenBounty + 1);
+                      playPitchScaledButtonPress(next, minimumAllowed, TOKEN_MAX);
+                      changeTokens(1);
+                    }}
                     disabled={tokenBounty >= TOKEN_MAX}
                     style={({ pressed }) => [
                       styles.stepperHit,
@@ -978,7 +1074,9 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
+    marginTop: 14,
     marginBottom: 4,
   },
   dividerLine: {
@@ -987,9 +1085,19 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     backgroundColor: colors.border,
   },
   dividerLabel: {
-    fontSize: 8,
-    fontFamily: 'PressStart2P-Regular',
-    color: colors.textSecondary,
+    fontSize: 10,
+    fontFamily: 'PressStart2P',
+    textAlign: 'center',
+    paddingHorizontal: 6,
+  },
+  dividerLabelMask: {
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dividerLabelGradient: {
+    width: '100%',
+    height: 12,
   },
   hint: {
     fontSize: 12,
@@ -1016,6 +1124,10 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     gap: 10,
     flex: 1,
     marginRight: 8,
+  },
+  rewardIcon: {
+    width: 24,
+    height: 24,
   },
   rewardLabels: {
     flex: 1,
@@ -1046,10 +1158,18 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   tokenValue: {
     minWidth: 40,
     textAlign: 'center',
-    fontSize: 17,
+    fontSize: 20,
     fontFamily: 'SpaceMono-Bold',
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.token,
+  },
+  xpValue: {
+    minWidth: 124,
+    textAlign: 'center',
+    fontSize: 20,
+    fontFamily: 'SpaceMono-Bold',
+    fontWeight: '800',
+    color: colors.xp,
   },
   summaryCard: {
     marginTop: 8,
