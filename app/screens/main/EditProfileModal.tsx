@@ -15,6 +15,7 @@ import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { FONTS } from '../../constants/fonts';
+import { screenHeaderTheme } from '../../contexts/ThemeContext';
 import { preCheckContent, type ModerationCategory } from '../../services/ModeratorService';
 import { ContentBlockedModal } from '../../components/modals';
 
@@ -154,14 +155,16 @@ export default function EditProfileModal({
             </View>
 
             <View style={styles.header}>
-                <Pressable onPress={onClose} hitSlop={10}>
+                <Pressable onPress={onClose} hitSlop={10} style={styles.cancelPressable}>
                     <Text style={styles.cancelButton}>Cancel</Text>
                 </Pressable>
 
-                <Text style={styles.headerTitle}>Edit Profile</Text>
+                <Text style={styles.headerTitle} numberOfLines={1} pointerEvents="none">Edit Profile</Text>
 
-                <Pressable onPress={handleSave} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>Save</Text>
+                <Pressable onPress={handleSave} style={styles.savePressable}>
+                    <View style={styles.saveButton}>
+                        <Text style={styles.saveButtonText}>Save</Text>
+                    </View>
                 </Pressable>
             </View>
 
@@ -437,6 +440,7 @@ export default function EditProfileModal({
 const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     container: {
         position: 'absolute',
+        // match Settings screen - start at the top of the screen
         top: 0,
         right: 0,
         bottom: 0,
@@ -459,10 +463,15 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
+        paddingHorizontal: screenHeaderTheme.layout.horizontalPadding,
+        // Make modal header match main screen headers (taller to add top margin)
+        height: screenHeaderTheme.layout.height + 24,
+        paddingTop: screenHeaderTheme.layout.topPadding + 12,
+        paddingBottom: screenHeaderTheme.layout.bottomPadding + 12,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
+        // relative so the absolutely-positioned title is centered within
+        position: 'relative',
     },
     cancelButton: {
         fontSize: 16,
@@ -470,20 +479,43 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
         fontWeight: '400',
     },
     headerTitle: {
-        fontSize: 17,
-        fontFamily: FONTS.display,
+        fontSize: 18,
+        fontWeight: '700',
         color: COLORS.textPrimary,
+        fontFamily: 'DM_Sans-Bold',
+        // absolutely center within the header row
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: screenHeaderTheme.layout.bottomPadding + 22,
+        textAlign: 'center',
+        zIndex: 0,
     },
     saveButton: {
         backgroundColor: COLORS.favor,
-        paddingHorizontal: 18,
+        paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 20,
+        alignSelf: 'flex-end',
     },
     saveButtonText: {
         fontSize: 15,
         fontWeight: '600',
         color: COLORS.bg,
+    },
+    savePressable: {
+        zIndex: 1,
+        width: 96,
+        justifyContent: 'center',
+        alignItems: 'flex-end',
+        paddingHorizontal: 6,
+    },
+    cancelPressable: {
+        zIndex: 1,
+        width: 96,
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        paddingHorizontal: 6,
     },
     formContainer: {
         flex: 1,

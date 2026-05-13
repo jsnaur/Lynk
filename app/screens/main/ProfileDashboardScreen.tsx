@@ -162,6 +162,43 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const [activeQuestCount, setActiveQuestCount] = useState<number>(0);
     const [completedQuestCount, setCompletedQuestCount] = useState<number>(0);
 
+    const openSettings = () => {
+        void appSoundManager.play(AppSoundCategory.ModalOpen, { debounceMs: 0 });
+        void appSoundManager.play(AppSoundCategory.ButtonPress, { debounceMs: 0 });
+        navigation?.navigate('Settings');
+    };
+
+    const openEditProfile = () => {
+        void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
+        setState((prev) => ({ ...prev, editProfileVisible: true }));
+    };
+
+    const openBadgeSelector = () => {
+        void appSoundManager.play(AppSoundCategory.ButtonPress, { debounceMs: 0 });
+        void appSoundManager.play(AppSoundCategory.ModalOpen, { debounceMs: 0 });
+        setState((prev) => ({ ...prev, badgeSelectorVisible: true }));
+    };
+
+    const openLeaderboard = () => {
+        void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
+        void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+        navigation?.navigate('Leaderboard');
+    };
+
+    const openShop = () => {
+        void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
+        void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+        if (onTabPress) onTabPress('Shop');
+        else navigation?.navigate('Main', { screen: 'Shop' });
+    };
+
+    const openQuest = () => {
+        void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
+        void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+        if (onTabPress) onTabPress('Quests');
+        else navigation?.navigate('Main', { screen: 'Quest' });
+    };
+
     const fetchProfile = useCallback(async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -283,7 +320,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 <ScreenHeader
                     title="Profile"
                     right={
-                        <Pressable style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]} hitSlop={10} onPress={() => navigation?.navigate('Settings')}>
+                        <Pressable style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]} hitSlop={10} onPress={openSettings}>
                             <Ionicons name="settings-outline" size={24} color={colors.textPrimary} style={styles.settingsIcon} />
                         </Pressable>
                     }
@@ -315,7 +352,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 </View>
                                 <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
                                 <Text style={styles.bioText}>{bioDisplay}</Text>
-                                <Pressable onPress={() => setState({ ...state, editProfileVisible: true })}>
+                                <Pressable onPress={openEditProfile}>
                                     <Text style={styles.editProfileText}>Edit Profile</Text>
                                 </Pressable>
                             </View>
@@ -325,7 +362,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     <View style={styles.badgesBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Badges</Text>
-                            <Pressable style={styles.setLink} onPress={() => setState({ ...state, badgeSelectorVisible: true })}>
+                            <Pressable style={styles.setLink} onPress={openBadgeSelector}>
                                 <Text style={styles.setLinkText}>Set</Text>
                                 <Ionicons name="chevron-forward" size={14} color={colors.favor} />
                             </Pressable>
@@ -362,9 +399,9 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
                         </View>
 
-                        <LeaderboardCard onPress={() => navigation?.navigate('Leaderboard')} />
+                        <LeaderboardCard onPress={openLeaderboard} />
 
-                        <Pressable style={styles.tokenCard} onPress={() => { if (onTabPress) onTabPress('Shop'); else navigation?.navigate('Main', { screen: 'Shop' }); }}>
+                        <Pressable style={styles.tokenCard} onPress={openShop}>
                             <View style={styles.tokenLeftCluster}>
                                 <Image source={ASSETS.token} style={styles.tokenIcon} />
                                 <View>
@@ -379,7 +416,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                             </View>
                         </Pressable>
 
-                        <Pressable style={styles.questCard} onPress={() => { if (onTabPress) onTabPress('Quests'); else navigation?.navigate('Main', { screen: 'Quest' }); }}>
+                        <Pressable style={styles.questCard} onPress={openQuest}>
                             <View style={styles.questLeftCluster}>
                                 <Image source={QuestIcon} style={styles.questIcon} />
                                 <View>
@@ -397,14 +434,14 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
             <BottomNav activeTab="Profile" onTabPress={onTabPress} />
 
-            {state.badgeSelectorVisible && <BadgeSelectorModal onClose={() => setState({ ...state, badgeSelectorVisible: false })} onDone={() => setState({ ...state, badgeSelectorVisible: false })} />}
+            {state.badgeSelectorVisible && <BadgeSelectorModal onClose={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))} onDone={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))} />}
             {state.editProfileVisible && (
                 <EditProfileModal
                     initialData={{ displayName: displayName === 'Anonymous' ? '' : displayName, bio: profile?.bio || '', major: profile?.major || 'Undeclared', graduationYear: gradYearDisplay }}
-                    onClose={() => setState({ ...state, editProfileVisible: false })}
+                    onClose={() => setState((prev) => ({ ...prev, editProfileVisible: false }))}
                     onSave={async (data: any) => {
                         setProfile((prev: any) => ({ ...prev, display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear }));
-                        setState({ ...state, editProfileVisible: false });
+                        setState((prev) => ({ ...prev, editProfileVisible: false }));
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
                             if (user) await supabase.from('profiles').update({ display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear }).eq('id', user.id);
