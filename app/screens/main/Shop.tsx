@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
+import Button from '../../components/buttons/Button';
 import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
@@ -164,10 +165,15 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
             <Text style={styles.previewTitle}>Your Avatar</Text>
           </View>
 
-          <Pressable onPress={() => navigation.navigate('Customize')} style={styles.customizeButton}>
-            <Ionicons name="sparkles" size={18} color={colors.favor} />
-            <Text style={styles.customizeButtonText}>Customize</Text>
-          </Pressable>
+          <Button
+            label="Customize"
+            size="sm"
+            variant="Outline"
+            color={colors.border}
+            leftIcon={<Ionicons name="sparkles" size={18} color={colors.favor} />}
+            onPress={() => navigation.navigate('Customize')}
+            style={{ backgroundColor: colors.surface2 }}
+          />
         </View>
 
         <View style={styles.filterRow}>
@@ -229,8 +235,6 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   previewCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.lg, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
   avatarContainer: { width: 64, height: 64, backgroundColor: colors.surface2, borderRadius: 14, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', position: 'relative', borderWidth: 1.5, borderColor: colors.border },
   layerAbsolute: { position: 'absolute', width: '100%', height: '100%' },
-  customizeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 },
-  customizeButtonText: { fontSize: 13, fontFamily: 'DMSans-Medium', fontWeight: '500', color: colors.textPrimary },
   previewTextBlock: { flex: 1, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 2 },
   previewTitle: { ...TYPOGRAPHY.pixelLabel, color: colors.textPrimary },
   previewEquipped: { fontSize: 12, fontFamily: 'DMSans-Regular', fontWeight: '400', color: colors.textSecondary },
