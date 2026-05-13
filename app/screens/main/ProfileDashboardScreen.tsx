@@ -20,6 +20,8 @@ import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
+import { TYPOGRAPHY } from '../../constants/typography';
+import { SPACING } from '../../constants/spacing';
 
 // Profile Assets
 import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
@@ -418,7 +420,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     settingsButton: { height: 25, width: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     settingsIcon: { width: 24, height: 24 },
     scrollContent: { paddingBottom: 112 },
-    identityBlock: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
+    identityBlock: { paddingHorizontal: SPACING.xxl, paddingVertical: SPACING.xl, borderBottomWidth: 1, borderBottomColor: colors.border },
     identityRow: { flexDirection: 'row', gap: 18 },
     avatarColumn: { alignItems: 'center', gap: 8 },
     avatarFrame: { width: 100, height: 100, borderRadius: 14, backgroundColor: colors.surface2, borderWidth: 2, borderColor: colors.border, overflow: 'hidden', position: 'relative', alignItems: 'center', justifyContent: 'center' },
@@ -429,16 +431,16 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     subtitle: { fontSize: 13, color: colors.textSecondary },
     bioText: { fontSize: 13, color: colors.textPrimary, fontWeight: '500' },
     editProfileText: { fontSize: 12, color: colors.favor },
-    badgesBlock: { paddingHorizontal: 24, paddingVertical: 20, gap: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+    badgesBlock: { paddingHorizontal: SPACING.xxl, paddingVertical: SPACING.xl, gap: SPACING.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
     blockHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    blockTitle: { fontSize: 12, fontFamily: FONTS.display, color: colors.textPrimary },
+    blockTitle: { ...TYPOGRAPHY.pixelHeading, color: colors.textPrimary },
     setLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     setLinkText: { fontSize: 14, fontWeight: '400', color: colors.favor },
     badgeRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -4 },
     badgeSlot: { flex: 1, height: 104, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginHorizontal: 4, paddingVertical: 12 },
     badgeImage: { width: 50, height: 50, marginBottom: 6 },
     badgeLabelText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' },
-    reputationBlock: { paddingHorizontal: 24, paddingVertical: 20, gap: 14 },
+    reputationBlock: { paddingHorizontal: SPACING.xxl, paddingVertical: SPACING.xl, gap: 14 },
     rankChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: 'rgba(0,245,255,0.08)', borderWidth: 1, borderColor: 'rgba(0,245,255,0.2)' },
     rankChipText: { fontSize: 12, fontWeight: '600', color: colors.favor },
     karmaLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -458,7 +460,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     leaderboardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     leaderboardIcon: { width: 24, height: 24, resizeMode: 'contain' },
     leaderboardTextCluster: { gap: 2 },
-    leaderboardTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
+    leaderboardTitle: { ...TYPOGRAPHY.pixelLabel, color: colors.textPrimary },
     leaderboardSubtitle: { fontSize: 11, color: colors.textSecondary },
     leaderboardRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     leaderboardCta: { fontSize: 13, fontWeight: '600', color: colors.token },
@@ -467,7 +469,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     tokenCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.token, backgroundColor: withOpacity(colors.token, 0.12), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     tokenLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     tokenIcon: { width: 26, height: 26, resizeMode: 'contain' },
-    tokenTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
+    tokenTitle: { ...TYPOGRAPHY.pixelLabel, color: colors.textPrimary },
     tokenSubtitle: { fontSize: 11, color: colors.textSecondary },
     tokenRightCluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     tokenValue: { fontSize: 22, fontWeight: '700', color: colors.token },
@@ -477,6 +479,6 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     questCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.xp, backgroundColor: withOpacity(colors.xp, 0.12), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     questLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     questIcon: { width: 26, height: 26, resizeMode: 'contain' },
-    questTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
+    questTitle: { ...TYPOGRAPHY.pixelLabel, color: colors.textPrimary },
     questSubtitle: { fontSize: 11, color: colors.textSecondary },
 });
