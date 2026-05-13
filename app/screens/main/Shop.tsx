@@ -121,6 +121,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     const { error } = await supabase.rpc('purchase_item', { p_item_id: item.id, p_price: item.price });
     if (error) {
       void appSoundManager.play(AppSoundCategory.ModalClose);
+      void appSoundManager.play(AppSoundCategory.ModalClose);
       if (error.message.includes('Insufficient')) {
         alert('Not enough tokens', 'Complete quests to earn more tokens.');
       } else {
@@ -129,6 +130,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       return;
     }
     setOwnedIds((prev) => new Set(prev).add(item.id));
+    void appSoundManager.play(AppSoundCategory.PurchaseSuccess);
     void appSoundManager.play(AppSoundCategory.PurchaseSuccess);
   }, [ownedIds]);
 
@@ -194,6 +196,14 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
                   }}
                   style={[styles.filterPill, active && styles.filterPillActive, !isLast && styles.filterPillGap]}
                 >
+                <Pressable
+                  key={key}
+                  onPress={() => {
+                    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                    setFilter(key);
+                  }}
+                  style={[styles.filterPill, active && styles.filterPillActive, !isLast && styles.filterPillGap]}
+                >
                   <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{label}</Text>
                 </Pressable>
               );
@@ -209,6 +219,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
               return (
                 <Pressable key={item.id} onPress={() => setDetailItem(item)} style={({ pressed }) => [styles.card, { width: columnWidth }, pressed && styles.cardPressed]}>
                   <View style={styles.cardPreview}>
+                    {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64, style: getAccessoryPreviewStyle(item, 64) })}
                     {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64, style: getAccessoryPreviewStyle(item, 64) })}
                     {owned && (
                       <View style={styles.ownedCorner}><Ionicons name="checkmark-circle" size={18} color={colors.item} /></View>
@@ -242,7 +253,9 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safe: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: screenHeaderTheme.layout.height, paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: screenHeaderTheme.layout.height, paddingHorizontal: screenHeaderTheme.layout.horizontalPadding, paddingTop: screenHeaderTheme.layout.topPadding, paddingBottom: screenHeaderTheme.layout.bottomPadding, borderBottomWidth: 1, borderBottomColor: colors.border },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
   title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
   balanceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.45)', backgroundColor: withOpacity(colors.token, 0.18) },
   balanceText: { fontSize: 15, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: colors.token },

@@ -5,6 +5,8 @@ import { Alert, Animated, Dimensions, Image, KeyboardAvoidingView, PanResponder,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
@@ -14,8 +16,13 @@ import IncrementBtn from '../../../assets/PostAssets/Increment_Btn.svg';
 import IconFavor from '../../../assets/PostAssets/icon_Favor.svg';
 import IconStudy from '../../../assets/PostAssets/icon_Study.svg';
 import IconItem from '../../../assets/PostAssets/icon_Item.svg';
+import IconFavor from '../../../assets/PostAssets/icon_Favor.svg';
+import IconStudy from '../../../assets/PostAssets/icon_Study.svg';
+import IconItem from '../../../assets/PostAssets/icon_Item.svg';
 const ExperiencePixelIcon = require('../../../assets/ProfileAssets/Experience_Pixel.png');
 const CoinIcon = require('../../../assets/PostAssets/Coin_Icon.png');
+const StarIcon = require('../../../assets/PostAssets/Star_Icon.png');
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 const StarIcon = require('../../../assets/PostAssets/Star_Icon.png');
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { useTokenBalance } from '../../contexts/TokenContext';
@@ -45,6 +52,28 @@ function FieldError({ message, visible, colors, styles }: { message: string; vis
       <Ionicons name="alert-circle" size={14} color={colors.error} />
       <Text style={styles.fieldErrorText}>{message}</Text>
     </View>
+  );
+}
+
+function GradientDividerLabel({ label, styles }: { label: string; styles: any }) {
+  return (
+    <MaskedView
+      style={styles.dividerLabelMask}
+      maskElement={
+        <View style={styles.dividerLabelMask}>
+          <Text style={styles.dividerLabel} numberOfLines={1} ellipsizeMode="clip">
+            {label}
+          </Text>
+        </View>
+      }
+    >
+      <LinearGradient
+        colors={['#9333EA', '#D4AF37']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.dividerLabelGradient}
+      />
+    </MaskedView>
   );
 }
 
@@ -168,6 +197,20 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       return next;
     });
   }, [appraisal.tokenBounty]);
+
+  const playButtonPressSound = useCallback((rate?: number) => {
+    void appSoundManager.play(AppSoundCategory.ButtonPress, {
+      debounceMs: 0,
+      ...(rate != null ? { rate } : {}),
+    });
+  }, []);
+
+  const playPitchScaledButtonPress = useCallback((value: number, minValue: number, maxValue: number) => {
+    const range = Math.max(1, maxValue - minValue);
+    const normalized = Math.max(0, Math.min(1, (value - minValue) / range));
+    const rate = 0.96 + normalized * 0.5;
+    playButtonPressSound(rate);
+  }, [playButtonPressSound]);
 
   const playButtonPressSound = useCallback((rate?: number) => {
     void appSoundManager.play(AppSoundCategory.ButtonPress, {
@@ -346,6 +389,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
       return;
     }
+    if (!isValid) {
+      void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
+      return;
+    }
 
     setIsPublishing(true);
     const moderationCheck = preCheckContent(`${titleTrim} ${descTrim}`);
@@ -353,9 +400,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       setIsPublishing(false);
       setBlockInfo({ reason: moderationCheck.reason, category: moderationCheck.category });
         void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
+        void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
       return;
     }
     setIsPublishing(false);
+
+    void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
 
     void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
 
@@ -452,6 +502,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 void appSoundManager.play(AppSoundCategory.ModalClose, { debounceMs: 0 });
                 animateDismiss();
               }}
+              onPress={() => {
+                void appSoundManager.play(AppSoundCategory.ModalClose, { debounceMs: 0 });
+                animateDismiss();
+              }}
               style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
               disabled={isPublishing}
             >
@@ -489,6 +543,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.labelRow}>
                 <Text style={styles.label}>CATEGORY</Text>
                 {!category && <View style={styles.requiredDot} />}
+                {!category && <View style={styles.requiredDot} />}
               </View>
               <View style={styles.categoryRow}>
                 {CATEGORIES.map(({ key, color, bg }) => {
@@ -500,6 +555,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                         void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
                         setCategory(key);
                       }}
+                      onPress={() => {
+                        void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                        setCategory(key);
+                      }}
                       style={[
                         styles.categoryChip,
                         { backgroundColor: colors.surface },
@@ -507,6 +566,16 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                         !selected && styles.categoryChipIdle,
                       ]}
                     >
+                      {(() => {
+                        const ICONS: Record<string, any> = {
+                          Favor: IconFavor,
+                          Study: IconStudy,
+                          Item: IconItem,
+                        };
+                        const CategoryIcon = ICONS[key] ?? IconFavor;
+                        const iconColor = selected ? color : colors.textSecondary;
+                        return <CategoryIcon width={20} height={20} color={iconColor} />;
+                      })()}
                       {(() => {
                         const ICONS: Record<string, any> = {
                           Favor: IconFavor,
@@ -537,6 +606,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                     void pickImage();
                   }
                 }}
+                onPress={() => {
+                  playButtonPressSound();
+                  if (!image) {
+                    void pickImage();
+                  }
+                }}
               >
                 {image ? (
                   <View style={styles.imagePreviewContainer}>
@@ -559,6 +634,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>QUEST TITLE</Text>
                   {!titleTrim && <View style={styles.requiredDot} />}
+                  {!titleTrim && <View style={styles.requiredDot} />}
                 </View>
                 <Text style={styles.counter}>
                   {title.length} / {TITLE_MAX}
@@ -571,6 +647,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 value={title}
                 onChangeText={(t) => setTitle(t.slice(0, TITLE_MAX))}
                 onPressIn={() => playButtonPressSound()}
+                onPressIn={() => playButtonPressSound()}
                 maxLength={TITLE_MAX}
                 autoCorrect
               />
@@ -581,6 +658,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>DESCRIPTION</Text>
+                  {!descTrim && <View style={styles.requiredDot} />}
                   {!descTrim && <View style={styles.requiredDot} />}
                 </View>
                 <Text style={styles.counter}>
@@ -593,6 +671,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 placeholderTextColor={colors.textSecondary}
                 value={description}
                 onChangeText={(t) => setDescription(t.slice(0, DESC_MAX))}
+                onPressIn={() => playButtonPressSound()}
                 onPressIn={() => playButtonPressSound()}
                 maxLength={DESC_MAX}
                 multiline
@@ -614,6 +693,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   value={location}
                   onChangeText={setLocation}
                   onPressIn={() => playButtonPressSound()}
+                  onPressIn={() => playButtonPressSound()}
                   autoCorrect
                 />
               </View>
@@ -623,11 +703,17 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.labelRow}>
                 <Text style={styles.label}>MAX PARTICIPANTS (HELPERS NEEDED)</Text>
                 {maxParticipants < 1 && <View style={styles.requiredDot} />}
+                {maxParticipants < 1 && <View style={styles.requiredDot} />}
               </View>
               
               <View style={styles.stepperContainer}>
                 <Pressable
                   hitSlop={8}
+                  onPress={() => {
+                    const next = Math.max(1, maxParticipants - 1);
+                    playPitchScaledButtonPress(next, 1, MAX_PARTICIPANTS_LIMIT);
+                    changeMaxParticipants(-1);
+                  }}
                   onPress={() => {
                     const next = Math.max(1, maxParticipants - 1);
                     playPitchScaledButtonPress(next, 1, MAX_PARTICIPANTS_LIMIT);
@@ -648,6 +734,11 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
                 <Pressable
                   hitSlop={8}
+                  onPress={() => {
+                    const next = Math.min(MAX_PARTICIPANTS_LIMIT, maxParticipants + 1);
+                    playPitchScaledButtonPress(next, 1, MAX_PARTICIPANTS_LIMIT);
+                    changeMaxParticipants(1);
+                  }}
                   onPress={() => {
                     const next = Math.min(MAX_PARTICIPANTS_LIMIT, maxParticipants + 1);
                     playPitchScaledButtonPress(next, 1, MAX_PARTICIPANTS_LIMIT);
@@ -680,6 +771,10 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 </View>
                 <Switch
                   value={isAutoAccept}
+                  onValueChange={(value) => {
+                    playButtonPressSound();
+                    setIsAutoAccept(value);
+                  }}
                   onValueChange={(value) => {
                     playButtonPressSound();
                     setIsAutoAccept(value);
@@ -726,6 +821,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
                 <GradientDividerLabel label="SET REWARD" styles={styles} />
+                <GradientDividerLabel label="SET REWARD" styles={styles} />
                 <View style={styles.dividerLine} />
               </View>
               <Text style={styles.hint}>
@@ -735,16 +831,19 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
                   <Image source={StarIcon} style={styles.rewardIcon} resizeMode="contain" />
+                  <Image source={StarIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>XP reward</Text>
                     <Text style={styles.rewardSub}>Auto-set by Guild Appraiser: +{appraisal.bonusXp} XP</Text>
                   </View>
                 </View>
                 <Text style={styles.xpValue}>{appraisal.bonusXp}</Text>
+                <Text style={styles.xpValue}>{appraisal.bonusXp}</Text>
               </View>
 
               <View style={styles.rewardRow}>
                 <View style={styles.rewardLeft}>
+                  <Image source={CoinIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <Image source={CoinIcon} style={styles.rewardIcon} resizeMode="contain" />
                   <View style={styles.rewardLabels}>
                     <Text style={styles.rewardTitle}>Token bounty</Text>
@@ -754,6 +853,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <View style={styles.stepper}>
                   <Pressable
                     hitSlop={8}
+                    onPress={() => {
+                      const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
+                      const next = Math.max(minimumAllowed, tokenBounty - 1);
+                      playPitchScaledButtonPress(next, minimumAllowed, TOKEN_MAX);
+                      changeTokens(-1);
+                    }}
                     onPress={() => {
                       const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
                       const next = Math.max(minimumAllowed, tokenBounty - 1);
@@ -771,6 +876,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <Text style={styles.tokenValue}>{tokenBounty}</Text>
                   <Pressable
                     hitSlop={8}
+                    onPress={() => {
+                      const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
+                      const next = Math.min(TOKEN_MAX, tokenBounty + 1);
+                      playPitchScaledButtonPress(next, minimumAllowed, TOKEN_MAX);
+                      changeTokens(1);
+                    }}
                     onPress={() => {
                       const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
                       const next = Math.min(TOKEN_MAX, tokenBounty + 1);
@@ -1075,7 +1186,9 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    justifyContent: 'center',
     gap: 10,
+    marginTop: 14,
     marginTop: 14,
     marginBottom: 4,
   },
@@ -1085,6 +1198,19 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     backgroundColor: colors.border,
   },
   dividerLabel: {
+    fontSize: 10,
+    fontFamily: 'PressStart2P',
+    textAlign: 'center',
+    paddingHorizontal: 6,
+  },
+  dividerLabelMask: {
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dividerLabelGradient: {
+    width: '100%',
+    height: 12,
     fontSize: 10,
     fontFamily: 'PressStart2P',
     textAlign: 'center',
@@ -1129,6 +1255,10 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     width: 24,
     height: 24,
   },
+  rewardIcon: {
+    width: 24,
+    height: 24,
+  },
   rewardLabels: {
     flex: 1,
     gap: 2,
@@ -1159,9 +1289,19 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     minWidth: 40,
     textAlign: 'center',
     fontSize: 20,
+    fontSize: 20,
     fontFamily: 'SpaceMono-Bold',
     fontWeight: '800',
+    fontWeight: '800',
     color: colors.token,
+  },
+  xpValue: {
+    minWidth: 124,
+    textAlign: 'center',
+    fontSize: 20,
+    fontFamily: 'SpaceMono-Bold',
+    fontWeight: '800',
+    color: colors.xp,
   },
   xpValue: {
     minWidth: 124,
