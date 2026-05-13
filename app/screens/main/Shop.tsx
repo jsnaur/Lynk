@@ -15,7 +15,8 @@ import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
-import { FONTS } from '../../constants/fonts';
+import { TYPOGRAPHY } from '../../constants/typography';
+import { SPACING } from '../../constants/spacing';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
@@ -227,13 +228,13 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
   balanceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.45)', backgroundColor: withOpacity(colors.token, 0.18) },
   balanceText: { fontSize: 15, fontFamily: 'SpaceMono-Bold', fontWeight: '700', color: colors.token },
-  previewCard: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  previewCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.lg, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
   avatarContainer: { width: 64, height: 64, backgroundColor: colors.surface2, borderRadius: 14, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', position: 'relative', borderWidth: 1.5, borderColor: colors.border },
   layerAbsolute: { position: 'absolute', width: '100%', height: '100%' },
   customizeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 },
   customizeButtonText: { fontSize: 13, fontFamily: 'DMSans-Medium', fontWeight: '500', color: colors.textPrimary },
   previewTextBlock: { flex: 1, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 2 },
-  previewTitle: { fontSize: 10, fontFamily: FONTS.display, color: colors.textPrimary },
+  previewTitle: { ...TYPOGRAPHY.pixelLabel, color: colors.textPrimary },
   previewEquipped: { fontSize: 12, fontFamily: 'DMSans-Regular', fontWeight: '400', color: colors.textSecondary },
   filterRow: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.bg },
   filterScroll: { flexGrow: 0 },
