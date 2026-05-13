@@ -25,6 +25,7 @@ import { getPersonalizedFeed } from '../../services/FeedAlgorithmService';
 import NotificationSheet from './NotificationSheet';
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/accessories';
 import { useTheme } from '../../contexts/ThemeContext';
+import appSoundManager, {AppSoundCategory} from '../../lib/SoundManager';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
@@ -369,7 +370,10 @@ export default function HomeFeedScreen({
                 <View style={styles.header}>
                     <Pressable
                         style={styles.profileButton}
-                        onPress={onProfilePress}
+                        onPress={() => {
+                            void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
+                            onProfilePress();
+                        }}
                         hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
                         accessibilityRole="button"
                     >
@@ -400,11 +404,17 @@ export default function HomeFeedScreen({
                     <View style={styles.headerActions}>
                         <DailyRewardGiftIcon
                             isClaimable={!!dailyRewardClaimable}
-                            onPress={onOpenDailyReward}
+                            onPress={() => {
+                                void appSoundManager.play(AppSoundCategory.ModalOpen, { debounceMs: 0 });
+                                onOpenDailyReward?.();
+                            }}
                         />
                         <Pressable
                             style={styles.notificationWrapper}
-                            onPress={() => setIsNotifOpen(true)}
+                            onPress={() => {
+                                void appSoundManager.play(AppSoundCategory.ModalOpen, { debounceMs: 0 });
+                                setIsNotifOpen(true);
+                            }}
                             hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
                             accessibilityRole="button"
                         >
@@ -437,11 +447,12 @@ export default function HomeFeedScreen({
                                         backgroundColor: withAlpha(activeColor, 0.12),
                                     },
                                 ]}
-                                onPress={() =>
+                                onPress={() => {
+                                    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
                                     setActiveFilter((current) =>
                                         current === filter.key ? 'all' : filter.key,
-                                    )
-                                }
+                                    );
+                                }}
                             >
                                 <Text
                                     style={[
@@ -505,7 +516,10 @@ export default function HomeFeedScreen({
                             >
                                 <PostCard
                                     quest={item as any}
-                                    onPress={() => navigation?.navigate?.('QuestDetail', { quest: item })}
+                                    onPress={() => {
+                                        void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
+                                        navigation?.navigate?.('QuestDetail', { quest: item });
+                                    }}
                                 />
                             </View>
                         )}
