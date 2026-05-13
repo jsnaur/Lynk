@@ -27,7 +27,14 @@ export type AccessoryItem = {
   gender: AvatarGender;
   rarity: AvatarRarity;
   isSetup?: boolean; // Flags items to show in the 2-option Profile Setup Screen
-  Sprite: ComponentType<{ width?: number | string; height?: number | string }>;
+  preview?: PreviewTransform;
+  Sprite: ComponentType<{ width?: number | string; height?: number | string; style?: any }>;
+};
+
+export type PreviewTransform = {
+  scale?: number;
+  translateX?: number;
+  translateY?: number;
 };
 
 // ============================================================================
@@ -122,6 +129,44 @@ import FACE_Mouth_Oop_Common from '../../assets/AvatarAssets/Shared/FACE_Mouth_O
 // Helper to wrap sources
 const createSpr = (source: any) => (p: any) => React.createElement(ImageSprite, { source, ...p });
 
+const PREVIEW_SLOT_DEFAULTS: Record<AvatarSlot, PreviewTransform> = {
+  Background: { scale: 1, translateX: 0, translateY: 0 },
+  BackAccessory: { scale: 1, translateX: 0, translateY: 0 },
+  Body: { scale: 1, translateX: 0, translateY: 0 },
+  HairBase: { scale: 1.4, translateX: 0, translateY: 4 },
+  HairFringe: { scale: 1.8, translateX: 0, translateY: 8 },
+  Bottom: { scale: 2, translateX: 0, translateY: -32 },
+  Top: { scale: 2, translateX: 0, translateY: -18 },
+  Eyes: { scale: 3, translateX: 0, translateY: -4 },
+  Mouth: { scale: 3, translateX: 0, translateY: -8 },
+  Headgear: { scale: 1.4, translateX: 0, translateY: 18 },
+  Accessory: { scale: 1.6, translateX: 0, translateY: -4 },
+  LeftHand: { scale: 1.4, translateX: -24, translateY: -8 },
+  RightHand: { scale: 1.4, translateX: 24, translateY: -8 },
+};
+
+export function getAccessoryPreviewTransform(item: Pick<AccessoryItem, 'slot' | 'preview'>): PreviewTransform {
+  return {
+    ...PREVIEW_SLOT_DEFAULTS[item.slot],
+    ...item.preview,
+  };
+}
+
+export function getAccessoryPreviewStyle(
+  item: Pick<AccessoryItem, 'slot' | 'preview'>,
+  previewSize: number = 96,
+) {
+  const transform = getAccessoryPreviewTransform(item);
+  const relativeOffset = previewSize / 96;
+  return {
+    transform: [
+      transform.scale != null ? { scale: transform.scale } : undefined,
+      transform.translateX != null ? { translateX: transform.translateX * relativeOffset } : undefined,
+      transform.translateY != null ? { translateY: transform.translateY * relativeOffset } : undefined,
+    ].filter(Boolean),
+  };
+}
+
 // Precise Z-Order defined by rules (back to front)
 export const ALL_SLOTS_Z_ORDER: AvatarSlot[] = [
   'Background',
@@ -210,7 +255,7 @@ export const ACCESSORY_ITEMS: AccessoryItem[] = [
   // --- HAIR FEM ---
   { id: 'hairb-calm-f', name: 'Calm Base', price: 50, slot: 'HairBase', gender: 'Fem', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Base_Calm_Uncommon_F) },
   { id: 'hairb-pigtails-f', name: 'Pigtails', price: 50, slot: 'HairBase', gender: 'Fem', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Base_Pigtails_Uncommon_F) },
-  { id: 'hairb-flow-f', name: 'Flowing Base', price: 150, slot: 'HairBase', gender: 'Fem', rarity: 'Rare', Sprite: createSpr(HAIR_Base_Flow_Rare_F) },
+  { id: 'hairb-flow-f', name: 'Flowing Base', price: 150, slot: 'HairBase', gender: 'Fem', rarity: 'Rare', Sprite: createSpr(HAIR_Base_Flow_Rare_F), preview: { scale: 1.4, translateY: -8 } },
 
   { id: 'hairf-mid-f', name: 'Mid Part', price: 50, slot: 'HairFringe', gender: 'Fem', rarity: 'Uncommon', isSetup: true, Sprite: createSpr(HAIR_Fringe_MidPart_Uncommon_F) },
   { id: 'hairf-natural-f', name: 'Natural Fringe', price: 150, slot: 'HairFringe', gender: 'Fem', rarity: 'Rare', isSetup: true, Sprite: createSpr(HAIR_Fringe_Natural_Rare_F) },
@@ -235,7 +280,7 @@ export const ACCESSORY_ITEMS: AccessoryItem[] = [
 
   { id: 'right-bouquet', name: 'Bouquet', price: 200, slot: 'RightHand', gender: 'Shared', rarity: 'Epic', Sprite: createSpr(ACC_Right_Bouquet_Epic) },
   { id: 'right-laptop', name: 'Laptop', price: 0, slot: 'RightHand', gender: 'Shared', rarity: 'Common', Sprite: createSpr(ACC_Right_Laptop_Common) },
-  { id: 'right-balloon', name: 'Red Balloon', price: 150, slot: 'RightHand', gender: 'Shared', rarity: 'Rare', Sprite: createSpr(ACC_Right_RedBalloon_Rare) },
+  { id: 'right-balloon', name: 'Red Balloon', price: 150, slot: 'RightHand', gender: 'Shared', rarity: 'Rare', Sprite: createSpr(ACC_Right_RedBalloon_Rare), preview: { scale: 1.2, translateX: 32, translateY: 12 } },
   { id: 'right-fries', name: 'Wild Fries', price: 150, slot: 'RightHand', gender: 'Shared', rarity: 'Rare', Sprite: createSpr(ACC_Right_WildFries_Rare) },
 
   { id: 'acc-diamond', name: 'Diamond', price: 200, slot: 'Accessory', gender: 'Shared', rarity: 'Epic', Sprite: createSpr(ACC_Other_Diamond_Epic) },
