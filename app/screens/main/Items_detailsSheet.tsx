@@ -4,7 +4,7 @@ import { BlurView } from 'expo-blur';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
-import { ACCESSORY_ITEMS } from '../../constants/accessories';
+import { ACCESSORY_ITEMS, AvatarSlot } from '../../constants/accessories';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
@@ -14,12 +14,31 @@ import { FONTS } from '../../constants/fonts';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
+const ACCESSORY_SLOT_LABELS: Record<AvatarSlot, string> = {
+  'LeftHand': 'Left Hand',
+  'RightHand': 'Right Hand',
+  'Headgear': 'Head',
+  'BackAccessory': 'Back',
+  'Accessory': 'Other',
+  'Body': 'Body',
+  'HairBase': 'Hair Base',
+  'HairFringe': 'Hair Fringe',
+  'Eyes': 'Eyes',
+  'Mouth': 'Mouth',
+  'Top': 'Top',
+  'Bottom': 'Bottom',
+  'Background': 'Background',
+};
+
+const ACCESSORY_SLOTS = new Set<AvatarSlot>(['LeftHand', 'RightHand', 'Headgear', 'BackAccessory', 'Accessory']);
+
 export type ShopSheetItem = {
   id: string;
   name: string;
   price: number;
   category: string;
   sprite: 0 | 1 | 2;
+  slot: AvatarSlot;
 };
 
 type ItemsDetailsSheetProps = {
@@ -65,7 +84,8 @@ export default function ItemsDetailsSheet({
   if (!item) return null;
 
   const canAfford = item.price === 0 || balance >= item.price;
-  const categoryLabel = item.category.charAt(0).toUpperCase() + item.category.slice(1);
+  const isAccessory = ACCESSORY_SLOTS.has(item.slot);
+  const categoryLabel = isAccessory ? ACCESSORY_SLOT_LABELS[item.slot] : item.category.charAt(0).toUpperCase() + item.category.slice(1);
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
@@ -97,7 +117,7 @@ export default function ItemsDetailsSheet({
               )}
             </View>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{categoryLabel}</Text>
+              <Text style={styles.badgeText}>{categoryLabel}{isAccessory && ' Accessory'}</Text>
             </View>
           </View>
 

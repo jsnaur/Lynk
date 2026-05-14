@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +16,10 @@ import {
   getAccessoryPreviewStyle,
   WEARABLE_SLOTS,
   DEFAULT_OWNED_IDS,
+  DEFAULT_BODY_BY_GENDER,
+  getAvatarGenderFromAccessories,
+  isAccessoryAllowedForGender,
+  type AvatarBodyGender,
 } from '../../constants/accessories';
 import { withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -52,11 +56,14 @@ export default function CustomizeScreen({
     initialAppliedAccessories ?? {}
   );
   const [isSaving, setIsSaving] = useState(false);
+  const avatarMemoryRef = useRef<Record<AvatarBodyGender, Partial<Record<AvatarSlot, string>>>>({ Masc: {}, Fem: {} });
 
   const hasUnsavedChanges = useMemo(
     () => JSON.stringify(savedAccessories) !== JSON.stringify(appliedAccessories),
     [appliedAccessories, savedAccessories],
   );
+
+  const currentGender = useMemo(() => getAvatarGenderFromAccessories(appliedAccessories), [appliedAccessories]);
 
   const handleGoBack = () => {
     void appSoundManager.play(AppSoundCategory.ModalClose, { debounceMs: 0 });
@@ -101,6 +108,8 @@ export default function CustomizeScreen({
         return;
       }
 
+      avatarMemoryRef.current[currentGender] = { ...appliedAccessories };
+
       const { error } = await supabase
         .from('profiles')
         .update({ equipped_accessories: appliedAccessories })
@@ -138,8 +147,11 @@ export default function CustomizeScreen({
 
       if (!profileResult.error && profileResult.data?.equipped_accessories) {
         const nextAccessories = profileResult.data.equipped_accessories as Partial<Record<AvatarSlot, string>>;
-        setAppliedAccessories(nextAccessories);
-        setSavedAccessories(nextAccessories);
+        const normalizedAccessories = nextAccessories.Body ? nextAccessories : { ...nextAccessories, Body: DEFAULT_BODY_BY_GENDER.Masc };
+        const profileGender = getAvatarGenderFromAccessories(normalizedAccessories);
+        avatarMemoryRef.current[profileGender] = { ...normalizedAccessories };
+        setAppliedAccessories(normalizedAccessories);
+        setSavedAccessories(normalizedAccessories);
       }
 
       if (!inventoryResult.error && inventoryResult.data) {
@@ -161,8 +173,8 @@ export default function CustomizeScreen({
   }, [activeCategory]);
 
   const slotItems = useMemo(
-    () => ACCESSORY_ITEMS.filter((item) => item.slot === activeSlot),
-    [activeSlot],
+    () => ACCESSORY_ITEMS.filter((item) => item.slot === activeSlot && isAccessoryAllowedForGender(item, currentGender)),
+    [activeSlot, currentGender],
   );
 
   const selectedAccessory = useMemo(
@@ -185,6 +197,19 @@ export default function CustomizeScreen({
   /** Body must always stay equipped — only switch between body options. */
   const bodyUnequipBlocked =
     !!selectedAccessory && isSelectedApplied && selectedAccessory.slot === 'Body';
+
+  const handleGenderToggle = () => {
+    const nextGender: AvatarBodyGender = currentGender === 'Masc' ? 'Fem' : 'Masc';
+    avatarMemoryRef.current[currentGender] = { ...appliedAccessories };
+
+    const rememberedAccessories = avatarMemoryRef.current[nextGender];
+    const nextAccessories = rememberedAccessories && rememberedAccessories.Body
+      ? { ...rememberedAccessories }
+      : { Body: DEFAULT_BODY_BY_GENDER[nextGender] };
+
+    setAppliedAccessories(nextAccessories);
+    setSelectedAccessoryId(null);
+  };
 
   const toggleSelectedAccessory = () => {
     if (!selectedAccessory) return;
@@ -212,8 +237,9 @@ export default function CustomizeScreen({
       newAppliedState[slotToUpdate] = selectedAccessory.id;
       void appSoundManager.play(AppSoundCategory.LikePost);
     }
-    
+
     setAppliedAccessories(newAppliedState);
+    avatarMemoryRef.current[currentGender] = { ...newAppliedState };
     onApplyAccessory?.(slotToUpdate, wasApplied ? '' : selectedAccessory.id);
   };
 
@@ -273,7 +299,7 @@ export default function CustomizeScreen({
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.catBtn, activeCategory === 'Wearables' && styles.catBtnActive]}
+                style={[styles.catBtn, styles.catBtn_last, activeCategory === 'Wearables' && styles.catBtnActive]}
                 onPress={() => handleCategoryChange('Wearables')}
               >
                 <Text style={[styles.catBtnText, activeCategory === 'Wearables' && styles.catBtnTextActive]}>
@@ -282,8 +308,27 @@ export default function CustomizeScreen({
               </Pressable>
             </View>
 
+            <View style={styles.genderToggleContainer}>
+              <Pressable
+                style={[styles.genderToggleBtn, currentGender === 'Masc' && styles.genderToggleBtnActive]}
+                onPress={currentGender === 'Masc' ? undefined : handleGenderToggle}
+                disabled={currentGender === 'Masc'}
+              >
+                <Ionicons name="male" size={14} color={currentGender === 'Masc' ? colors.favor : colors.textSecondary} />
+                <Text style={[styles.genderToggleText, currentGender === 'Masc' && styles.genderToggleTextActive]}>Masc</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.genderToggleBtn, styles.genderToggleBtn_last, currentGender === 'Fem' && styles.genderToggleBtnActive]}
+                onPress={currentGender === 'Fem' ? undefined : handleGenderToggle}
+                disabled={currentGender === 'Fem'}
+              >
+                <Ionicons name="female" size={14} color={currentGender === 'Fem' ? colors.favor : colors.textSecondary} />
+                <Text style={[styles.genderToggleText, currentGender === 'Fem' && styles.genderToggleTextActive]}>Fem</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.previewTextWrap}>
-              <Text style={styles.previewLabel}>Active {activeSlot}</Text>
+              <Text style={styles.previewLabel}>{currentGender === 'Masc' ? 'Masculine' : 'Feminine'} Avatar</Text>
               <Text style={styles.previewName}>{activeAccessoryForSlot?.name ?? 'None'}</Text>
             </View>
           </View>
@@ -404,11 +449,18 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   avatarContainer: { width: 140, height: 140, backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, position: 'relative', overflow: 'hidden' },
   layerAbsolute: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 20 },
   previewContent: { flex: 1, justifyContent: 'space-between', height: 140, paddingVertical: 4 },
-  categoryToggleContainer: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  catBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.surface2, alignItems: 'center', borderWidth: 1, borderColor: 'transparent' },
-  catBtnActive: { backgroundColor: withOpacity(colors.favor, 0.15), borderColor: colors.favor },
+  categoryToggleContainer: { flexDirection: 'row', gap: 0, marginBottom: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, overflow: 'hidden' },
+  catBtn: { flex: 1, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.surface2, alignItems: 'center', borderWidth: 0, borderRightWidth: 1, borderRightColor: colors.border },
+  catBtn_last: { borderRightWidth: 0 },
+  catBtnActive: { backgroundColor: withOpacity(colors.favor, 0.14) },
   catBtnText: { fontSize: 12, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
   catBtnTextActive: { color: colors.favor, fontFamily: 'DMSans-Bold', fontWeight: '700' },
+  genderToggleContainer: { flexDirection: 'row', gap: 0, marginBottom: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, overflow: 'hidden' },
+  genderToggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.surface2, borderWidth: 0, borderRightWidth: 1, borderRightColor: colors.border },
+  genderToggleBtn_last: { borderRightWidth: 0 },
+  genderToggleBtnActive: { backgroundColor: withOpacity(colors.favor, 0.14) },
+  genderToggleText: { fontSize: 12, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
+  genderToggleTextActive: { color: colors.favor, fontFamily: 'DMSans-Bold', fontWeight: '700' },
   previewTextWrap: { justifyContent: 'flex-end' },
   previewLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
   previewName: { marginTop: 4, fontSize: 18, color: colors.textPrimary, fontFamily: 'DMSans-Bold', fontWeight: '700' },

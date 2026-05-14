@@ -18,6 +18,7 @@ export type AvatarSlot =
 
 export type AvatarGender = 'Masc' | 'Fem' | 'Shared';
 export type AvatarRarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+export type AvatarBodyGender = Exclude<AvatarGender, 'Shared'>;
 
 export type AccessoryItem = {
   id: string;
@@ -36,6 +37,30 @@ export type PreviewTransform = {
   translateX?: number;
   translateY?: number;
 };
+
+export const DEFAULT_BODY_BY_GENDER: Record<AvatarBodyGender, string> = {
+  Masc: 'body-masc-a',
+  Fem: 'body-fem-a',
+};
+
+export function getAccessoryById(accessoryId?: string | null) {
+  if (!accessoryId) return undefined;
+  return ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+}
+
+export function getAvatarGenderFromBodyId(bodyId?: string | null): AvatarBodyGender {
+  const body = getAccessoryById(bodyId);
+  return body?.slot === 'Body' && body.gender === 'Fem' ? 'Fem' : 'Masc';
+}
+
+export function getAvatarGenderFromAccessories(accessories: Partial<Record<AvatarSlot, string>> | undefined): AvatarBodyGender {
+  return getAvatarGenderFromBodyId(accessories?.Body);
+}
+
+export function isAccessoryAllowedForGender(item: Pick<AccessoryItem, 'slot' | 'gender'>, gender: AvatarBodyGender): boolean {
+  if (item.slot === 'Body') return item.gender === gender;
+  return item.gender === 'Shared' || item.gender === gender;
+}
 
 // ============================================================================
 // ASSET IMPORTS
