@@ -11,6 +11,8 @@ import ThumbDownIcon from '../../../assets/QuestScreenAssets/Thumb_down_Icon.svg
 import XpPixelIcon from '../../../assets/QuestScreenAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestScreenAssets/Token_Pixel_Icon.svg';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { invalidateQuestScreenCache } from './QuestScreen';
+import { invalidateProfileCache } from './ProfileDashboardScreen';
 
 type Rating = 'positive' | 'negative' | null;
 type Outcome = 'completed' | 'failed' | null;
@@ -178,6 +180,8 @@ const QuestResolutionSheetModal = ({
       if (error) throw error;
 
       await refreshBalance();
+      invalidateQuestScreenCache();
+      invalidateProfileCache();
       setIsSubmitted(true);
       // triumphant mini fanfare for success
       try { void appSoundManager.play(AppSoundCategory.QuestComplete, { force: true }); } catch (e) {}

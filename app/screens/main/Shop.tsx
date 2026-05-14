@@ -20,6 +20,7 @@ import ScreenHeader from '../../components/navigation/ScreenHeader';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
 import { FONTS } from '../../constants/fonts';
+import { invalidateProfileCache } from './ProfileDashboardScreen';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
@@ -170,6 +171,8 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       .from('profiles')
       .update({ equipped_accessories: nextAccessories })
       .eq('id', user.id);
+
+    if (!error) invalidateProfileCache();
 
     if (error) {
       console.error('Failed to equip item:', error);

@@ -53,6 +53,21 @@ type ProfileState = {
 
 const EQUIPPED_BADGE_SLOTS = 3;
 
+// --- MODULE LEVEL CACHE ---
+let CACHED_PROFILE: any = null;
+let CACHED_TOTAL_XP = 0;
+let CACHED_ACTIVE_QUEST_COUNT = 0;
+let CACHED_COMPLETED_QUEST_COUNT = 0;
+let HAS_FETCHED_INITIALLY_PROFILE = false;
+
+export function invalidateProfileCache() {
+    CACHED_PROFILE = null;
+    CACHED_TOTAL_XP = 0;
+    CACHED_ACTIVE_QUEST_COUNT = 0;
+    CACHED_COMPLETED_QUEST_COUNT = 0;
+    HAS_FETCHED_INITIALLY_PROFILE = false;
+}
+
 type LevelUpAlertBodyProps = {
     level: number;
 };
@@ -185,13 +200,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const { alert } = useCustomAlert();
     const { balance, refreshBalance } = useTokenBalance();
     
-    const [profile, setProfile] = useState<any>(null);
-    const [initialLoading, setInitialLoading] = useState<boolean>(true);
-    const [totalXP, setTotalXP] = useState<number>(0);
+    const [profile, setProfile] = useState<any>(CACHED_PROFILE);
+    const [initialLoading, setInitialLoading] = useState<boolean>(!HAS_FETCHED_INITIALLY_PROFILE);
+    const [totalXP, setTotalXP] = useState<number>(CACHED_TOTAL_XP);
     const [levelUpAlertLevel, setLevelUpAlertLevel] = useState<number | null>(null);
     const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false, equippedBadgeIds: [] });
-    const [activeQuestCount, setActiveQuestCount] = useState<number>(0);
-    const [completedQuestCount, setCompletedQuestCount] = useState<number>(0);
+    const [activeQuestCount, setActiveQuestCount] = useState<number>(CACHED_ACTIVE_QUEST_COUNT);
+    const [completedQuestCount, setCompletedQuestCount] = useState<number>(CACHED_COMPLETED_QUEST_COUNT);
 
     const openSettings = () => {
         void appSoundManager.play(AppSoundCategory.ModalOpen, { debounceMs: 0 });
@@ -241,8 +256,11 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
                 if (data) {
                     setProfile(data);
+                    CACHED_PROFILE = data;
                     const xpFromProfile = data.total_xp || 0;
                     setTotalXP(xpFromProfile);
+                    CACHED_TOTAL_XP = xpFromProfile;
+                    HAS_FETCHED_INITIALLY_PROFILE = true;
 
                     if (!hasHydratedInitialLevelRef.current) {
                         prevLevelRef.current = calculateLevelFromXP(xpFromProfile).currentLevel;
@@ -289,6 +307,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
             setActiveQuestCount(activeCount);
             setCompletedQuestCount(completedCount);
+            CACHED_ACTIVE_QUEST_COUNT = activeCount;
+            CACHED_COMPLETED_QUEST_COUNT = completedCount;
         } catch (error) {
             console.error('Error fetching quest counts:', error);
         }
@@ -360,8 +380,15 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
             channel = supabase.channel('profile_dashboard_changes')
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, (payload) => {
                     if (payload.new) {
-                        setProfile((prev: any) => ({ ...prev, ...payload.new }));
-                        if (payload.new.total_xp !== undefined) setTotalXP(payload.new.total_xp);
+                        setProfile((prev: any) => {
+                            const next = { ...prev, ...payload.new };
+                            CACHED_PROFILE = next;
+                            return next;
+                        });
+                        if (payload.new.total_xp !== undefined) {
+                            setTotalXP(payload.new.total_xp);
+                            CACHED_TOTAL_XP = payload.new.total_xp;
+                        }
                     }
                 }).subscribe();
         };
@@ -534,6 +561,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
                             if (user) await supabase.from('profiles').update({ display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear }).eq('id', user.id);
+                            invalidateProfileCache();
                             await fetchProfile();
                         } catch (e) { console.error("Error updating profile", e); }
                     }}

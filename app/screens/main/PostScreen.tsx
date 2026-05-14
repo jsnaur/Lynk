@@ -26,6 +26,8 @@ import { preCheckContent, type ModerationCategory } from '../../services/Moderat
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { ContentBlockedModal } from '../../components/modals';
+import { invalidateQuestScreenCache } from './QuestScreen';
+import { invalidateProfileCache } from './ProfileDashboardScreen';
 
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
@@ -320,6 +322,8 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       }
 
       await refreshBalance();
+      invalidateQuestScreenCache();
+      invalidateProfileCache();
       navigation.onPublishSuccess?.(questIdForHighlight, tempQuestId);
     } catch (error: any) {
       void appSoundManager.play(AppSoundCategory.AlertError, { debounceMs: 0 });
