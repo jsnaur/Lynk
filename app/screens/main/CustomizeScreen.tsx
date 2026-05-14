@@ -13,6 +13,7 @@ import {
   AvatarSlot,
   ALL_SLOTS_Z_ORDER,
   BASE_TRAIT_SLOTS,
+  getAccessoryPreviewStyle,
   WEARABLE_SLOTS,
   DEFAULT_OWNED_IDS,
 } from '../../constants/accessories';
@@ -57,8 +58,36 @@ export default function CustomizeScreen({
     [appliedAccessories, savedAccessories],
   );
 
+  const handleGoBack = () => {
+    void appSoundManager.play(AppSoundCategory.ModalClose, { debounceMs: 0 });
+    navigation.goBack();
+  };
+
+  const handleCategoryChange = (category: UI_CATEGORY) => {
+    if (category === activeCategory) return;
+
+    void appSoundManager.play(AppSoundCategory.NavSwitch, { debounceMs: 0 });
+    setActiveCategory(category);
+  };
+
+  const handleSlotChange = (slot: AvatarSlot) => {
+    if (slot === activeSlot) return;
+
+    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+    setActiveSlot(slot);
+    setSelectedAccessoryId(null);
+  };
+
+  const handleSelectItem = (itemId: string) => {
+    void appSoundManager.play(AppSoundCategory.ButtonPress);
+    setSelectedAccessoryId(itemId);
+  };
+
   const saveChanges = async () => {
     if (isSaving) return;
+
+    void appSoundManager.play(AppSoundCategory.LikePost, { debounceMs: 0 });
+    void appSoundManager.play(AppSoundCategory.XpGain, { debounceMs: 0 });
 
     try {
       setIsSaving(true);
@@ -173,6 +202,8 @@ export default function CustomizeScreen({
       return;
     }
 
+    void appSoundManager.play(AppSoundCategory.ItemEquip, { debounceMs: 0 });
+
     // Instant local state update
     const newAppliedState = { ...appliedAccessories };
     if (wasApplied) {
@@ -192,7 +223,7 @@ export default function CustomizeScreen({
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
           <Pressable
-            onPress={() => navigation.goBack()}
+            onPress={handleGoBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={styles.backButton}
           >
@@ -235,7 +266,7 @@ export default function CustomizeScreen({
             <View style={styles.categoryToggleContainer}>
               <Pressable
                 style={[styles.catBtn, activeCategory === 'Base' && styles.catBtnActive]}
-                onPress={() => setActiveCategory('Base')}
+                onPress={() => handleCategoryChange('Base')}
               >
                 <Text style={[styles.catBtnText, activeCategory === 'Base' && styles.catBtnTextActive]}>
                   Base Traits
@@ -243,7 +274,7 @@ export default function CustomizeScreen({
               </Pressable>
               <Pressable
                 style={[styles.catBtn, activeCategory === 'Wearables' && styles.catBtnActive]}
-                onPress={() => setActiveCategory('Wearables')}
+                onPress={() => handleCategoryChange('Wearables')}
               >
                 <Text style={[styles.catBtnText, activeCategory === 'Wearables' && styles.catBtnTextActive]}>
                   Wearables
@@ -265,10 +296,7 @@ export default function CustomizeScreen({
               return (
                 <Pressable
                   key={slot}
-                  onPress={() => {
-                    setActiveSlot(slot);
-                    setSelectedAccessoryId(null);
-                  }}
+                  onPress={() => handleSlotChange(slot)}
                   style={[styles.tab, isActiveTab && styles.tabActive]}
                 >
                   <Text style={[styles.tabText, isActiveTab && styles.tabTextActive]}>{slot}</Text>
@@ -293,7 +321,7 @@ export default function CustomizeScreen({
               return (
                 <Pressable
                   key={item.id}
-                  onPress={() => setSelectedAccessoryId(item.id)}
+                  onPress={() => handleSelectItem(item.id)}
                   style={({ pressed }) => [
                     styles.itemCard,
                     selected && styles.itemCardSelected,
@@ -302,7 +330,7 @@ export default function CustomizeScreen({
                 >
                   <View style={styles.itemLeft}>
                     <View style={styles.itemSpriteWrap}>
-                      <Sprite width={40} height={40} />
+                      <Sprite width={40} height={40} style={getAccessoryPreviewStyle(item, 40)} />
                     </View>
                     <View>
                       <Text style={styles.itemName}>{item.name}</Text>

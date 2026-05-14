@@ -478,12 +478,13 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   // Key fix: `position: 'relative'` on the container so the absolutely-
   // positioned title is constrained to the header bounds, not the screen.
   header: {
-    height: screenHeaderTheme.layout.height,
+    // Increased header height and top padding to give more top margin
+    height: screenHeaderTheme.layout.height + 24,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingTop: screenHeaderTheme.layout.topPadding,
+    paddingTop: screenHeaderTheme.layout.topPadding + 12,
     paddingHorizontal: screenHeaderTheme.layout.horizontalPadding,
-    paddingBottom: screenHeaderTheme.layout.bottomPadding,
+    paddingBottom: screenHeaderTheme.layout.bottomPadding + 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     // Required so the absolute title is clipped to this View
@@ -497,27 +498,29 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     // Give the button a fixed width that matches headerSpacer.
     // 112 comfortably fits "< Profile" on all phones.
     width: 112,
-    height: 34,
     justifyContent: 'flex-start',
     // Sits above the title in z-order so taps are captured correctly
     zIndex: 1,
   },
 
   backLabel: {
-    ...screenHeaderTheme.text.title,
-    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.favor,
+    fontFamily: 'DM_Sans-Medium',
     flexShrink: 1,
   },
 
   // Absolutely-centred title — never nudged by sibling widths
   headerTitle: {
-    ...screenHeaderTheme.text.title,
+    fontSize: 18,
+    fontWeight: '700',
     color: colors.textPrimary,
     // Fill the full header width and centre the text
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: screenHeaderTheme.layout.bottomPadding,
+    bottom: screenHeaderTheme.layout.bottomPadding + 12,
     textAlign: 'center',
     // Sit below the back button so touches pass through to it
     zIndex: 0,
