@@ -773,7 +773,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   ).trim();
   const posterName = quest?.posterName ?? 'Anonymous User';
   const ago = quest?.ago ?? 'Just now';
-  const xp = questData?.bonus_xp ?? quest?.xp ?? 150;
+  const xp = questData?.bonus_xp != null ? 50 + questData.bonus_xp : (quest?.xp ?? 150);
   const token = questData?.token_bounty ?? quest?.token ?? 25;
   
   const isPoster = currentUserId === questData?.user_id;

@@ -43,7 +43,7 @@ export default function CompactQuestCard({
   const categoryColor = CATEGORY_COLORS[category];
   const title = quest?.title ?? 'Untitled Quest';
   const description = quest?.description ?? quest?.preview ?? '';
-  const xp = quest?.bonus_xp ?? quest?.xp ?? 0;
+  const xp = quest?.bonus_xp != null ? 50 + quest.bonus_xp : (quest?.xp ?? 0);
   const token = quest?.token_bounty ?? quest?.token ?? 0;
 
   return (
