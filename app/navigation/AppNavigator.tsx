@@ -6,6 +6,7 @@ import ProfileSetupScreen from '../screens/auth/ProfileSetupScreenA';
 import ProfileSetupScreenB from '../screens/auth/ProfileSetupScreenB';
 import ForgotPass3 from '../screens/auth/ForgotPass3';
 import { supabase } from '../lib/supabase';
+import appSoundManager from '../lib/SoundManager';
 import { Session } from '@supabase/supabase-js';
 import { View, ActivityIndicator } from 'react-native';
 import { COLORS } from '../constants/colors';
@@ -37,6 +38,7 @@ const AppNavigator = () => {
 
   useEffect(() => {
     const initializeAuth = async () => {
+      await appSoundManager.hydrateFromStorage();
       const { data: { session } } = await supabase.auth.getSession();
       await checkSessionAndProfile(session);
       setSession(session);
