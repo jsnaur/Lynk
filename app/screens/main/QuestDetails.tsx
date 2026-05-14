@@ -36,6 +36,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { preCheckContent, getModerationUI, subscribeModerationStatus, type ModerationCategory } from '../../services/ModeratorService';
 import { ContentBlockedModal } from '../../components/modals';
+import { invalidateQuestScreenCache } from './QuestScreen';
+import { invalidateProfileCache } from './ProfileDashboardScreen';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -647,6 +649,8 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               });
               if (error) throw error;
               await refreshBalance();
+              invalidateQuestScreenCache();
+              invalidateProfileCache();
               if (navigation?.goBack) navigation.goBack();
             } catch (error: any) {
               alert("Error", error.message || "Failed to delete quest.");
@@ -666,6 +670,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setLoading(true);
       const { data: newStatus, error } = await supabase.rpc('apply_for_quest', { p_quest_id: questData.id });
       if (error) throw error;
+      invalidateQuestScreenCache();
       await fetchQuestData(currentUserId);
       if (newStatus === 'accepted') {
         alert('Quest Accepted', 'You have successfully joined the quest!');
@@ -694,6 +699,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               const { error } = await supabase.rpc('drop_quest', { p_quest_id: questData.id });
               if (error) throw error;
               setParticipants(prev => prev.map(p => p.user_id === currentUserId ? { ...p, status: 'withdrawn' } : p));
+              invalidateQuestScreenCache();
               await fetchQuestData(currentUserId);
             } catch (error: any) {
               alert('Error', error.message || 'Failed to drop quest.');
@@ -721,6 +727,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
               const { error } = await supabase.rpc('cancel_application', { p_quest_id: questData.id });
               if (error) throw error;
               setParticipants(prev => prev.filter(p => p.user_id !== currentUserId));
+              invalidateQuestScreenCache();
               await fetchQuestData(currentUserId);
             } catch (error: any) {
               alert('Error', error.message || 'Failed to cancel application.');
@@ -742,6 +749,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         .eq('quest_id', questData.id)
         .eq('user_id', applicantId);
       if (error) throw error;
+      invalidateQuestScreenCache();
       await fetchQuestData(currentUserId!);
     } catch (error: any) {
       alert("Error", error.message);
@@ -755,6 +763,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       setLoading(true);
       const { error } = await supabase.rpc('start_manual_quest', { p_quest_id: questData.id });
       if (error) throw error;
+      invalidateQuestScreenCache();
       alert("Quest Started", "The quest is now in progress!");
       await fetchQuestData(currentUserId!);
     } catch (error: any) {

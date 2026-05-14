@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { supabase } from '../../lib/supabase'; 
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { invalidateProfileCache } from './ProfileDashboardScreen';
 
 import {
   ACCESSORY_ITEMS,
@@ -122,6 +123,7 @@ export default function CustomizeScreen({
       }
 
       setSavedAccessories(appliedAccessories);
+      invalidateProfileCache();
       navigation.goBack();
     } catch (err) {
       console.error('Error saving avatar:', err);

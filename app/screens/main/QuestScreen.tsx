@@ -37,6 +37,18 @@ function timeAgo(dateString: string) {
 
 const HISTORY_FILTERS: HistoryFilter[] = ['All', 'Posted', 'Accepted'];
 
+// --- MODULE LEVEL CACHE ---
+let CACHED_ACTIVE_QUESTS: QuestItem[] = [];
+let CACHED_HISTORY_QUESTS: QuestItem[] = [];
+let CACHED_CURRENT_USER_ID: string | null = null;
+let HAS_FETCHED_INITIALLY_QUESTS = false;
+
+export function invalidateQuestScreenCache() {
+  CACHED_ACTIVE_QUESTS = [];
+  CACHED_HISTORY_QUESTS = [];
+  HAS_FETCHED_INITIALLY_QUESTS = false;
+}
+
 function QuestCard({ item, onPress, onResolve, variant = 'active' }: { item: QuestItem; onPress?: () => void; onResolve?: () => void; variant?: 'active' | 'history'; }) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
@@ -109,11 +121,11 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const [activeQuests, setActiveQuests] = useState<QuestItem[]>([]);
-  const [historyQuests, setHistoryQuests] = useState<QuestItem[]>([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [activeQuests, setActiveQuests] = useState<QuestItem[]>(CACHED_ACTIVE_QUESTS);
+  const [historyQuests, setHistoryQuests] = useState<QuestItem[]>(CACHED_HISTORY_QUESTS);
+  const [isInitialLoading, setIsInitialLoading] = useState(!HAS_FETCHED_INITIALLY_QUESTS);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(CACHED_CURRENT_USER_ID);
   const moderationUnsubsRef = useRef<Array<() => void>>([]);
 
   const fetchQuests = useCallback(async () => {
@@ -121,6 +133,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCurrentUserId(user.id);
+      CACHED_CURRENT_USER_ID = user.id;
 
       const { data: mainQuests } = await supabase.from('quests').select(`*, acceptor:profiles!quests_accepted_by_fkey(display_name, first_name), participants:quest_participants(user_id, status)`).or(`user_id.eq.${user.id},accepted_by.eq.${user.id}`).order('created_at', { ascending: false });
       const { data: partData } = await supabase.from('quest_participants').select('quest_id').eq('user_id', user.id).in('status', ['accepted', 'completed', 'failed', 'resolved']);
@@ -176,6 +189,9 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
         }
       });
       setActiveQuests(activeList); setHistoryQuests(historyList);
+      CACHED_ACTIVE_QUESTS = activeList;
+      CACHED_HISTORY_QUESTS = historyList;
+      HAS_FETCHED_INITIALLY_QUESTS = true;
     } catch (err) { console.error(err); }
     finally { setIsInitialLoading(false); }
   }, [colors, theme]);
