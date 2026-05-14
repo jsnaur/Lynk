@@ -162,7 +162,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
 
         if (isResolved) {
           role = isPoster ? 'Requester' : 'Accepter'; statusLabel = 'Resolved'; historyTag = isPoster ? 'Posted' : 'Accepted';
-          if (isPoster || isAccepter) historyList.push({ id: q.id, title: q.title, role, status: statusLabel as QuestStatus, timeLabel: timeAgo(q.created_at), historyTag, accent, statusColor, cardTint, xp: q.bonus_xp || 0, token: q.token_bounty || 0, acceptorName: fetchedAcceptorName });
+          if (isPoster || isAccepter) historyList.push({ id: q.id, title: q.title, role, status: statusLabel as QuestStatus, timeLabel: timeAgo(q.created_at), historyTag, accent, statusColor, cardTint, xp: 50 + (q.bonus_xp || 0), token: q.token_bounty || 0, acceptorName: fetchedAcceptorName });
         } else {
           if (isPoster) {
             role = 'You posted';
@@ -172,7 +172,7 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
             role = 'You accepted'; statusLabel = 'In progress'; statusColor = colors.xp; cardTint = 'rgba(192,132,252,0.08)'; isActionable = false;
           }
           if (!role) return;
-          activeList.push({ id: q.id, title: q.title, role, status: statusLabel as QuestStatus, accent, statusColor, cardTint, isActionable, xp: q.bonus_xp || 0, token: q.token_bounty || 0, acceptorName: fetchedAcceptorName, moderation_status: isPoster ? q.moderation_status : undefined, moderation_reason: isPoster ? q.moderation_reason : undefined });
+          activeList.push({ id: q.id, title: q.title, role, status: statusLabel as QuestStatus, accent, statusColor, cardTint, isActionable, xp: 50 + (q.bonus_xp || 0), token: q.token_bounty || 0, acceptorName: fetchedAcceptorName, moderation_status: isPoster ? q.moderation_status : undefined, moderation_reason: isPoster ? q.moderation_reason : undefined });
         }
       });
       setActiveQuests(activeList); setHistoryQuests(historyList);
