@@ -582,12 +582,25 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     initialLocked={BADGES.map((b) => b.id).filter((id) => !ownedBadgeIds.includes(id))}
                     onClose={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))}
                     onDone={async (ids) => {
+                        console.log('[badges] onDone payload:', ids);
                         setState((prev) => ({ ...prev, equippedBadgeIds: ids, badgeSelectorVisible: false }));
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
+                            console.log('[badges] auth user id:', user?.id);
                             if (user) {
-                                await supabase.from('profiles').update({ equipped_badges: ids }).eq('id', user.id);
-                                invalidateProfileCache();
+                                const { data: updated, error } = await supabase
+                                    .from('profiles')
+                                    .update({ equipped_badges: ids })
+                                    .eq('id', user.id)
+                                    .select('id, equipped_badges');
+                                console.log('[badges] update result:', { updated, error });
+                                if (error) {
+                                    console.error('Error saving equipped badges (supabase):', error);
+                                } else {
+                                    setProfile((prev: any) => (prev ? { ...prev, equipped_badges: ids } : prev));
+                                    CACHED_PROFILE = CACHED_PROFILE ? { ...CACHED_PROFILE, equipped_badges: ids } : CACHED_PROFILE;
+                                    invalidateProfileCache();
+                                }
                             }
                         } catch (e) { console.error('Error saving equipped badges', e); }
                     }}
