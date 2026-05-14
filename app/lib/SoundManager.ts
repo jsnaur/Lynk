@@ -337,6 +337,26 @@ class SoundManager {
     });
   }
 
+  public async playBadgeUnlockCue(): Promise<void> {
+    try {
+      void this.play(AppSoundCategory.XpGain, {
+        force: true,
+        debounceMs: 0,
+        volume: 0.9,
+      });
+    } catch {
+      // Intentionally ignore: the follow-up cue still provides feedback.
+    }
+
+    setTimeout(() => {
+      void this.play(AppSoundCategory.PostSent, {
+        force: true,
+        debounceMs: 0,
+        volume: 0.95,
+      });
+    }, 70);
+  }
+
   private isDebounced(category: AppSoundCategory, debounceMs: number): boolean {
     if (debounceMs <= 0) {
       return false;
