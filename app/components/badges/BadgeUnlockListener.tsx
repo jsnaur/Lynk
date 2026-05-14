@@ -5,6 +5,7 @@ import { useCustomAlert } from '../../contexts/AlertContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { FONTS } from '../../constants/fonts';
 import { getBadgeById } from '../../constants/badges';
+import appSoundManager from '../../lib/SoundManager';
 
 // Fallback when an unlocked badge id is not yet present in the catalog.
 const FALLBACK_BADGE_ICON = require('../../../assets/ProfileAssets/BadgeShield.png');
@@ -65,6 +66,7 @@ export default function BadgeUnlockListener() {
             if (!badgeId) return;
             const catalogEntry = getBadgeById(badgeId);
             if (catalogEntry) {
+              void appSoundManager.playBadgeUnlockCue();
               queueRef.current.push({
                 name: catalogEntry.name,
                 description: catalogEntry.description,
@@ -80,6 +82,7 @@ export default function BadgeUnlockListener() {
               .eq('id', badgeId)
               .single();
             if (error || !data) return;
+            void appSoundManager.playBadgeUnlockCue();
             queueRef.current.push({
               name: data.name,
               description: data.description,

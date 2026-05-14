@@ -44,6 +44,14 @@ export const BADGES: BadgeDef[] = [
     icon: Badge_Patron,
     criteria: 'Post 10 quests.',
   },
+  {
+    id: 'special_master_of_disguise',
+    name: 'Master of Disguise',
+    description: 'Awarded for unlocking 25 unique avatar items.',
+    category: 'special',
+    icon: Badge_Disguise,
+    criteria: 'Unlock 25 unique avatar items.',
+  },
 ];
 
 const BADGES_BY_ID: Record<string, BadgeDef> = BADGES.reduce(
