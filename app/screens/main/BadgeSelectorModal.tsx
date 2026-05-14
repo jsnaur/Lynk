@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
     View,
     Text,
@@ -17,7 +17,7 @@ import { BADGES, BadgeCategory, getBadgeById } from '../../constants/badges';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
-type BadgeState = 'default' | 'selected' | 'disabled';
+type BadgeState = 'default' | 'selected' | 'disabled' | 'locked';
 
 interface Badge {
     id: string;
@@ -31,25 +31,31 @@ type BadgeSelectorModalProps = {
     onDone?: (selectedBadges: string[]) => void;
     maxBadges?: number;
     initialSelected?: string[];
+    initialLocked?: string[];
 };
 
-const buildBadgeData = (initialSelected: string[] = []): Badge[] =>
+const buildBadgeData = (initialSelected: string[] = [], initialLocked: string[] = []): Badge[] =>
     BADGES.map((b) => ({
         id: b.id,
         label: b.name,
         category: b.category,
-        state: initialSelected.includes(b.id) ? 'selected' : 'default',
+        state: initialLocked.includes(b.id)
+            ? 'locked'
+            : initialSelected.includes(b.id)
+                ? 'selected'
+                : 'default',
     }));
 
 const getBadgeImage = (id: string) => getBadgeById(id)?.icon;
 
-function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) => void }) {
+function BadgeItem({ badge, onPress, onLongPress }: { badge: Badge; onPress?: (id: string) => void; onLongPress?: (id: string) => void }) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const isDefault = badge.state === 'default';
     const isSelected = badge.state === 'selected';
     const isDisabled = badge.state === 'disabled';
+    const isLocked = badge.state === 'locked';
 
     const containerBg = isSelected
         ? withOpacity(colors.favor, 0.1)
@@ -73,7 +79,12 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
     return (
         <Pressable
             style={styles.badgeWrapper}
-            onPress={() => !isDisabled && onPress?.(badge.id)}
+            onPress={() => {
+                if (isDisabled || isLocked) return;
+                onPress?.(badge.id);
+            }}
+            onLongPress={() => onLongPress?.(badge.id)}
+            delayLongPress={300}
             disabled={isDisabled}
         >
             <View
@@ -83,7 +94,7 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
                         backgroundColor: containerBg,
                         borderColor: borderColor,
                         borderWidth: borderWidth,
-                        opacity: isDisabled ? 0.5 : 1,
+                        opacity: isDisabled || isLocked ? 0.5 : 1,
                     },
                 ]}
             >
@@ -91,6 +102,11 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
                 {isSelected && (
                     <View style={styles.checkBadge}>
                         <Ionicons name="checkmark" size={10} color={colors.bg} />
+                    </View>
+                )}
+                {isLocked && (
+                    <View style={styles.lockBadge}>
+                        <Ionicons name="lock-closed" size={12} color={colors.bg} />
                     </View>
                 )}
             </View>
@@ -108,11 +124,22 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
     );
 }
 
-export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, initialSelected }: BadgeSelectorModalProps) {
+export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, initialSelected, initialLocked }: BadgeSelectorModalProps) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    const [badges, setBadges] = useState(() => buildBadgeData(initialSelected));
+    const [badges, setBadges] = useState(() => buildBadgeData(initialSelected, initialLocked));
+    const [tooltipText, setTooltipText] = useState<string | null>(null);
+    const tooltipTimer = useRef<number | null>(null);
+    const tooltipAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        return () => {
+            if (tooltipTimer.current) {
+                clearTimeout(tooltipTimer.current);
+            }
+        };
+    }, []);
     const panY = useRef(new Animated.Value(0)).current;
     const selectedCount = badges.filter((b) => b.state === 'selected').length;
 
@@ -137,7 +164,7 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
             prev.map((badge) => {
                 if (badge.id === badgeId) {
                         if (badge.state === 'selected') return { ...badge, state: 'default' };
-                        else if (selectedCount < maxBadges) {
+                        else if (selectedCount < maxBadges && badge.state !== 'locked' && badge.state !== 'disabled') {
                             try { void appSoundManager.play(AppSoundCategory.BadgeEquip, { force: true }); } catch (e) {}
                             return { ...badge, state: 'selected' };
                         }
@@ -147,8 +174,38 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
         );
     };
 
+    const hideTooltipImmediate = () => {
+        if (tooltipTimer.current) {
+            clearTimeout(tooltipTimer.current);
+            tooltipTimer.current = null;
+        }
+        Animated.timing(tooltipAnim, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => setTooltipText(null));
+    };
+
+    const showTooltipFor = (badgeId: string) => {
+        const def = getBadgeById(badgeId);
+        if (!def) return;
+        if (tooltipTimer.current) {
+            clearTimeout(tooltipTimer.current);
+            tooltipTimer.current = null;
+        }
+        setTooltipText(def.description || def.name);
+        // animate in
+        Animated.spring(tooltipAnim, { toValue: 1, friction: 8, tension: 120, useNativeDriver: true }).start();
+        // hide after 2.5s with animation
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore setTimeout returns number in RN
+        tooltipTimer.current = setTimeout(() => {
+            Animated.timing(tooltipAnim, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => setTooltipText(null));
+            tooltipTimer.current = null;
+        }, 2500) as unknown as number;
+    };
+
     const handleDone = () => {
         const selectedBadges = badges.filter((b) => b.state === 'selected').map((b) => b.id);
+        try {
+            void appSoundManager.playProgressDing(0);
+        } catch (e) {}
         onDone?.(selectedBadges);
         onClose?.();
     };
@@ -187,13 +244,26 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
                         const badgeImage = isFilled ? getBadgeImage(badge.id) : null;
 
                         return (
-                            <View
+                            <Pressable
                                 key={index}
                                 style={[
                                     styles.badgeSlot,
                                     isFilled && styles.badgeSlotFilled,
                                     isEmpty && styles.badgeSlotEmpty,
                                 ]}
+                                onPress={() => {
+                                    if (!isFilled) return;
+                                    // Do not allow unequip if badge is locked
+                                    if (badge && badge.state === 'locked') return;
+                                    const idToRemove = badge.id;
+                                    setBadges((prev) => prev.map((b) => (b.id === idToRemove ? { ...b, state: 'default' } : b)));
+                                    try {
+                                        void appSoundManager.play(AppSoundCategory.BadgeEquip, { force: true });
+                                    } catch (e) {}
+                                }}
+                                onLongPress={() => isFilled && showTooltipFor(badge.id)}
+                                delayLongPress={300}
+                                disabled={!isFilled}
                             >
                                 {isFilled && badgeImage && (
                                     <Image source={badgeImage} style={styles.selectedBadgeImage} resizeMode="contain" />
@@ -204,35 +274,64 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
                                         <View style={styles.slotDotInner} />
                                     </View>
                                 )}
-                            </View>
+                            </Pressable>
                         );
                     })}
                 </View>
 
-                <ScrollView style={styles.badgeGridContainer} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    style={styles.badgeGridContainer}
+                    contentContainerStyle={styles.badgeGridContent}
+                    showsVerticalScrollIndicator={false}
+                >
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>QUEST MILESTONES</Text>
                         <View style={styles.badgeGrid}>
-                            {questBadges.map((badge) => <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} />)}
+                            {questBadges.map((badge) => (
+                                <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
+                            ))}
                         </View>
                     </View>
 
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>REPUTATION</Text>
                         <View style={styles.badgeGrid}>
-                            {reputationBadges.map((badge) => <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} />)}
+                            {reputationBadges.map((badge) => (
+                                <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
+                            ))}
                         </View>
                     </View>
 
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>SPECIAL</Text>
                         <View style={styles.badgeGrid}>
-                            {specialBadges.map((badge) => <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} />)}
+                            {specialBadges.map((badge) => (
+                                <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
+                            ))}
                         </View>
                     </View>
 
-                    <View style={{ height: 20 }} />
+                    <View style={{ height: 36 }} />
                 </ScrollView>
+
+                {tooltipText && (
+                    <Animated.View
+                        style={[
+                            styles.tooltipContainer,
+                            {
+                                opacity: tooltipAnim,
+                                transform: [
+                                    {
+                                        scale: tooltipAnim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }),
+                                    },
+                                ],
+                            },
+                        ]}
+                        pointerEvents="none"
+                    >
+                        <Text style={styles.tooltipText}>{tooltipText}</Text>
+                    </Animated.View>
+                )}
 
                 {selectedCount === maxBadges && (
                     <View style={styles.toast}>
@@ -360,10 +459,26 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     slotDotInner: {
         flex: 1,
     },
+    lockBadge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: COLORS.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.surface,
+    },
     badgeGridContainer: {
         flex: 1,
         paddingHorizontal: 20,
         paddingVertical: 16,
+    },
+    badgeGridContent: {
+        paddingBottom: 48,
     },
     section: {
         marginBottom: 24,
@@ -443,5 +558,24 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
         fontSize: 13,
         fontWeight: '400',
         color: COLORS.textSecondary,
+    },
+    tooltipContainer: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        top: 110,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: COLORS.surface2,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        alignItems: 'center',
+        zIndex: 99,
+    },
+    tooltipText: {
+        color: COLORS.textPrimary,
+        fontSize: 13,
+        textAlign: 'center',
     },
 });

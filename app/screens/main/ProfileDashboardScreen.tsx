@@ -30,7 +30,7 @@ import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
 const QuestIcon = require("../../../assets/ProfileAssets/Scroll_Icon.png");
 
 import BadgeSelectorModal from './BadgeSelectorModal';
-import { getBadgeById } from '../../constants/badges';
+import { getBadgeById, BADGES } from '../../constants/badges';
 import EditProfileModal from './EditProfileModal';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { registerProfileCacheInvalidator } from './screenCacheRegistry';
@@ -226,6 +226,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const [totalXP, setTotalXP] = useState<number>(CACHED_TOTAL_XP);
     const [levelUpAlertLevel, setLevelUpAlertLevel] = useState<number | null>(null);
     const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false, equippedBadgeIds: [] });
+    const [ownedBadgeIds, setOwnedBadgeIds] = useState<string[]>([]);
     const [activeQuestCount, setActiveQuestCount] = useState<number>(CACHED_ACTIVE_QUEST_COUNT);
     const [completedQuestCount, setCompletedQuestCount] = useState<number>(CACHED_COMPLETED_QUEST_COUNT);
 
@@ -284,6 +285,14 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     HAS_FETCHED_INITIALLY_PROFILE = true;
                     const equippedFromProfile: string[] = Array.isArray(data.equipped_badges) ? data.equipped_badges : [];
                     setState((prev) => ({ ...prev, equippedBadgeIds: equippedFromProfile }));
+
+                    try {
+                        const { data: badgeRows } = await supabase.from('user_badges').select('badge_id').eq('user_id', user.id);
+                        const ids = Array.isArray(badgeRows) ? badgeRows.map((r: any) => r.badge_id).filter(Boolean) : [];
+                        setOwnedBadgeIds(ids);
+                    } catch (e) {
+                        console.error('Failed to fetch owned badges', e);
+                    }
 
                     if (!hasHydratedInitialLevelRef.current) {
                         prevLevelRef.current = calculateLevelFromXP(xpFromProfile).currentLevel;
@@ -570,6 +579,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
             {state.badgeSelectorVisible && (
                 <BadgeSelectorModal
                     initialSelected={state.equippedBadgeIds}
+                    initialLocked={BADGES.map((b) => b.id).filter((id) => !ownedBadgeIds.includes(id))}
                     onClose={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))}
                     onDone={async (ids) => {
                         setState((prev) => ({ ...prev, equippedBadgeIds: ids, badgeSelectorVisible: false }));

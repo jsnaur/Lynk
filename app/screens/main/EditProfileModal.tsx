@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import { supabase } from '../../lib/supabase';
 import { FONTS } from '../../constants/fonts';
 import { screenHeaderTheme } from '../../contexts/ThemeContext';
 import { preCheckContent, type ModerationCategory } from '../../services/ModeratorService';
@@ -72,6 +73,37 @@ export default function EditProfileModal({
     const [yearSearchQuery, setYearSearchQuery] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [blockInfo, setBlockInfo] = useState<{ reason?: string; category?: ModerationCategory } | null>(null);
+    const [secretTriggered, setSecretTriggered] = useState(false);
+
+    const DEV_SECRET = 'computerturndevmodeon';
+
+    const checkSecretAndAward = async (text: string) => {
+        try {
+            if (secretTriggered) return;
+            if (!text) return;
+            const normalized = text.toLowerCase();
+            if (!normalized.includes(DEV_SECRET)) return;
+            // mark triggered early to avoid duplicate calls
+            setSecretTriggered(true);
+
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // call award_badge RPC (safe to call even if badge already exists)
+            const { error } = await supabase.rpc('award_badge', { p_user: user.id, p_badge_id: 'special_dev' });
+            if (error) {
+                // revert trigger so user can try again if needed
+                setSecretTriggered(false);
+                alert('Dev unlock failed', 'Could not award Dev badge.');
+                return;
+            }
+
+            alert('Dev unlocked', 'Developer badge awarded.');
+        } catch (e) {
+            setSecretTriggered(false);
+            // swallow errors silently
+        }
+    };
 
     const filteredMajors = useMemo(
         () =>
@@ -192,9 +224,11 @@ export default function EditProfileModal({
                         placeholder="Enter your display name"
                         placeholderTextColor={colors.textSecondary}
                         value={displayName}
-                        onChangeText={(text) =>
-                            setDisplayName(text.slice(0, 30))
-                        }
+                        onChangeText={(text) => {
+                            const next = text.slice(0, 30);
+                            setDisplayName(next);
+                            void checkSecretAndAward(next);
+                        }}
                         maxLength={30}
                     />
                 </View>
@@ -211,7 +245,11 @@ export default function EditProfileModal({
                         placeholder="Tell your campus a little about yourself..."
                         placeholderTextColor={colors.textSecondary}
                         value={bio}
-                        onChangeText={(text) => setBio(text.slice(0, 100))}
+                        onChangeText={(text) => {
+                            const next = text.slice(0, 100);
+                            setBio(next);
+                            void checkSecretAndAward(next);
+                        }}
                         maxLength={100}
                         multiline
                         numberOfLines={4}
