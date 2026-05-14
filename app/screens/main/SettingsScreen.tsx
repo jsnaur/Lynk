@@ -249,11 +249,14 @@ export default function SettingsScreen({ navigation }: any) {
 
   const handleDeleteAccount = async () => {
     try {
-      alert('Account Deleted', 'Your account has been deleted.');
       setDeleteModalVisible(false);
+      const { error } = await supabase.rpc('delete_account');
+      if (error) throw error;
+      await AsyncStorage.removeItem('@lynk/profileDisplayName');
       await supabase.auth.signOut();
-    } catch (error) {
-      alert('Error', 'Failed to delete account.');
+      alert('Account Deleted', 'Your account and all related data have been permanently removed.');
+    } catch (error: any) {
+      alert('Error', error?.message || 'Failed to delete account.');
     }
   };
 
@@ -375,7 +378,7 @@ export default function SettingsScreen({ navigation }: any) {
             iconBgColor={withOpacity(colors.item, 0.12)}
             iconColor={colors.item}
             title="Campus"
-            subtitle="State University"
+            subtitle="Cebu Institute of Technology - University"
             rightContent="lock"
             isLast
             onPress={() => {}}
