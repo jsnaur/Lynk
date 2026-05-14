@@ -292,15 +292,25 @@ function getBadgeSet(totalXP: number, completedQuests: number): string[] {
   return badges.slice(0, 3);
 }
 
-function getReputationLabel(totalXP: number): string {
-  if (totalXP >= 30_000) return 'Campus Legend';
-  if (totalXP >= 15_000) return 'Elite Helper';
-  if (totalXP >= 6_000) return 'Trusted Contributor';
-  if (totalXP >= 1_000) return 'Campus Helper';
-  return 'Rising Helper';
+const REPUTATION_TITLES: Record<number, string> = {
+  1: 'Cub',
+  2: 'Stray',
+  3: 'Prowler',
+  4: 'Hunter',
+  5: 'Wildcat',
+  6: 'Alpha',
+  7: 'Pack Leader',
+  8: 'Apex',
+  9: 'Teknoy Sidekick',
+  10: 'Lynk Master',
+};
+
+function getReputationTitle(level: number): string {
+  const clamped = Math.max(1, Math.min(10, level));
+  return REPUTATION_TITLES[clamped];
 }
 
-const XP_THRESHOLDS = [0, 1000, 3000, 6000, 10000, 15000, 22000, 31000, 42000, 55000];
+const XP_THRESHOLDS = [0, 200, 400, 600, 800, 1000, 1500, 2500, 3000, 50000];
 
 function calculateLevelFromXP(totalXP: number) {
   let currentLevel = 1;
@@ -1052,19 +1062,51 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
     const { data: leaderboardData } = await supabase
       .from('leaderboard')
-      .select('rank, completed_quests, total_xp')
+      .select('total_xp')
       .eq('id', targetUserId)
       .maybeSingle();
 
-    let fallbackRank: number | null = null;
-    if (!leaderboardData) {
-      const { data: rankData } = await supabase.rpc('get_user_leaderboard_rank', { user_id: targetUserId });
-      fallbackRank = rankData?.rank ?? null;
+    const totalXP = Number(leaderboardData?.total_xp ?? profileData.total_xp ?? 0);
+    const levelData = calculateLevelFromXP(totalXP);
+
+    // Global rank = number of users in leaderboard with strictly higher total_xp, + 1.
+    const { count: higherXPCount } = await supabase
+      .from('leaderboard')
+      .select('id', { count: 'exact', head: true })
+      .gt('total_xp', totalXP);
+    const rank = (higherXPCount ?? 0) + 1;
+
+    // Mirror ProfileDashboardScreen.fetchQuestCounts: union of quests owned/accepted by
+    // the user plus quest_participants joins. Status "completed" or "resolved" counts.
+    const { data: mainQuests } = await supabase
+      .from('quests')
+      .select('id, status')
+      .or(`user_id.eq.${targetUserId},accepted_by.eq.${targetUserId}`);
+    const { data: partData } = await supabase
+      .from('quest_participants')
+      .select('quest_id')
+      .eq('user_id', targetUserId)
+      .in('status', ['accepted', 'completed', 'failed', 'resolved']);
+
+    const partQuestIds = partData?.map((p) => p.quest_id) || [];
+    let extraQuests: { id: string; status: string }[] = [];
+    if (partQuestIds.length > 0) {
+      const existingIds = mainQuests?.map((q) => q.id) || [];
+      const missingIds = partQuestIds.filter((id) => !existingIds.includes(id));
+      if (missingIds.length > 0) {
+        const { data: extra } = await supabase.from('quests').select('id, status').in('id', missingIds);
+        if (extra) extraQuests = extra;
+      }
     }
 
-    const totalXP = Number(leaderboardData?.total_xp ?? profileData.total_xp ?? 0);
-    const completedQuests = Number(leaderboardData?.completed_quests ?? 0);
-    const levelData = calculateLevelFromXP(totalXP);
+    const allQuests = [...(mainQuests || []), ...extraQuests];
+    const seen = new Set<string>();
+    let completedQuests = 0;
+    allQuests.forEach((q) => {
+      if (seen.has(q.id)) return;
+      seen.add(q.id);
+      if (q.status === 'completed' || q.status === 'resolved') completedQuests++;
+    });
 
     setSelectedProfile({
       id: profileData.id,
@@ -1073,11 +1115,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       major: profileData.major,
       graduationYear: profileData.graduation_year,
       bio: profileData.bio,
-      rank: leaderboardData?.rank ?? fallbackRank,
+      rank,
       totalXP,
       completedQuests,
       badges: Array.isArray(profileData.equipped_badges) ? profileData.equipped_badges : [],
-      reputation: getReputationLabel(totalXP),
+      reputation: getReputationTitle(levelData.currentLevel),
       level: levelData.currentLevel,
     });
   };
@@ -1088,23 +1130,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
     if (commentArg) setSelectedComment(commentArg);
 
-    const initialTotalXP = Number(currentUserProfile?.total_xp ?? 0);
+    const isSelf = target.userId === currentUserId;
+    const initialTotalXP = isSelf ? Number(currentUserProfile?.total_xp ?? 0) : 0;
     const initialLevelData = calculateLevelFromXP(initialTotalXP);
 
     setSelectedProfile({
       id: target.userId,
-      displayName: target.author === 'You'
-        ? (currentUserProfile?.display_name || 'You')
+      displayName: isSelf
+        ? (currentUserProfile?.display_name || target.author || 'You')
         : target.author,
       accessories: target.accessories,
-      major: currentUserProfile?.major || null,
-      graduationYear: currentUserProfile?.graduation_year || null,
-      bio: currentUserProfile?.bio || null,
+      major: isSelf ? (currentUserProfile?.major || null) : null,
+      graduationYear: isSelf ? (currentUserProfile?.graduation_year || null) : null,
+      bio: isSelf ? (currentUserProfile?.bio || null) : null,
       rank: null,
       totalXP: initialTotalXP,
       completedQuests: 0,
       badges: [],
-      reputation: getReputationLabel(initialTotalXP),
+      reputation: getReputationTitle(initialLevelData.currentLevel),
       level: initialLevelData.currentLevel,
     });
     setActionsVisible(false);
@@ -1131,7 +1174,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       totalXP: initialTotalXP,
       completedQuests: 0,
       badges: [],
-      reputation: getReputationLabel(initialTotalXP),
+      reputation: getReputationTitle(initialLevelData.currentLevel),
       level: initialLevelData.currentLevel,
     });
     setProfilePreviewVisible(true);
@@ -1527,7 +1570,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 <View style={styles.previewSectionHeaderRow}>
                   <Text style={styles.previewSectionTitle}>Reputation</Text>
                   <View style={styles.previewRankChip}>
-                    <Text style={styles.previewRankChipText}>{selectedProfile?.reputation || 'Campus Helper'}</Text>
+                    <Text style={styles.previewRankChipText}>{selectedProfile?.reputation || getReputationTitle(levelData.currentLevel)}</Text>
                   </View>
                 </View>
                 <View style={styles.previewKarmaLabelRow}>
@@ -2135,7 +2178,7 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: 14,
     gap: 12,
-    marginBottom: 86,
+    marginBottom: 140,
   },
   previewHeader: {
     flexDirection: 'row',
