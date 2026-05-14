@@ -30,14 +30,16 @@ type BadgeSelectorModalProps = {
     onClose?: () => void;
     onDone?: (selectedBadges: string[]) => void;
     maxBadges?: number;
+    initialSelected?: string[];
 };
 
-const BADGE_DATA: Badge[] = BADGES.map((b) => ({
-    id: b.id,
-    label: b.name,
-    category: b.category,
-    state: 'default',
-}));
+const buildBadgeData = (initialSelected: string[] = []): Badge[] =>
+    BADGES.map((b) => ({
+        id: b.id,
+        label: b.name,
+        category: b.category,
+        state: initialSelected.includes(b.id) ? 'selected' : 'default',
+    }));
 
 const getBadgeImage = (id: string) => getBadgeById(id)?.icon;
 
@@ -106,11 +108,11 @@ function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) =>
     );
 }
 
-export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3 }: BadgeSelectorModalProps) {
+export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, initialSelected }: BadgeSelectorModalProps) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    const [badges, setBadges] = useState(BADGE_DATA);
+    const [badges, setBadges] = useState(() => buildBadgeData(initialSelected));
     const panY = useRef(new Animated.Value(0)).current;
     const selectedCount = badges.filter((b) => b.state === 'selected').length;
 
