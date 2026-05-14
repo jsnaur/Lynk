@@ -30,13 +30,11 @@ import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
 const QuestIcon = require("../../../assets/ProfileAssets/Scroll_Icon.png");
 
 import BadgeSelectorModal from './BadgeSelectorModal';
+import { getBadgeById } from '../../constants/badges';
 import EditProfileModal from './EditProfileModal';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 const ASSETS = {
-    badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
-    badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
-    badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
     experience: require("../../../assets/ProfileAssets/Star_Icon.png"),
     trophy: require("../../../assets/ProfileAssets/Trophy_Icon.png"),
     token: require("../../../assets/ProfileAssets/Coin_Icon.png"),
@@ -50,7 +48,10 @@ type ProfileDashboardScreenProps = {
 type ProfileState = {
     badgeSelectorVisible: boolean;
     editProfileVisible?: boolean;
+    equippedBadgeIds: string[];
 };
+
+const EQUIPPED_BADGE_SLOTS = 3;
 
 type LevelUpAlertBodyProps = {
     level: number;
@@ -131,6 +132,16 @@ function BadgeSlot({ image, label }: { image: any; label?: string }) {
     );
 }
 
+function EmptyBadgeSlot({ index, onPress }: { index: number; onPress?: () => void }) {
+    const { colors, theme } = useTheme();
+    const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+    return (
+        <Pressable style={[styles.badgeSlot, styles.badgeSlotEmpty]} onPress={onPress}>
+            <Text style={styles.badgeSlotEmptyText}>{index + 1}</Text>
+        </Pressable>
+    );
+}
+
 function LeaderboardCard({ onPress }: { onPress: () => void }) {
     const { colors, theme } = useTheme();
     const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
@@ -178,7 +189,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const [initialLoading, setInitialLoading] = useState<boolean>(true);
     const [totalXP, setTotalXP] = useState<number>(0);
     const [levelUpAlertLevel, setLevelUpAlertLevel] = useState<number | null>(null);
-    const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false });
+    const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false, equippedBadgeIds: [] });
     const [activeQuestCount, setActiveQuestCount] = useState<number>(0);
     const [completedQuestCount, setCompletedQuestCount] = useState<number>(0);
 
@@ -419,16 +430,31 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     <View style={styles.badgesBlock}>
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Badges</Text>
-                            <Pressable style={styles.setLink} onPress={openBadgeSelector}>
-                                <Text style={styles.setLinkText}>Set</Text>
+                            {state.equippedBadgeIds.length > 0 && (
+                                <Pressable style={styles.setLink} onPress={openBadgeSelector}>
+                                    <Text style={styles.setLinkText}>Edit</Text>
+                                    <Ionicons name="chevron-forward" size={14} color={colors.favor} />
+                                </Pressable>
+                            )}
+                        </View>
+                        {state.equippedBadgeIds.length === 0 ? (
+                            <Pressable style={styles.badgeEmptyStrip} onPress={openBadgeSelector}>
+                                <Ionicons name="ribbon-outline" size={16} color={colors.textSecondary} />
+                                <Text style={styles.badgeEmptyStripText}>Choose up to 3 badges to show off</Text>
                                 <Ionicons name="chevron-forward" size={14} color={colors.favor} />
                             </Pressable>
-                        </View>
-                        <View style={styles.badgeRow}>
-                            <BadgeSlot image={ASSETS.badgeShield} label="Guardian" />
-                            <BadgeSlot image={ASSETS.badgeMedal} label="Achiever" />
-                            <BadgeSlot image={ASSETS.badgeHat} label="Scholar" />
-                        </View>
+                        ) : (
+                            <View style={styles.badgeRow}>
+                                {Array.from({ length: EQUIPPED_BADGE_SLOTS }).map((_, index) => {
+                                    const badgeId = state.equippedBadgeIds[index];
+                                    const badge = badgeId ? getBadgeById(badgeId) : undefined;
+                                    if (!badge) {
+                                        return <EmptyBadgeSlot key={index} index={index} onPress={openBadgeSelector} />;
+                                    }
+                                    return <BadgeSlot key={badge.id} image={badge.icon} label={badge.name} />;
+                                })}
+                            </View>
+                        )}
                     </View>
 
                     <View style={styles.reputationBlock}>
@@ -491,7 +517,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
             <BottomNav activeTab="Profile" onTabPress={onTabPress} />
 
-            {state.badgeSelectorVisible && <BadgeSelectorModal onClose={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))} onDone={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))} />}
+            {state.badgeSelectorVisible && (
+                <BadgeSelectorModal
+                    initialSelected={state.equippedBadgeIds}
+                    onClose={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))}
+                    onDone={(ids) => setState((prev) => ({ ...prev, equippedBadgeIds: ids, badgeSelectorVisible: false }))}
+                />
+            )}
             {state.editProfileVisible && (
                 <EditProfileModal
                     initialData={{ displayName: displayName === 'Anonymous' ? '' : displayName, bio: profile?.bio || '', major: profile?.major || 'Undeclared', graduationYear: gradYearDisplay }}
@@ -537,6 +569,10 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     setLinkText: { fontSize: 14, fontWeight: '400', color: colors.favor },
     badgeRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -4 },
     badgeSlot: { flex: 1, height: 104, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginHorizontal: 4, paddingVertical: 12 },
+    badgeSlotEmpty: { backgroundColor: colors.bg, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed' },
+    badgeSlotEmptyText: { fontSize: 16, fontWeight: '400', color: colors.border },
+    badgeEmptyStrip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
+    badgeEmptyStripText: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.textSecondary },
     badgeImage: { width: 50, height: 50, marginBottom: 6 },
     badgeLabelText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' },
     reputationBlock: { paddingHorizontal: SPACING.xxl, paddingVertical: SPACING.xl, gap: 14 },
