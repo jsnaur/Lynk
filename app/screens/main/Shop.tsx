@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import BottomNav, { MainTab } from '../../components/BottomNav';
 import Button from '../../components/buttons/Button';
-import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot, getAccessoryPreviewStyle } from '../../constants/accessories';
+import { ACCESSORY_ITEMS, AccessoryItem, DEFAULT_OWNED_IDS, ALL_SLOTS_Z_ORDER, AvatarSlot, getAccessoryPreviewStyle, getAccessoryById, getAvatarGenderFromAccessories, isAccessoryAllowedForGender } from '../../constants/accessories';
 import { withOpacity } from '../../constants/colors';
 import ItemsDetailsSheet from './Items_detailsSheet';
 import { useTokenBalance } from '../../contexts/TokenContext';
@@ -45,11 +45,6 @@ const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
   Body: 'body-masc-a', HairBase: 'hairb-flat-m', HairFringe: 'hairf-chill-m', Eyes: 'eyes-default', Mouth: 'mouth-neutral', Top: 'top-cit-m', Bottom: 'bot-cit-m',
 };
 
-function getAccessoryById(accessoryId?: string | null) {
-  if (!accessoryId) return undefined;
-  return ACCESSORY_ITEMS.find((item) => item?.id === accessoryId);
-}
-
 function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string>> {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value as Partial<Record<AvatarSlot, string>>;
   return DEFAULT_AVATAR_ACCESSORIES;
@@ -62,7 +57,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
   const navigation = useNavigation<any>();
-  const { balance } = useTokenBalance();
+  const { balance, refreshBalance } = useTokenBalance();
   const { alert } = useCustomAlert();
   const [filter, setFilter] = useState<ShopCategory>('all');
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
@@ -105,16 +100,19 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
   const columnWidth = useMemo(() => (Dimensions.get('window').width - H_PADDING * 2 - GRID_GAP * 2) / 3, []);
 
+  const currentGender = useMemo(() => getAvatarGenderFromAccessories(appliedAccessories), [appliedAccessories]);
+
   const visibleItems = useMemo(() => {
     const sellableItems = ACCESSORY_ITEMS.filter((item) => item.slot !== 'Body' && item.slot in SLOT_TO_CATEGORY);
-    const filteredItems = filter === 'all' ? sellableItems : sellableItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
+    const genderFilteredItems = sellableItems.filter((item) => isAccessoryAllowedForGender(item, currentGender));
+    const filteredItems = filter === 'all' ? genderFilteredItems : genderFilteredItems.filter((item) => SLOT_TO_CATEGORY[item.slot] === filter);
     return [...filteredItems].sort((left, right) => {
       const leftOwned = ownedIds.has(left.id);
       const rightOwned = ownedIds.has(right.id);
       if (leftOwned === rightOwned) return 0;
       return leftOwned ? 1 : -1;
     });
-  }, [filter, ownedIds]);
+  }, [filter, ownedIds, currentGender]);
 
   const completePurchase = useCallback(async (item: AccessoryItem) => {
     if (ownedIds.has(item.id)) return;
@@ -129,8 +127,64 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       return;
     }
     setOwnedIds((prev) => new Set(prev).add(item.id));
+    await refreshBalance();
     void appSoundManager.play(AppSoundCategory.PurchaseSuccess);
-  }, [ownedIds]);
+  }, [ownedIds, refreshBalance, alert]);
+
+  const equipItem = useCallback(async (item: AccessoryItem) => {
+    if (!ownedIds.has(item.id)) {
+      alert('Item locked', 'Purchase this item before equipping it.');
+      return;
+    }
+
+    if (item.slot !== 'Body' && !isAccessoryAllowedForGender(item, currentGender)) {
+      alert('Wrong gender', 'This item can only be equipped with the matching body type.');
+      return;
+    }
+
+    const previousAccessory = appliedAccessories[item.slot] ?? '';
+    const nextAccessories = { ...appliedAccessories, [item.slot]: item.id };
+
+    setAppliedAccessories(nextAccessories);
+    void appSoundManager.play(AppSoundCategory.ItemEquip, { debounceMs: 0 });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setAppliedAccessories((current) => {
+        const next = { ...current };
+        if (previousAccessory) {
+          next[item.slot] = previousAccessory;
+        } else {
+          delete next[item.slot];
+        }
+        return next;
+      });
+      alert('Error', 'You need to be signed in to equip items.');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ equipped_accessories: nextAccessories })
+      .eq('id', user.id);
+
+    if (error) {
+      console.error('Failed to equip item:', error);
+      setAppliedAccessories((current) => {
+        const next = { ...current };
+        if (previousAccessory) {
+          next[item.slot] = previousAccessory;
+        } else {
+          delete next[item.slot];
+        }
+        return next;
+      });
+      alert('Equip failed', 'Please try again.');
+    }
+  }, [alert, appliedAccessories, ownedIds, currentGender]);
 
   return (
     <View style={styles.root}>
@@ -232,7 +286,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       </SafeAreaView>
       <BottomNav activeTab="Shop" onTabPress={onTabPress} />
       {detailItem && (
-        <ItemsDetailsSheet visible={!!detailItem} item={{ id: detailItem.id, name: detailItem.name, price: detailItem.price, category: SLOT_TO_CATEGORY[detailItem.slot] as Exclude<ShopCategory, 'all'>, sprite: 0 }} balance={balance} owned={ownedIds.has(detailItem.id)} equipped={false} Sprite={detailItem.Sprite as any} onClose={() => setDetailItem(null)} onPurchase={() => { if (detailItem) void completePurchase(detailItem); }} onEquip={() => {}} />
+        <ItemsDetailsSheet visible={!!detailItem} item={{ id: detailItem.id, name: detailItem.name, price: detailItem.price, category: SLOT_TO_CATEGORY[detailItem.slot] as Exclude<ShopCategory, 'all'>, sprite: 0, slot: detailItem.slot }} balance={balance} owned={ownedIds.has(detailItem.id)} equipped={appliedAccessories[detailItem.slot] === detailItem.id} Sprite={detailItem.Sprite as any} onClose={() => setDetailItem(null)} onPurchase={() => { if (detailItem) void completePurchase(detailItem); }} onEquip={() => { if (detailItem) void equipItem(detailItem); }} />
       )}
     </View>
   );
