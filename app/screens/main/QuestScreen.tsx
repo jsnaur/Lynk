@@ -17,6 +17,7 @@ import { getModerationUI, subscribeModerationStatus } from '../../services/Moder
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
 import { FONTS } from '../../constants/fonts';
+import { registerQuestScreenCacheInvalidator } from './screenCacheRegistry';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -48,6 +49,8 @@ export function invalidateQuestScreenCache() {
   CACHED_HISTORY_QUESTS = [];
   HAS_FETCHED_INITIALLY_QUESTS = false;
 }
+
+registerQuestScreenCacheInvalidator(invalidateQuestScreenCache);
 
 function QuestCard({ item, onPress, onResolve, variant = 'active' }: { item: QuestItem; onPress?: () => void; onResolve?: () => void; variant?: 'active' | 'history'; }) {
   const { colors, theme } = useTheme();

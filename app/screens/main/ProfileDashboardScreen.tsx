@@ -33,6 +33,7 @@ import BadgeSelectorModal from './BadgeSelectorModal';
 import { getBadgeById } from '../../constants/badges';
 import EditProfileModal from './EditProfileModal';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { registerProfileCacheInvalidator } from './screenCacheRegistry';
 
 const ASSETS = {
     experience: require("../../../assets/ProfileAssets/Star_Icon.png"),
@@ -67,6 +68,8 @@ export function invalidateProfileCache() {
     CACHED_COMPLETED_QUEST_COUNT = 0;
     HAS_FETCHED_INITIALLY_PROFILE = false;
 }
+
+registerProfileCacheInvalidator(invalidateProfileCache);
 
 type LevelUpAlertBodyProps = {
     level: number;
@@ -130,8 +133,8 @@ const REPUTATION_TITLES: Record<number, string> = {
     6: 'Alpha',
     7: 'Pack Leader',
     8: 'Apex',
-    9: 'Legend of the Pack',
-    10: 'Wildcat King',
+    9: 'Teknoy Sidekick',
+    10: 'Lynk Master',
 };
 
 function getReputationTitle(level: number) {
@@ -217,7 +220,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
     const { alert } = useCustomAlert();
     const { balance, refreshBalance } = useTokenBalance();
-    
+
     const [profile, setProfile] = useState<any>(CACHED_PROFILE);
     const [initialLoading, setInitialLoading] = useState<boolean>(!HAS_FETCHED_INITIALLY_PROFILE);
     const [totalXP, setTotalXP] = useState<number>(CACHED_TOTAL_XP);
@@ -373,7 +376,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
 
         try {
             void appSoundManager.play(AppSoundCategory.LevelUp, { force: true, debounceMs: 0 });
-        } catch (e) {}
+        } catch (e) { }
 
         alert(
             'Level Up!',
@@ -418,7 +421,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const currentLevel = levelData.currentLevel;
     const nextLevel = Math.min(currentLevel + 1, 10);
     const karmaProgress = levelData.progressPercent;
-    
+
     const profileAccessories = normalizeAccessories(profile?.equipped_accessories);
     const gradYearDisplay = profile?.graduation_year || profile?.graduationYear || '2027';
     const shortYear = gradYearDisplay.slice(-2);
@@ -444,117 +447,117 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         <ProfileSkeleton />
                     ) : (
                         <>
-                    <View style={styles.identityBlock}>
-                        <View style={styles.identityRow}>
-                            <View style={styles.avatarColumn}>
-                                <View style={styles.avatarFrame}>
-                                    {!profile ? (
-                                        <View style={styles.loadingAvatarIconWrap}>
-                                            <Ionicons name="person" size={42} color={colors.textPrimary} />
+                            <View style={styles.identityBlock}>
+                                <View style={styles.identityRow}>
+                                    <View style={styles.avatarColumn}>
+                                        <View style={styles.avatarFrame}>
+                                            {!profile ? (
+                                                <View style={styles.loadingAvatarIconWrap}>
+                                                    <Ionicons name="person" size={42} color={colors.textPrimary} />
+                                                </View>
+                                            ) : (
+                                                <LayeredAvatar accessories={profileAccessories} size={95} scale={1} translateY={0} />
+                                            )}
                                         </View>
-                                    ) : (
-                                        <LayeredAvatar accessories={profileAccessories} size={95} scale={1} translateY={0} />
+                                    </View>
+
+                                    <View style={styles.identityTextColumn}>
+                                        <View style={styles.nameRow}>
+                                            <Text style={styles.nameText}>{displayName}</Text>
+                                            <VerifiedIcon width={18} height={18} />
+                                        </View>
+                                        <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
+                                        <Text style={styles.bioText}>{bioDisplay}</Text>
+                                        <Pressable onPress={openEditProfile}>
+                                            <Text style={styles.editProfileText}>Edit Profile</Text>
+                                        </Pressable>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.badgesBlock}>
+                                <View style={styles.blockHeaderRow}>
+                                    <Text style={styles.blockTitle}>Badges</Text>
+                                    {state.equippedBadgeIds.length > 0 && (
+                                        <Pressable style={styles.setLink} onPress={openBadgeSelector}>
+                                            <Text style={styles.setLinkText}>Edit</Text>
+                                            <Ionicons name="chevron-forward" size={14} color={colors.favor} />
+                                        </Pressable>
                                     )}
                                 </View>
+                                {state.equippedBadgeIds.length === 0 ? (
+                                    <Pressable style={styles.badgeEmptyStrip} onPress={openBadgeSelector}>
+                                        <Ionicons name="ribbon-outline" size={16} color={colors.textSecondary} />
+                                        <Text style={styles.badgeEmptyStripText}>Choose up to 3 badges to show off</Text>
+                                        <Ionicons name="chevron-forward" size={14} color={colors.favor} />
+                                    </Pressable>
+                                ) : (
+                                    <View style={styles.badgeRow}>
+                                        {Array.from({ length: EQUIPPED_BADGE_SLOTS }).map((_, index) => {
+                                            const badgeId = state.equippedBadgeIds[index];
+                                            const badge = badgeId ? getBadgeById(badgeId) : undefined;
+                                            if (!badge) {
+                                                return <EmptyBadgeSlot key={index} index={index} onPress={openBadgeSelector} />;
+                                            }
+                                            return <BadgeSlot key={badge.id} image={badge.icon} label={badge.name} />;
+                                        })}
+                                    </View>
+                                )}
                             </View>
 
-                            <View style={styles.identityTextColumn}>
-                                <View style={styles.nameRow}>
-                                    <Text style={styles.nameText}>{displayName}</Text>
-                                    <VerifiedIcon width={18} height={18} />
+                            <View style={styles.reputationBlock}>
+                                <View style={styles.blockHeaderRow}>
+                                    <Text style={styles.blockTitle}>Reputation</Text>
+                                    <View style={styles.rankChip}>
+                                        <Text style={styles.rankChipText}>{getReputationTitle(currentLevel)}</Text>
+                                    </View>
                                 </View>
-                                <Text style={styles.subtitle}>{majorDisplay} · Class of '{shortYear}</Text>
-                                <Text style={styles.bioText}>{bioDisplay}</Text>
-                                <Pressable onPress={openEditProfile}>
-                                    <Text style={styles.editProfileText}>Edit Profile</Text>
+
+                                <View style={styles.karmaLabelRow}>
+                                    <View style={styles.karmaTitleCluster}>
+                                        <Image source={ASSETS.experience} style={styles.karmaIcon} />
+                                        <Text style={styles.karmaTitle}>EXPERIENCE</Text>
+                                    </View>
+                                    <Text style={styles.karmaValueText}>{levelData.xpInCurrentLevel} / {levelData.xpNeededForNextLevel}</Text>
+                                </View>
+
+                                <View style={styles.progressTrack}>
+                                    <LinearGradient colors={[colors.xp, colors.favor]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[styles.progressFill, { width: `${karmaProgress * 100}%` }]} />
+                                </View>
+
+                                <View style={styles.levelRow}>
+                                    <Text style={styles.levelRangeText}>LVL {currentLevel}</Text>
+                                    <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
+                                </View>
+
+                                <LeaderboardCard onPress={openLeaderboard} />
+
+                                <Pressable style={styles.tokenCard} onPress={openShop}>
+                                    <View style={styles.tokenLeftCluster}>
+                                        <Image source={ASSETS.token} style={styles.tokenIcon} />
+                                        <View>
+                                            <Text style={styles.tokenTitle}>Token Balance</Text>
+                                            <Text style={styles.tokenSubtitle}>Spend in the Shop</Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.tokenRightCluster}>
+                                        <Text style={styles.tokenValue}>{balance}</Text>
+                                        <Text style={styles.tokenUnit}>TKN</Text>
+                                        <Ionicons name="chevron-forward" size={16} color={colors.token} />
+                                    </View>
+                                </Pressable>
+
+                                <Pressable style={styles.questCard} onPress={openQuest}>
+                                    <View style={styles.questLeftCluster}>
+                                        <Image source={QuestIcon} style={styles.questIcon} />
+                                        <View>
+                                            <Text style={styles.questTitle}>My Quests</Text>
+                                            <Text style={styles.questSubtitle}>{activeQuestCount} active · {completedQuestCount} completed</Text>
+                                        </View>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={16} color={colors.token} />
                                 </Pressable>
                             </View>
-                        </View>
-                    </View>
-
-                    <View style={styles.badgesBlock}>
-                        <View style={styles.blockHeaderRow}>
-                            <Text style={styles.blockTitle}>Badges</Text>
-                            {state.equippedBadgeIds.length > 0 && (
-                                <Pressable style={styles.setLink} onPress={openBadgeSelector}>
-                                    <Text style={styles.setLinkText}>Edit</Text>
-                                    <Ionicons name="chevron-forward" size={14} color={colors.favor} />
-                                </Pressable>
-                            )}
-                        </View>
-                        {state.equippedBadgeIds.length === 0 ? (
-                            <Pressable style={styles.badgeEmptyStrip} onPress={openBadgeSelector}>
-                                <Ionicons name="ribbon-outline" size={16} color={colors.textSecondary} />
-                                <Text style={styles.badgeEmptyStripText}>Choose up to 3 badges to show off</Text>
-                                <Ionicons name="chevron-forward" size={14} color={colors.favor} />
-                            </Pressable>
-                        ) : (
-                            <View style={styles.badgeRow}>
-                                {Array.from({ length: EQUIPPED_BADGE_SLOTS }).map((_, index) => {
-                                    const badgeId = state.equippedBadgeIds[index];
-                                    const badge = badgeId ? getBadgeById(badgeId) : undefined;
-                                    if (!badge) {
-                                        return <EmptyBadgeSlot key={index} index={index} onPress={openBadgeSelector} />;
-                                    }
-                                    return <BadgeSlot key={badge.id} image={badge.icon} label={badge.name} />;
-                                })}
-                            </View>
-                        )}
-                    </View>
-
-                    <View style={styles.reputationBlock}>
-                        <View style={styles.blockHeaderRow}>
-                            <Text style={styles.blockTitle}>Reputation</Text>
-                            <View style={styles.rankChip}>
-                                <Text style={styles.rankChipText}>{getReputationTitle(currentLevel)}</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.karmaLabelRow}>
-                            <View style={styles.karmaTitleCluster}>
-                                <Image source={ASSETS.experience} style={styles.karmaIcon} />
-                                <Text style={styles.karmaTitle}>EXPERIENCE</Text>
-                            </View>
-                            <Text style={styles.karmaValueText}>{levelData.xpInCurrentLevel} / {levelData.xpNeededForNextLevel}</Text>
-                        </View>
-
-                        <View style={styles.progressTrack}>
-                            <LinearGradient colors={[colors.xp, colors.favor]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[styles.progressFill, { width: `${karmaProgress * 100}%` }]} />
-                        </View>
-
-                        <View style={styles.levelRow}>
-                            <Text style={styles.levelRangeText}>LVL {currentLevel}</Text>
-                            <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
-                        </View>
-
-                        <LeaderboardCard onPress={openLeaderboard} />
-
-                        <Pressable style={styles.tokenCard} onPress={openShop}>
-                            <View style={styles.tokenLeftCluster}>
-                                <Image source={ASSETS.token} style={styles.tokenIcon} />
-                                <View>
-                                    <Text style={styles.tokenTitle}>Token Balance</Text>
-                                    <Text style={styles.tokenSubtitle}>Spend in the Shop</Text>
-                                </View>
-                            </View>
-                            <View style={styles.tokenRightCluster}>
-                                <Text style={styles.tokenValue}>{balance}</Text>
-                                <Text style={styles.tokenUnit}>TKN</Text>
-                                <Ionicons name="chevron-forward" size={16} color={colors.token} />
-                            </View>
-                        </Pressable>
-
-                        <Pressable style={styles.questCard} onPress={openQuest}>
-                            <View style={styles.questLeftCluster}>
-                                <Image source={QuestIcon} style={styles.questIcon} />
-                                <View>
-                                    <Text style={styles.questTitle}>My Quests</Text>
-                                    <Text style={styles.questSubtitle}>{activeQuestCount} active · {completedQuestCount} completed</Text>
-                                </View>
-                            </View>
-                            <Ionicons name="chevron-forward" size={16} color={colors.token} />
-                        </Pressable>
-                    </View>
                         </>
                     )}
                 </ScrollView>
@@ -633,7 +636,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     progressFill: { height: '100%', borderRadius: 5 },
     levelRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 },
     levelRangeText: { fontSize: 8, fontWeight: '700', color: colors.textSecondary, fontFamily: 'monospace' },
-   
+
     //Leaderboard Card
     leaderboardCard: { height: 64, borderRadius: 14, overflow: 'hidden' },
     leaderboardGradientBorder: { flex: 1, padding: 1, borderRadius: 14 },
@@ -645,7 +648,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     leaderboardSubtitle: { fontSize: 11, color: colors.textSecondary },
     leaderboardRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     leaderboardCta: { fontSize: 13, fontWeight: '600', color: colors.token },
-   
+
     // Token Card
     tokenCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.token, backgroundColor: withOpacity(colors.token, 0.12), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     tokenLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -655,7 +658,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     tokenRightCluster: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     tokenValue: { fontSize: 22, fontWeight: '700', color: colors.token },
     tokenUnit: { fontSize: 13, color: colors.textSecondary },
-   
+
     // Quest Card
     questCard: { height: 64, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.xp, backgroundColor: withOpacity(colors.xp, 0.12), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     questLeftCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
