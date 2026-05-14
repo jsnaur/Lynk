@@ -101,12 +101,14 @@ function SwipeReplyCommentRow({
   comment,
   onReply,
   onOpenActions,
+  onViewProfile,
   parse,
   onImagePress,
 }: {
   comment: UIComment;
   onReply: (comment: UIComment) => void;
   onOpenActions: (comment: UIComment) => void;
+  onViewProfile: (comment: UIComment) => void;
   parse: (text: string) => { repliedToName: string; replyPreview: string; body: string };
   onImagePress: (url: string) => void;
 }) {
@@ -185,7 +187,7 @@ function SwipeReplyCommentRow({
         style={[styles.commentRow, { transform: [{ translateX }] }]}
         {...panResponder.panHandlers}
       >
-        <Pressable style={styles.commentAvatarWrap} onPress={() => onOpenActions(comment)} hitSlop={8}>
+        <Pressable style={styles.commentAvatarWrap} onPress={() => onViewProfile(comment)} hitSlop={8}>
           <LayeredAvatar accessories={comment.accessories} size={28} scale={1.4} translateY={2} />
         </Pressable>
 
@@ -195,7 +197,7 @@ function SwipeReplyCommentRow({
           delayLongPress={250}
         >
           <View style={styles.rowBetween}>
-            <Pressable onPress={() => onOpenActions(comment)} hitSlop={8}>
+            <Pressable onPress={() => onViewProfile(comment)} hitSlop={8}>
               <Text style={styles.commentAuthor}>{comment.author}</Text>
             </Pressable>
             <Text style={styles.commentTime}>{comment.time}</Text>
@@ -1080,18 +1082,21 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     });
   };
 
-  const onViewProfile = async () => {
-    if (!selectedComment?.userId) return;
+  const onViewProfile = async (commentArg?: UIComment) => {
+    const target = commentArg ?? selectedComment;
+    if (!target?.userId) return;
+
+    if (commentArg) setSelectedComment(commentArg);
 
     const initialTotalXP = Number(currentUserProfile?.total_xp ?? 0);
     const initialLevelData = calculateLevelFromXP(initialTotalXP);
 
     setSelectedProfile({
-      id: selectedComment.userId,
-      displayName: selectedComment.author === 'You'
+      id: target.userId,
+      displayName: target.author === 'You'
         ? (currentUserProfile?.display_name || 'You')
-        : selectedComment.author,
-      accessories: selectedComment.accessories,
+        : target.author,
+      accessories: target.accessories,
       major: currentUserProfile?.major || null,
       graduationYear: currentUserProfile?.graduation_year || null,
       bio: currentUserProfile?.bio || null,
@@ -1105,7 +1110,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     setActionsVisible(false);
     setProfilePreviewVisible(true);
 
-    await fetchAndSetProfilePreview(selectedComment.userId);
+    await fetchAndSetProfilePreview(target.userId);
   };
 
   const openPosterProfile = async () => {
@@ -1368,6 +1373,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   comment={comment}
                   onReply={beginReply}
                   onOpenActions={openCommentActions}
+                  onViewProfile={onViewProfile}
                   parse={parseReplyEncodedContent}
                   onImagePress={setFullscreenImage}
                 />
@@ -1440,11 +1446,11 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
         <Modal visible={actionsVisible} animationType="fade" transparent onRequestClose={closeCommentActions}>
           <Pressable style={styles.actionBackdrop} onPress={closeCommentActions}>
             <Pressable style={styles.actionBubble} onPress={() => {}}>
-              <Pressable style={styles.actionRow} onPress={onViewProfile}>
+              <Pressable style={styles.actionRow} onPress={() => onViewProfile()}>
                 <Ionicons name="person-circle-outline" size={18} color={colors.favor} />
                 <Text style={styles.actionText}>View Profile</Text>
               </Pressable>
-              
+
               {selectedComment?.userId === currentUserId && (
                 <>
                   <View style={styles.actionDivider} />
@@ -1454,12 +1460,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   </Pressable>
                 </>
               )}
-
-              <View style={styles.actionDivider} />
-              <View style={styles.actionRowDisabled}>
-                <Ionicons name="flag-outline" size={18} color={colors.textSecondary} />
-                <Text style={styles.actionTextDisabled}>Report (Soon)</Text>
-              </View>
             </Pressable>
           </Pressable>
         </Modal>
