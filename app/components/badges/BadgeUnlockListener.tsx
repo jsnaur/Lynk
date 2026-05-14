@@ -4,11 +4,12 @@ import { supabase } from '../../lib/supabase';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { FONTS } from '../../constants/fonts';
+import { getBadgeById } from '../../constants/badges';
 
-// Placeholder asset until per-badge artwork is available.
-const PLACEHOLDER_BADGE = require('../../../assets/ProfileAssets/BadgeShield.png');
+// Fallback when an unlocked badge id is not yet present in the catalog.
+const FALLBACK_BADGE_ICON = require('../../../assets/ProfileAssets/BadgeShield.png');
 
-type QueuedBadge = { name: string; description: string };
+type QueuedBadge = { name: string; description: string; icon: any };
 
 export default function BadgeUnlockListener() {
   const { alert } = useCustomAlert();
@@ -34,7 +35,7 @@ export default function BadgeUnlockListener() {
         },
       ],
       <View style={styles.body}>
-        <Image source={PLACEHOLDER_BADGE} style={styles.badge} resizeMode="contain" />
+        <Image source={next.icon} style={styles.badge} resizeMode="contain" />
         <Text style={[styles.name, { color: colors.textPrimary }]}>{next.name}</Text>
         <Text style={[styles.desc, { color: colors.textSecondary }]}>{next.description}</Text>
       </View>,
@@ -62,13 +63,28 @@ export default function BadgeUnlockListener() {
           async (payload: any) => {
             const badgeId = payload?.new?.badge_id;
             if (!badgeId) return;
+            const catalogEntry = getBadgeById(badgeId);
+            if (catalogEntry) {
+              queueRef.current.push({
+                name: catalogEntry.name,
+                description: catalogEntry.description,
+                icon: catalogEntry.icon,
+              });
+              showNext();
+              return;
+            }
+            // Catalog miss: fall back to the DB row so unknown badges still surface.
             const { data, error } = await supabase
               .from('badges')
               .select('name, description')
               .eq('id', badgeId)
               .single();
             if (error || !data) return;
-            queueRef.current.push({ name: data.name, description: data.description });
+            queueRef.current.push({
+              name: data.name,
+              description: data.description,
+              icon: FALLBACK_BADGE_ICON,
+            });
             showNext();
           },
         )

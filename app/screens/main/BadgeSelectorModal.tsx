@@ -13,22 +13,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { BADGES, BadgeCategory, getBadgeById } from '../../constants/badges';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
-
-// Badge Assets
-const BADGE_ASSETS = {
-    shield: require('../../../assets/ProfileAssets/BadgeShield.png'),
-    medal: require('../../../assets/ProfileAssets/BadgeMedal.png'),
-    hat: require('../../../assets/ProfileAssets/BadgeHat.png'),
-};
 
 type BadgeState = 'default' | 'selected' | 'disabled';
 
 interface Badge {
     id: string;
     label: string;
-    category: 'quest' | 'reputation' | 'special';
+    category: BadgeCategory;
     state: BadgeState;
 }
 
@@ -38,67 +32,14 @@ type BadgeSelectorModalProps = {
     maxBadges?: number;
 };
 
-const BADGE_DATA: Badge[] = [
-    // Quest Milestones
-    { id: 'quest-1', label: 'First Quest', category: 'quest', state: 'selected' },
-    { id: 'quest-2', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-3', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-4', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-5', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-6', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-7', label: 'Achiever', category: 'quest', state: 'default' },
-    { id: 'quest-8', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-9', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-10', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-11', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-12', label: 'Sample Quest', category: 'quest', state: 'default' },
-    { id: 'quest-13', label: 'Sample Quest', category: 'quest', state: 'disabled' },
-    { id: 'quest-14', label: 'Sample Quest', category: 'quest', state: 'disabled' },
-    { id: 'quest-15', label: 'Sample Quest', category: 'quest', state: 'disabled' },
-    { id: 'quest-16', label: 'Sample Quest', category: 'quest', state: 'disabled' },
+const BADGE_DATA: Badge[] = BADGES.map((b) => ({
+    id: b.id,
+    label: b.name,
+    category: b.category,
+    state: 'default',
+}));
 
-    // Reputation
-    { id: 'rep-1', label: 'First Quest', category: 'reputation', state: 'selected' },
-    { id: 'rep-2', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-3', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-4', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-5', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-6', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-7', label: 'Achiever', category: 'reputation', state: 'default' },
-    { id: 'rep-8', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-9', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-10', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-11', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-12', label: 'Sample Quest', category: 'reputation', state: 'default' },
-    { id: 'rep-13', label: 'Sample Quest', category: 'reputation', state: 'disabled' },
-    { id: 'rep-14', label: 'Sample Quest', category: 'reputation', state: 'disabled' },
-    { id: 'rep-15', label: 'Sample Quest', category: 'reputation', state: 'disabled' },
-    { id: 'rep-16', label: 'Sample Quest', category: 'reputation', state: 'disabled' },
-
-    // Special
-    { id: 'special-1', label: 'First Quest', category: 'special', state: 'selected' },
-    { id: 'special-2', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-3', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-4', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-5', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-6', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-7', label: 'Achiever', category: 'special', state: 'default' },
-    { id: 'special-8', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-9', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-10', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-11', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-12', label: 'Sample Quest', category: 'special', state: 'default' },
-    { id: 'special-13', label: 'Sample Quest', category: 'special', state: 'disabled' },
-    { id: 'special-14', label: 'Sample Quest', category: 'special', state: 'disabled' },
-    { id: 'special-15', label: 'Sample Quest', category: 'special', state: 'disabled' },
-    { id: 'special-16', label: 'Sample Quest', category: 'special', state: 'disabled' },
-];
-
-const getBadgeImage = (id: string) => {
-    const num = parseInt(id.replace(/\D/g, '')) || 0;
-    const badgeImages = [BADGE_ASSETS.shield, BADGE_ASSETS.medal, BADGE_ASSETS.hat];
-    return badgeImages[num % badgeImages.length];
-};
+const getBadgeImage = (id: string) => getBadgeById(id)?.icon;
 
 function BadgeItem({ badge, onPress }: { badge: Badge; onPress?: (id: string) => void }) {
     const { colors } = useTheme();
