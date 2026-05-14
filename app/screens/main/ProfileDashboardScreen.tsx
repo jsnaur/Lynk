@@ -121,6 +121,24 @@ function LayeredAvatar({
 
 const XP_THRESHOLDS = [0, 200, 400, 600, 800, 1000, 1500, 2500, 3000, 50000];
 
+const REPUTATION_TITLES: Record<number, string> = {
+    1: 'Cub',
+    2: 'Stray',
+    3: 'Prowler',
+    4: 'Hunter',
+    5: 'Wildcat',
+    6: 'Alpha',
+    7: 'Pack Leader',
+    8: 'Apex',
+    9: 'Legend of the Pack',
+    10: 'Wildcat King',
+};
+
+function getReputationTitle(level: number) {
+    const clamped = Math.max(1, Math.min(10, level));
+    return REPUTATION_TITLES[clamped];
+}
+
 function calculateLevelFromXP(totalXP: number) {
     let currentLevel = 1;
     for (let i = 0; i < XP_THRESHOLDS.length; i++) {
@@ -488,7 +506,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         <View style={styles.blockHeaderRow}>
                             <Text style={styles.blockTitle}>Reputation</Text>
                             <View style={styles.rankChip}>
-                                <Text style={styles.rankChipText}>Campus Helper</Text>
+                                <Text style={styles.rankChipText}>{getReputationTitle(currentLevel)}</Text>
                             </View>
                         </View>
 
