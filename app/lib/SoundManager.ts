@@ -1,4 +1,7 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const SFX_ENABLED_STORAGE_KEY = "@lynk/sfxEnabled";
 
 export enum AppSoundCategory {
   AlertError = "buzzes",
@@ -183,17 +186,63 @@ class SoundManager {
   private preloadInFlight = new Map<AppSoundCategory, Promise<Audio.Sound | null>>();
   private audioModeConfigured = false;
   private enabled = true;
+  private listeners = new Set<(enabled: boolean) => void>();
 
   public getCatalog(): Readonly<Record<AppSoundCategory, SoundDefinition>> {
     return SOUND_CATALOG;
   }
 
   public setEnabled(isEnabled: boolean): void {
+    if (this.enabled === isEnabled) {
+      return;
+    }
     this.enabled = isEnabled;
+    void AsyncStorage.setItem(
+      SFX_ENABLED_STORAGE_KEY,
+      isEnabled ? "1" : "0",
+    ).catch((error) => {
+      console.warn("[SoundManager] Failed to persist sfx preference.", error);
+    });
+    this.listeners.forEach((listener) => {
+      try {
+        listener(isEnabled);
+      } catch {
+        // Listener errors should not break the toggle.
+      }
+    });
   }
 
   public isEnabled(): boolean {
     return this.enabled;
+  }
+
+  public subscribe(listener: (enabled: boolean) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  public async hydrateFromStorage(): Promise<void> {
+    try {
+      const stored = await AsyncStorage.getItem(SFX_ENABLED_STORAGE_KEY);
+      if (stored === null) {
+        return;
+      }
+      const next = stored === "1";
+      if (next !== this.enabled) {
+        this.enabled = next;
+        this.listeners.forEach((listener) => {
+          try {
+            listener(next);
+          } catch {
+            // Listener errors should not break hydration.
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("[SoundManager] Failed to load sfx preference.", error);
+    }
   }
 
   public async preloadAll(options: PreloadSoundOptions = {}): Promise<void> {

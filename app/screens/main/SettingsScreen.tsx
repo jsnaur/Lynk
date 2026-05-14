@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { withOpacity } from '../../constants/colors';
 import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { useNotificationPreferences } from '../../contexts/NotificationPreferencesContext';
+import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 
 // ============================================================================
 // REUSABLE COMPONENTS
@@ -234,6 +235,21 @@ export default function SettingsScreen({ navigation }: any) {
 
   const { prefs, setPrefs } = useNotificationPreferences();
 
+  const [sfxEnabled, setSfxEnabled] = useState<boolean>(appSoundManager.isEnabled());
+
+  useEffect(() => {
+    const unsubscribe = appSoundManager.subscribe(setSfxEnabled);
+    setSfxEnabled(appSoundManager.isEnabled());
+    return unsubscribe;
+  }, []);
+
+  const handleToggleSfx = (value: boolean) => {
+    appSoundManager.setEnabled(value);
+    if (value) {
+      void appSoundManager.play(AppSoundCategory.ButtonPress, { force: true, debounceMs: 0 });
+    }
+  };
+
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
@@ -372,6 +388,15 @@ export default function SettingsScreen({ navigation }: any) {
             rightContent="value"
             rightValue={theme === 'dark' ? 'Dark' : 'Light'}
             onPress={toggleTheme}
+          />
+          <SettingsToggleRow
+            icon={sfxEnabled ? 'volume-high' : 'volume-off'}
+            iconBgColor={withOpacity(colors.favor, 0.12)}
+            iconColor={colors.favor}
+            title="Sound Effects"
+            subtitle="Taps, alerts, and reward cues"
+            value={sfxEnabled}
+            onToggle={handleToggleSfx}
           />
           <SettingsNavRow
             icon="office-building"

@@ -11,50 +11,69 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { useTheme } from '../../contexts/ThemeContext';
+import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import TextInput from '../../components/inputs/TextInput';
 import Button from '../../components/buttons/Button';
 import PasswordStrengthIndicator from '../../components/inputs/PasswordStrengthIndicator';
+
+type StrengthLevel = 'Empty' | 'Weak' | 'Fair' | 'Good' | 'Strong';
+
+const getPasswordStrength = (pass: string): StrengthLevel => {
+  if (!pass) return 'Empty';
+  if (pass.length < 6) return 'Weak';
+
+  let score = 0;
+  if (pass.length >= 8) score += 1;
+  if (/[A-Z]/.test(pass)) score += 1;
+  if (/[0-9]/.test(pass)) score += 1;
+  if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+  if (score <= 1) return 'Weak';
+  if (score === 2) return 'Fair';
+  if (score === 3) return 'Good';
+  return 'Strong';
+};
 
 export default function ChangePasswordScreen({ navigation }: any) {
   const { colors, theme } = useTheme();
   const { alert } = useCustomAlert();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Simple password strength calculation
-  const getPasswordStrength = (pass: string): 'Empty' | 'Weak' | 'Fair' | 'Good' | 'Strong' => {
-    if (!pass) return 'Empty';
-    if (pass.length < 6) return 'Weak';
-    
-    let score = 0;
-    if (pass.length >= 8) score += 1;
-    if (/[A-Z]/.test(pass)) score += 1;
-    if (/[0-9]/.test(pass)) score += 1;
-    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
-
-    if (score <= 1) return 'Weak';
-    if (score === 2) return 'Fair';
-    if (score === 3) return 'Good';
-    return 'Strong';
-  };
+  const [currentPasswordError, setCurrentPasswordError] = useState<string | null>(null);
 
   const strength = getPasswordStrength(newPassword);
+  const passwordsMismatch = Boolean(confirmPassword) && newPassword !== confirmPassword;
+  const reusingOldPassword =
+    Boolean(currentPassword) && Boolean(newPassword) && currentPassword === newPassword;
+
+  const isReady =
+    !loading &&
+    currentPassword.length > 0 &&
+    newPassword.length >= 6 &&
+    confirmPassword.length > 0 &&
+    !passwordsMismatch &&
+    !reusingOldPassword;
 
   const handleUpdatePassword = async () => {
     Keyboard.dismiss();
 
-    if (!newPassword || !confirmPassword) {
-      alert('Error', 'Please fill in all fields.');
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('Missing Fields', 'Please fill in all fields before continuing.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert('Error', 'Passwords do not match.');
+      alert('Passwords Do Not Match', 'Please make sure both new password fields match.');
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      alert('Reuse Detected', 'Your new password must be different from your current password.');
       return;
     }
 
@@ -64,15 +83,30 @@ export default function ChangePasswordScreen({ navigation }: any) {
     }
 
     setLoading(true);
+    setCurrentPasswordError(null);
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user?.email) {
+        throw new Error('Unable to verify your account. Please sign in again.');
+      }
+
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: userData.user.email,
+        password: currentPassword,
+      });
+
+      if (verifyError) {
+        setCurrentPasswordError('Current password is incorrect.');
+        setLoading(false);
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (updateError) throw updateError;
 
       setLoading(false);
 
@@ -86,10 +120,9 @@ export default function ChangePasswordScreen({ navigation }: any) {
           },
         ],
       );
-
     } catch (error: any) {
       setLoading(false);
-      alert('Error', error.message || 'Failed to update password.');
+      alert('Error', error?.message || 'Failed to update password.');
     }
   };
 
@@ -98,36 +131,78 @@ export default function ChangePasswordScreen({ navigation }: any) {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* Header — matches SettingsScreen layout for consistency */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton} disabled={loading}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color={colors.favor} />
-          <Text style={styles.backLabel}>Settings</Text>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          disabled={loading}
+          hitSlop={8}
+        >
+          <MaterialCommunityIcons name="chevron-left" size={18} color={colors.textPrimary} />
+          <Text style={styles.backLabel} numberOfLines={1}>
+            Settings
+          </Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Change Password</Text>
+
+        <Text style={styles.headerTitle} numberOfLines={1} pointerEvents="none">
+          Change Password
+        </Text>
+
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer} 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.instructionContainer}>
           <Text style={styles.instructionText}>
-            Create a new, strong password for your account. We recommend using a mix of letters, numbers, and symbols.
+            Confirm your current password, then choose a new one. Use a mix of letters,
+            numbers, and symbols for the best protection.
           </Text>
         </View>
 
         <View style={styles.formContainer}>
+          <TextInput
+            label="Current Password"
+            placeholder="Enter your current password"
+            value={currentPassword}
+            onChangeText={(text) => {
+              setCurrentPassword(text);
+              if (currentPasswordError) setCurrentPasswordError(null);
+            }}
+            secureTextEntry
+            state={
+              loading
+                ? 'disabled'
+                : currentPasswordError
+                ? 'error'
+                : 'default'
+            }
+            errorMessage={currentPasswordError ?? undefined}
+          />
+
           <TextInput
             label="New Password"
             placeholder="Enter new password"
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
-            state={loading ? 'disabled' : 'default'}
+            state={
+              loading
+                ? 'disabled'
+                : reusingOldPassword
+                ? 'error'
+                : 'default'
+            }
+            errorMessage={
+              reusingOldPassword ? 'New password must differ from current password.' : undefined
+            }
           />
-          
+
           <View style={styles.strengthContainer}>
             <PasswordStrengthIndicator filled={strength} />
           </View>
@@ -138,8 +213,8 @@ export default function ChangePasswordScreen({ navigation }: any) {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
-            state={loading ? 'disabled' : confirmPassword && newPassword !== confirmPassword ? 'error' : 'default'}
-            errorMessage="Passwords do not match"
+            state={loading ? 'disabled' : passwordsMismatch ? 'error' : 'default'}
+            errorMessage={passwordsMismatch ? 'Passwords do not match.' : undefined}
           />
         </View>
       </ScrollView>
@@ -149,80 +224,100 @@ export default function ChangePasswordScreen({ navigation }: any) {
           label="Update Password"
           onPress={handleUpdatePassword}
           loading={loading}
-          disabled={!newPassword || !confirmPassword || loading}
+          disabled={!isReady}
           style={styles.submitButton}
         />
       </View>
-
     </KeyboardAvoidingView>
   );
 }
 
-const getStyles = (colors: any, theme: string) => StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 80, 
-  },
-  backLabel: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: colors.favor,
-    fontFamily: 'DM_Sans-Regular',
-    marginLeft: 2,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontFamily: 'DM_Sans-Bold',
-  },
-  headerSpacer: {
-    width: 80,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    padding: 24,
-  },
-  instructionContainer: {
-    marginBottom: 32,
-  },
-  instructionText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontFamily: 'DM_Sans-Regular',
-    lineHeight: 22,
-  },
-  formContainer: {
-    gap: 20,
-  },
-  strengthContainer: {
-    marginTop: -8, 
-    marginBottom: 4,
-    alignItems: 'center',
-  },
-  footer: {
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  submitButton: {
-    width: '100%',
-  },
-});
+const getStyles = (colors: any, _theme: string) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+
+    // ── Header (mirrors SettingsScreen) ──────────────────────────────────────
+    header: {
+      height: screenHeaderTheme.layout.height + 24,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      paddingTop: screenHeaderTheme.layout.topPadding + 12,
+      paddingHorizontal: screenHeaderTheme.layout.horizontalPadding,
+      paddingBottom: screenHeaderTheme.layout.bottomPadding + 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      position: 'relative',
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      width: 112,
+      justifyContent: 'flex-start',
+      zIndex: 1,
+    },
+    backLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.favor,
+      fontFamily: 'DM_Sans-Medium',
+      flexShrink: 1,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      fontFamily: 'DM_Sans-Bold',
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: screenHeaderTheme.layout.bottomPadding + 12,
+      textAlign: 'center',
+      zIndex: 0,
+    },
+    headerSpacer: {
+      width: 112,
+      zIndex: 1,
+    },
+
+    // ── Scroll body ──────────────────────────────────────────────────────────
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      padding: 24,
+    },
+    instructionContainer: {
+      marginBottom: 24,
+    },
+    instructionText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontFamily: 'DM_Sans-Regular',
+      lineHeight: 20,
+    },
+    formContainer: {
+      gap: 20,
+    },
+    strengthContainer: {
+      marginTop: -8,
+      marginBottom: 4,
+      alignItems: 'center',
+    },
+
+    // ── Footer ───────────────────────────────────────────────────────────────
+    footer: {
+      padding: 24,
+      paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.bg,
+    },
+    submitButton: {
+      width: '100%',
+    },
+  });

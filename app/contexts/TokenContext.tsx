@@ -47,19 +47,16 @@ export function TokenBalanceProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    void refreshBalance();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      void refreshBalance();
-    });
-
-    // Supabase Realtime Listener for immediate token updates across the app
     let channel: any;
+
     const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      channel = supabase.channel('token_context_changes')
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+      channel = supabase.channel(`token_context_changes_${user.id}`)
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
@@ -72,7 +69,13 @@ export function TokenBalanceProvider({ children }: { children: React.ReactNode }
         .subscribe();
     };
 
-    setupRealtime();
+    void refreshBalance();
+    void setupRealtime();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      void refreshBalance();
+      void setupRealtime();
+    });
 
     return () => {
       authListener.subscription.unsubscribe();

@@ -97,12 +97,12 @@ export function useDailyReward() {
       } catch (e) {
         // noop
       }
-      // TokenContext realtime listener picks up the DB update.
+      await refreshBalance();
       return result;
     } finally {
       setIsLoading(false);
     }
-  }, [markDismissedToday]);
+  }, [markDismissedToday, refreshBalance]);
 
   const dismissSheet = useCallback(() => {
     setShouldShowSheet(false);
