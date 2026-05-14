@@ -20,6 +20,7 @@ import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTokenBalance } from '../../contexts/TokenContext';
 import { useTheme, screenHeaderTheme } from '../../contexts/ThemeContext';
+import { useCustomAlert } from '../../contexts/AlertContext';
 import ScreenHeader from '../../components/navigation/ScreenHeader';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
@@ -49,6 +50,10 @@ type ProfileDashboardScreenProps = {
 type ProfileState = {
     badgeSelectorVisible: boolean;
     editProfileVisible?: boolean;
+};
+
+type LevelUpAlertBodyProps = {
+    level: number;
 };
 
 const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
@@ -150,14 +155,29 @@ function LeaderboardCard({ onPress }: { onPress: () => void }) {
     );
 }
 
+function LevelUpAlertBody({ level }: LevelUpAlertBodyProps) {
+    const { colors, theme } = useTheme();
+    const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+
+    return (
+        <View style={styles.levelUpAlertBody}>
+            <Image source={ASSETS.experience} style={styles.levelUpAlertIcon} resizeMode="contain" />
+            <Text style={styles.levelUpAlertTitleText}>Congratulations!</Text>
+            <Text style={styles.levelUpAlertDescriptionText}>You reached Level {level}. Keep it up!</Text>
+        </View>
+    );
+}
+
 export default function ProfileDashboardScreen({ onTabPress, navigation }: ProfileDashboardScreenProps) {
     const { theme, colors } = useTheme();
     const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+    const { alert } = useCustomAlert();
     const { balance, refreshBalance } = useTokenBalance();
     
     const [profile, setProfile] = useState<any>(null);
     const [initialLoading, setInitialLoading] = useState<boolean>(true);
     const [totalXP, setTotalXP] = useState<number>(0);
+    const [levelUpAlertLevel, setLevelUpAlertLevel] = useState<number | null>(null);
     const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false });
     const [activeQuestCount, setActiveQuestCount] = useState<number>(0);
     const [completedQuestCount, setCompletedQuestCount] = useState<number>(0);
@@ -199,6 +219,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         else navigation?.navigate('Main', { screen: 'Quest' });
     };
 
+    const hasHydratedInitialLevelRef = useRef<boolean>(false);
+    const prevLevelRef = useRef<number>(1);
+    const lastAlertedLevelRef = useRef<number>(0);
+
     const fetchProfile = useCallback(async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -206,7 +230,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
                 if (data) {
                     setProfile(data);
-                    setTotalXP(data.total_xp || 0);
+                    const xpFromProfile = data.total_xp || 0;
+                    setTotalXP(xpFromProfile);
+
+                    if (!hasHydratedInitialLevelRef.current) {
+                        prevLevelRef.current = calculateLevelFromXP(xpFromProfile).currentLevel;
+                        hasHydratedInitialLevelRef.current = true;
+                    }
                 }
             }
         } finally {
@@ -269,20 +299,47 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
         return unsubscribe;
     }, [fetchProfile, refreshBalance, fetchQuestCounts, navigation]);
 
-    // Level-up sound trigger: detect when totalXP crosses a threshold
-    const prevLevelRef = useRef<number>(calculateLevelFromXP(totalXP).currentLevel);
     useEffect(() => {
+        if (!hasHydratedInitialLevelRef.current) {
+            return;
+        }
+
         const newLevel = calculateLevelFromXP(totalXP).currentLevel;
         if (newLevel > prevLevelRef.current) {
-            try {
-                void appSoundManager.play(AppSoundCategory.LevelUp, { force: true });
-                setTimeout(() => { void appSoundManager.play(AppSoundCategory.QuestComplete, { force: true, volume: 0.9 }); }, 120);
-                void appSoundManager.play(AppSoundCategory.LevelUp, { force: true });
-                setTimeout(() => { void appSoundManager.play(AppSoundCategory.QuestComplete, { force: true, volume: 0.9 }); }, 120);
-            } catch (e) {}
+            setLevelUpAlertLevel(newLevel);
         }
         prevLevelRef.current = newLevel;
     }, [totalXP]);
+
+    useEffect(() => {
+        if (!levelUpAlertLevel) {
+            return;
+        }
+
+        // Guard against repeated re-renders/re-subscriptions reopening the same alert.
+        if (lastAlertedLevelRef.current === levelUpAlertLevel) {
+            return;
+        }
+        lastAlertedLevelRef.current = levelUpAlertLevel;
+
+        try {
+            void appSoundManager.play(AppSoundCategory.LevelUp, { force: true, debounceMs: 0 });
+        } catch (e) {}
+
+        alert(
+            'Level Up!',
+            undefined,
+            [
+                {
+                    text: "Let's Go!",
+                    onPress: () => {
+                        setLevelUpAlertLevel(null);
+                    },
+                },
+            ],
+            <LevelUpAlertBody level={levelUpAlertLevel} />,
+        );
+    }, [alert, levelUpAlertLevel]);
 
     useEffect(() => {
         let channel: any;
@@ -523,4 +580,30 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     questIcon: { width: 26, height: 26, resizeMode: 'contain' },
     questTitle: { ...TYPOGRAPHY.pixelLabel, color: colors.textPrimary },
     questSubtitle: { fontSize: 11, color: colors.textSecondary },
+
+    // Level-up alert (mirrors badge-unlock body styling)
+    levelUpAlertBody: {
+        alignItems: 'center',
+        paddingVertical: 8,
+        width: '100%',
+    },
+    levelUpAlertIcon: {
+        width: 110,
+        height: 110,
+        marginBottom: 14,
+    },
+    levelUpAlertTitleText: {
+        fontSize: 13,
+        fontFamily: FONTS.display,
+        marginBottom: 8,
+        textAlign: 'center',
+        color: colors.textPrimary,
+    },
+    levelUpAlertDescriptionText: {
+        fontSize: 13,
+        fontFamily: 'DMSans-Regular',
+        textAlign: 'center',
+        lineHeight: 19,
+        color: colors.textSecondary,
+    },
 });
