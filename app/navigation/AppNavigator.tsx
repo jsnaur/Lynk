@@ -37,9 +37,6 @@ const AppNavigator = () => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      if (__DEV__) {
-        await supabase.auth.signOut();
-      }
       const { data: { session } } = await supabase.auth.getSession();
       await checkSessionAndProfile(session);
       setSession(session);

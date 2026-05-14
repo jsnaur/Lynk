@@ -11,8 +11,7 @@ import ThumbDownIcon from '../../../assets/QuestScreenAssets/Thumb_down_Icon.svg
 import XpPixelIcon from '../../../assets/QuestScreenAssets/XP_Pixel_Icon.svg';
 import TokenPixelIcon from '../../../assets/QuestScreenAssets/Token_Pixel_Icon.svg';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
-import { invalidateQuestScreenCache } from './QuestScreen';
-import { invalidateProfileCache } from './ProfileDashboardScreen';
+import { invalidateQuestScreenCache, invalidateProfileCache } from './screenCacheRegistry';
 
 type Rating = 'positive' | 'negative' | null;
 type Outcome = 'completed' | 'failed' | null;
