@@ -282,6 +282,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     setTotalXP(xpFromProfile);
                     CACHED_TOTAL_XP = xpFromProfile;
                     HAS_FETCHED_INITIALLY_PROFILE = true;
+                    const equippedFromProfile: string[] = Array.isArray(data.equipped_badges) ? data.equipped_badges : [];
+                    setState((prev) => ({ ...prev, equippedBadgeIds: equippedFromProfile }));
 
                     if (!hasHydratedInitialLevelRef.current) {
                         prevLevelRef.current = calculateLevelFromXP(xpFromProfile).currentLevel;
@@ -569,7 +571,16 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 <BadgeSelectorModal
                     initialSelected={state.equippedBadgeIds}
                     onClose={() => setState((prev) => ({ ...prev, badgeSelectorVisible: false }))}
-                    onDone={(ids) => setState((prev) => ({ ...prev, equippedBadgeIds: ids, badgeSelectorVisible: false }))}
+                    onDone={async (ids) => {
+                        setState((prev) => ({ ...prev, equippedBadgeIds: ids, badgeSelectorVisible: false }));
+                        try {
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user) {
+                                await supabase.from('profiles').update({ equipped_badges: ids }).eq('id', user.id);
+                                invalidateProfileCache();
+                            }
+                        } catch (e) { console.error('Error saving equipped badges', e); }
+                    }}
                 />
             )}
             {state.editProfileVisible && (

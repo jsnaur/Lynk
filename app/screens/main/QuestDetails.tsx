@@ -38,6 +38,7 @@ import { preCheckContent, getModerationUI, subscribeModerationStatus, type Moder
 import { ContentBlockedModal } from '../../components/modals';
 import { invalidateQuestScreenCache } from './QuestScreen';
 import { invalidateProfileCache } from './ProfileDashboardScreen';
+import { getBadgeById } from '../../constants/badges';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -1041,7 +1042,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const fetchAndSetProfilePreview = async (targetUserId: string) => {
     const { data: profileData, error } = await supabase
       .from('profiles')
-      .select('id, display_name, equipped_accessories, major, graduation_year, bio, total_xp')
+      .select('id, display_name, equipped_accessories, major, graduation_year, bio, total_xp, equipped_badges')
       .eq('id', targetUserId)
       .maybeSingle();
 
@@ -1073,7 +1074,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       rank: leaderboardData?.rank ?? fallbackRank,
       totalXP,
       completedQuests,
-      badges: getBadgeSet(totalXP, completedQuests),
+      badges: Array.isArray(profileData.equipped_badges) ? profileData.equipped_badges : [],
       reputation: getReputationLabel(totalXP),
       level: levelData.currentLevel,
     });
@@ -1097,7 +1098,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       rank: null,
       totalXP: initialTotalXP,
       completedQuests: 0,
-      badges: getBadgeSet(initialTotalXP, 0),
+      badges: [],
       reputation: getReputationLabel(initialTotalXP),
       level: initialLevelData.currentLevel,
     });
@@ -1124,7 +1125,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       rank: null,
       totalXP: initialTotalXP,
       completedQuests: 0,
-      badges: getBadgeSet(initialTotalXP, 0),
+      badges: [],
       reputation: getReputationLabel(initialTotalXP),
       level: initialLevelData.currentLevel,
     });
@@ -1139,7 +1140,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const selectedTotalXP = selectedProfile?.totalXP ?? 0;
   const levelData = calculateLevelFromXP(selectedTotalXP);
   const nextLevel = Math.min(levelData.currentLevel + 1, 10);
-  const selectedBadges = selectedProfile?.badges ?? ['Guardian'];
+  const selectedBadges = selectedProfile?.badges ?? [];
 
   return (
     <KeyboardAvoidingView 
@@ -1502,25 +1503,25 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 </View>
               </View>
 
-              <View style={styles.previewSection}>
-                <View style={styles.previewSectionHeaderRow}>
-                  <Text style={styles.previewSectionTitle}>Badges</Text>
+              {selectedBadges.length > 0 && (
+                <View style={styles.previewSection}>
+                  <View style={styles.previewSectionHeaderRow}>
+                    <Text style={styles.previewSectionTitle}>Badges</Text>
+                  </View>
+                  <View style={styles.previewBadgeRow}>
+                    {selectedBadges.map((badgeId) => {
+                      const badge = getBadgeById(badgeId);
+                      if (!badge) return null;
+                      return (
+                        <View key={badge.id} style={styles.previewBadgeSlot}>
+                          <Image source={badge.icon} style={styles.previewBadgeImage} resizeMode="contain" />
+                          <Text style={styles.previewBadgeLabel}>{badge.name}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
                 </View>
-                <View style={styles.previewBadgeRow}>
-                  <View style={styles.previewBadgeSlot}>
-                    <Image source={PROFILE_BADGE_ASSETS.badgeShield} style={styles.previewBadgeImage} resizeMode="contain" />
-                    <Text style={styles.previewBadgeLabel}>{selectedBadges[0] || 'Guardian'}</Text>
-                  </View>
-                  <View style={styles.previewBadgeSlot}>
-                    <Image source={PROFILE_BADGE_ASSETS.badgeMedal} style={styles.previewBadgeImage} resizeMode="contain" />
-                    <Text style={styles.previewBadgeLabel}>{selectedBadges[1] || 'Achiever'}</Text>
-                  </View>
-                  <View style={styles.previewBadgeSlot}>
-                    <Image source={PROFILE_BADGE_ASSETS.badgeHat} style={styles.previewBadgeImage} resizeMode="contain" />
-                    <Text style={styles.previewBadgeLabel}>{selectedBadges[2] || 'Scholar'}</Text>
-                  </View>
-                </View>
-              </View>
+              )}
 
               <View style={styles.previewSection}>
                 <View style={styles.previewSectionHeaderRow}>
@@ -1545,12 +1546,6 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                 </View>
               </View>
 
-              <View style={styles.previewStatsRow}>
-                <View style={styles.previewStatCard}>
-                  <Text style={styles.previewStatValue}>{fmtXP(selectedProfile?.totalXP ?? 0)}</Text>
-                  <Text style={styles.previewStatLabel}>Total EXP</Text>
-                </View>
-              </View>
             </Pressable>
           </Pressable>
         </Modal>

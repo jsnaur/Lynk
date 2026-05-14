@@ -346,10 +346,11 @@ export default function HomeFeedScreen({
     }, [onTabPress]);
 
     const filteredQuests = useMemo(() => {
+        const openQuests = quests.filter((quest) => !quest.status || quest.status === 'open');
         if (activeFilter === 'all') {
-            return quests;
+            return openQuests;
         }
-        return quests.filter((quest) => quest.category === activeFilter);
+        return openQuests.filter((quest) => quest.category === activeFilter);
     }, [activeFilter, quests]);
 
     useEffect(() => {
