@@ -83,6 +83,29 @@ function useEnter(active: boolean) {
   return anim;
 }
 
+// Stagger entrance for the reward grid + claim button when the sheet opens.
+// Replays whenever `active` flips from false → true so reopening the sheet
+// always shows the animation.
+function useStaggeredEntrance(active: boolean, count: number) {
+  const anims = useRef(Array.from({ length: count }, () => new Animated.Value(0))).current;
+  useEffect(() => {
+    if (!active) return;
+    anims.forEach((a) => a.setValue(0));
+    const animations = anims.map((a) =>
+      Animated.timing(a, {
+        toValue: 1,
+        duration: 360,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    );
+    const handle = Animated.stagger(70, animations);
+    handle.start();
+    return () => handle.stop();
+  }, [active, anims]);
+  return anims;
+}
+
 // ─── Reward Card ──────────────────────────────────────────────────────────────
 
 function RewardCard({
@@ -167,15 +190,59 @@ function RewardCard({
 
 // ─── Progress Track ───────────────────────────────────────────────────────────
 
-function ProgressTrack({ currentDay, alreadyClaimed, colors }: { currentDay: number; alreadyClaimed: boolean; colors: any }) {
+function ProgressTrack({
+  currentDay,
+  alreadyClaimed,
+  colors,
+  active,
+}: {
+  currentDay: number;
+  alreadyClaimed: boolean;
+  colors: any;
+  active: boolean;
+}) {
   const styles = createTrackStyles(colors);
   const completed = alreadyClaimed ? currentDay : currentDay - 1;
   const pct = Math.max(0, Math.min(7, completed)) / 7;
 
+  const [barWidth, setBarWidth] = useState(0);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!active) return;
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 650,
+      delay: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [active, pct, progress]);
+
+  // scaleX from 0→pct anchored to the left edge using a translateX correction.
+  // Using transform + native driver keeps the fill smooth.
+  const targetScale = pct;
+  const animatedScale = progress.interpolate({ inputRange: [0, 1], outputRange: [0, targetScale] });
+  const animatedTranslate = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-barWidth / 2, -(barWidth * (1 - targetScale)) / 2],
+  });
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.bar}>
-        <View style={[styles.barFill, { width: `${pct * 100}%` }]} />
+      <View style={styles.bar} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+        {barWidth > 0 && (
+          <Animated.View
+            style={[
+              styles.barFill,
+              {
+                width: barWidth,
+                transform: [{ translateX: animatedTranslate }, { scaleX: animatedScale }],
+              },
+            ]}
+          />
+        )}
       </View>
       <View style={styles.nodes}>
         {Array.from({ length: 7 }).map((_, i) => {
@@ -218,6 +285,17 @@ export default function DailyRewardSheet({
   const [showSuccess, setShowSuccess] = useState(false);
   const successAnim = useEnter(showSuccess);
   const lastSparkleAt = useRef<number | null>(null);
+
+  // 4 stagger slots: 3 grid rows + claim button
+  const entranceAnims = useStaggeredEntrance(visible && !showSuccess, 4);
+  const makeRowStyle = (anim: Animated.Value) => ({
+    opacity: anim,
+    transform: [
+      {
+        translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }),
+      },
+    ],
+  });
 
   const triggerSparkles = (count: number) => {
     const now = Date.now();
@@ -295,48 +373,50 @@ export default function DailyRewardSheet({
               </View>
 
               {/* Progress track */}
-              <ProgressTrack currentDay={currentDay} alreadyClaimed={alreadyClaimed} colors={colors} />
+              <ProgressTrack currentDay={currentDay} alreadyClaimed={alreadyClaimed} colors={colors} active={visible && !showSuccess} />
 
               {/* Grid: rows 1-3, 4-6, then 7 featured */}
-              <View style={styles.gridRow}>
+              <Animated.View style={[styles.gridRow, makeRowStyle(entranceAnims[0])]}>
                 {rewards.slice(0, 3).map((r) => (
                   <RewardCard key={r.day} reward={r} state={stateFor(r.day)} isFeatured={false} colors={colors} pulseScale={pulseScale} />
                 ))}
-              </View>
-              <View style={styles.gridRow}>
+              </Animated.View>
+              <Animated.View style={[styles.gridRow, makeRowStyle(entranceAnims[1])]}>
                 {rewards.slice(3, 6).map((r) => (
                   <RewardCard key={r.day} reward={r} state={stateFor(r.day)} isFeatured={false} colors={colors} pulseScale={pulseScale} />
                 ))}
-              </View>
-              <View style={styles.gridRow}>
+              </Animated.View>
+              <Animated.View style={[styles.gridRow, makeRowStyle(entranceAnims[2])]}>
                 <RewardCard reward={rewards[6]} state={stateFor(7)} isFeatured colors={colors} pulseScale={pulseScale} />
-              </View>
+              </Animated.View>
 
               {/* Claim button */}
-              <Pressable
-                onPress={handleClaim}
-                disabled={!claimActive}
-                style={({ pressed }) => [
-                  styles.claimBtn,
-                  alreadyClaimed && styles.claimBtnClaimed,
-                  !claimActive && styles.claimBtnDisabled,
-                  pressed && claimActive && styles.pressed,
-                ]}
-              >
-                {alreadyClaimed ? (
-                  <>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.bg} />
-                    <Text style={styles.claimBtnText}>Claimed for today</Text>
-                  </>
-                ) : (
-                  <>
-                    <TokenPixelIcon width={18} height={18} />
-                    <Text style={styles.claimBtnText}>
-                      Claim +{currentReward?.tokens} · +{currentReward?.xp} XP
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+              <Animated.View style={makeRowStyle(entranceAnims[3])}>
+                <Pressable
+                  onPress={handleClaim}
+                  disabled={!claimActive}
+                  style={({ pressed }) => [
+                    styles.claimBtn,
+                    alreadyClaimed && styles.claimBtnClaimed,
+                    !claimActive && styles.claimBtnDisabled,
+                    pressed && claimActive && styles.pressed,
+                  ]}
+                >
+                  {alreadyClaimed ? (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color={colors.bg} />
+                      <Text style={styles.claimBtnText}>Claimed for today</Text>
+                    </>
+                  ) : (
+                    <>
+                      <TokenPixelIcon width={18} height={18} />
+                      <Text style={styles.claimBtnText}>
+                        Claim +{currentReward?.tokens} · +{currentReward?.xp} XP
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </Animated.View>
             </View>
           ) : (
             <Animated.View
