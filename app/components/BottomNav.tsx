@@ -47,6 +47,7 @@ const NAV_ICONS = {
 
 const ICON_BOX_SIZE = 52;
 const ROW_PADDING_H = 16;
+const ITEM_WIDTH = 62;
 
 // Persists across mount/unmount as the user switches screens, so a newly
 // mounted BottomNav can animate from the previous tab to the new one.
@@ -66,13 +67,17 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 
 	const activeIndex = NAV_ITEMS.findIndex((i) => i.label === selectedTab);
 
-	// slot center for each index, then offset back by half the indicator width
+	// Mirrors the real row layout: fixed-width items spread with
+	// `justifyContent: 'space-between'` (equal gaps, NOT equal slots).
+	// Find the item's true center, then offset back by half the indicator.
 	const indicatorOffset = (index: number) => {
 		if (rowWidth <= 0) return 0;
 		const usable = rowWidth - ROW_PADDING_H * 2;
-		const slot = usable / NAV_ITEMS.length;
-		const center = ROW_PADDING_H + slot * index + slot / 2;
-		return center - ICON_BOX_SIZE / 2;
+		const count = NAV_ITEMS.length;
+		// space-between: leftover width is split into (count - 1) equal gaps
+		const gap = count > 1 ? (usable - ITEM_WIDTH * count) / (count - 1) : 0;
+		const itemCenter = ROW_PADDING_H + index * (ITEM_WIDTH + gap) + ITEM_WIDTH / 2;
+		return itemCenter - ICON_BOX_SIZE / 2;
 	};
 
 	useEffect(() => {
