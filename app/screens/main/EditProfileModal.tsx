@@ -17,6 +17,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
+import { appSoundManager, AppSoundCategory } from '../../lib/SoundManager';
 import { FONTS } from '../../constants/fonts';
 import { screenHeaderTheme } from '../../contexts/ThemeContext';
 import { preCheckContent, type ModerationCategory } from '../../services/ModeratorService';
@@ -154,6 +155,9 @@ export default function EditProfileModal({
 
     const handleSave = async () => {
         if (isSaving) return;
+
+        void appSoundManager.play(AppSoundCategory.XpGain, { debounceMs: 0 });
+
         const checkText = `${displayName.trim()} ${bio.trim()}`.trim();
         if (checkText) {
             setIsSaving(true);
@@ -215,7 +219,12 @@ export default function EditProfileModal({
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
             >
-                <Animated.View style={createFadeSlideStyle(screenMotion[2], 12)}>
+                <Animated.View
+                    style={[
+                        styles.formMotionContainer,
+                        createFadeSlideStyle(screenMotion[2], 12),
+                    ]}
+                >
                 <ScrollView
                     style={styles.formContainer}
                     showsVerticalScrollIndicator={false}
@@ -636,6 +645,9 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
         paddingVertical: 0,
     },
     keyboardAvoidingContainer: {
+        flex: 1,
+    },
+    formMotionContainer: {
         flex: 1,
     },
     dropdownMenu: {
