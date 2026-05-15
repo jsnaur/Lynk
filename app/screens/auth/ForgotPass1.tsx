@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
 import EmailLogo from '../../../assets/ForgotPassAssets/Email_logo.svg';
 import { forgotStyles } from './ForgotPass.styles';
 import { supabase } from '../../lib/supabase';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -12,12 +13,17 @@ export default function ForgotPass1({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const motionValues = useRef(createMotionValues(2)).current;
 
   const trimmedEmail = email.trim().toLowerCase();
   const isCit = isValidEmail(trimmedEmail) && trimmedEmail.endsWith('@cit.edu');
   const showFormatError = trimmedEmail.length > 0 && !isValidEmail(trimmedEmail);
   const showNonCitError = trimmedEmail.length > 0 && isValidEmail(trimmedEmail) && !isCit;
   const canContinue = trimmedEmail.length > 0 && isCit && !loading;
+
+  useEffect(() => {
+    createStaggeredEntrance(motionValues).start();
+  }, [motionValues]);
 
   const handleSend = async () => {
     if (!canContinue) return;
@@ -35,17 +41,20 @@ export default function ForgotPass1({ navigation }: any) {
   return (
     <SafeAreaView style={forgotStyles.root}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
-          <View style={forgotStyles.backRow}>
-            <BackIcon width={24} height={24} />
-            <Text style={forgotStyles.backText}>Back to Login</Text>
-          </View>
-        </Pressable>
+        <Animated.View style={createFadeSlideStyle(motionValues[0], 10)}>
+          <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
+            <View style={forgotStyles.backRow}>
+              <BackIcon width={24} height={24} />
+              <Text style={forgotStyles.backText}>Back to Login</Text>
+            </View>
+          </Pressable>
+        </Animated.View>
 
-        <View style={forgotStyles.card}>
-          <View style={forgotStyles.iconWrap}>
-            <EmailLogo width={34} height={34} />
-          </View>
+        <Animated.View style={createFadeSlideStyle(motionValues[1], 14)}>
+          <View style={forgotStyles.card}>
+            <View style={forgotStyles.iconWrap}>
+              <EmailLogo width={34} height={34} />
+            </View>
 
           <Text style={forgotStyles.title}>Forgot Password</Text>
           <Text style={forgotStyles.subtitle}>
@@ -74,21 +83,22 @@ export default function ForgotPass1({ navigation }: any) {
             {apiError && <Text style={forgotStyles.errorText}>{apiError}</Text>}
           </View>
 
-          <Pressable
-            disabled={!canContinue}
-            onPress={handleSend}
-            style={({ pressed }) => [
-              forgotStyles.actionBtn,
-              !canContinue && forgotStyles.actionBtnDisabled,
-              pressed && canContinue && forgotStyles.actionBtnPressed,
-            ]}
-          >
-            {loading
-              ? <ActivityIndicator color="#0F0F14" />
-              : <Text style={forgotStyles.actionText}>Send One-Time Password</Text>
-            }
-          </Pressable>
-        </View>
+            <Pressable
+              disabled={!canContinue}
+              onPress={handleSend}
+              style={({ pressed }) => [
+                forgotStyles.actionBtn,
+                !canContinue && forgotStyles.actionBtnDisabled,
+                pressed && canContinue && forgotStyles.actionBtnPressed,
+              ]}
+            >
+              {loading
+                ? <ActivityIndicator color="#0F0F14" />
+                : <Text style={forgotStyles.actionText}>Send One-Time Password</Text>
+              }
+            </Pressable>
+          </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
