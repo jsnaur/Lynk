@@ -655,10 +655,13 @@ export default function HomeFeedScreen({
                                 'new_comment',
                                 'new_reply',
                                 'quest_accepted',
+                                'quest_applied',
                                 'applicant_accepted',
                                 'quest_started',
                                 'quest_completed',
                                 'quest_dropped',
+                                'quest_resolved',
+                                'quest_rated',
                                 'high_bounty_quest',
                             ];
 

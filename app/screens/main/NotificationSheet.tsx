@@ -76,6 +76,8 @@ export default function NotificationSheet({
         'quest_started',
         'quest_completed',
         'quest_dropped',
+        'quest_resolved',
+        'quest_rated',
         'high_bounty_quest',
     ];
 
