@@ -436,7 +436,9 @@ export default function CustomizeScreen({
             >
               <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
             </Pressable>
-            <Text style={styles.title}>Customize</Text>
+            <View pointerEvents="none" style={styles.titleWrap}>
+              <Text style={styles.title}>Customize</Text>
+            </View>
             <Pressable
               onPress={saveChanges}
               disabled={!hasUnsavedChanges || isSaving}
@@ -579,7 +581,7 @@ export default function CustomizeScreen({
           </View>
         </Animated.View>
 
-        <Animated.View style={createFadeSlideStyle(screenMotion[3], 12)}>
+        <Animated.View style={[styles.listSection, createFadeSlideStyle(screenMotion[3], 12)]}>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
             {slotItems.length === 0 ? (
               <Animated.View style={createFadeSlideStyle(screenMotion[3], 6)}>
@@ -678,8 +680,8 @@ export default function CustomizeScreen({
 const getStyles = (colors: any, theme: string) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 12 },
-  backButton: { padding: 8, marginLeft: -8 },
+  header: { position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 12 },
+  backButton: { padding: 8, marginLeft: -8, zIndex: 2 },
   saveButton: {
     minWidth: 92,
     paddingVertical: 8,
@@ -690,21 +692,23 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     backgroundColor: withOpacity(colors.favor, 0.14),
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
   },
   saveButtonDisabled: { borderColor: colors.border, backgroundColor: colors.surface2, opacity: 0.65 },
   saveButtonText: { fontSize: 13, fontFamily: 'DMSans-Bold', fontWeight: '700', color: colors.favor },
-  title: { flex: 1, fontSize: 18, fontFamily: 'DMSans-Bold', fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
-  previewCard: { marginHorizontal: 16, marginTop: 14, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  titleWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 18, fontFamily: 'DMSans-Bold', fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
+  previewCard: { marginHorizontal: 16, marginTop: 14, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 16, overflow: 'visible' },
   avatarContainer: { width: 140, height: 140, backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, position: 'relative', overflow: 'hidden' },
   layerAbsolute: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 20 },
-  previewContent: { flex: 1, justifyContent: 'space-between', height: 140, paddingVertical: 4 },
-  categoryToggleContainer: { flexDirection: 'row', gap: 0, marginBottom: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, overflow: 'hidden' },
+  previewContent: { flex: 1, justifyContent: 'space-between', height: 140, paddingVertical: 4, overflow: 'visible' },
+  categoryToggleContainer: { flexDirection: 'row', gap: 0, marginBottom: 12, marginTop: 2, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, overflow: 'visible' },
   catBtn: { flex: 1, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.surface2, alignItems: 'center', borderWidth: 0, borderRightWidth: 1, borderRightColor: colors.border },
   catBtn_last: { borderRightWidth: 0 },
   catBtnActive: { backgroundColor: withOpacity(colors.favor, 0.14) },
   catBtnText: { fontSize: 12, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
   catBtnTextActive: { color: colors.favor, fontFamily: 'DMSans-Bold', fontWeight: '700' },
-  genderToggleContainer: { flexDirection: 'row', gap: 0, marginBottom: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, overflow: 'hidden' },
+  genderToggleContainer: { flexDirection: 'row', gap: 0, marginBottom: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, overflow: 'visible' },
   genderToggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.surface2, borderWidth: 0, borderRightWidth: 1, borderRightColor: colors.border },
   genderToggleBtn_last: { borderRightWidth: 0 },
   genderToggleBtnActive: { backgroundColor: withOpacity(colors.favor, 0.14) },
@@ -720,6 +724,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   tabText: { fontSize: 14, color: colors.textSecondary, fontFamily: 'DMSans-Medium' },
   tabTextActive: { color: '#102010', fontFamily: 'DMSans-Bold', fontWeight: '700' },
   list: { flex: 1, marginTop: 12 },
+  listSection: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
   emptyState: { borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 16 },
   emptyStateText: { fontSize: 13, color: colors.textSecondary, fontFamily: 'DMSans-Regular' },
