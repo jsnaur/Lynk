@@ -8,6 +8,7 @@ import {
     StyleSheet,
     Text,
     View,
+    Easing,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
@@ -20,6 +21,7 @@ import { darkColors, withOpacity } from '../../constants/colors';
 import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -332,6 +334,17 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
     const anim1 = useRef(new Animated.Value(0)).current;
     const anim2 = useRef(new Animated.Value(0)).current;
     const anim3 = useRef(new Animated.Value(0)).current;
+    // Screen-local motion values
+    const screenMotion = useRef(createMotionValues(3)).current; // header, podium, listHeader
+    const rowMotionValues = useRef(new Map<string, Animated.Value>()).current;
+
+    function ensureAnimatedValue(map: Map<string, Animated.Value>, key: string, initialValue = 0) {
+        const existing = map.get(key);
+        if (existing) return existing;
+        const next = new Animated.Value(initialValue);
+        map.set(key, next);
+        return next;
+    }
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -399,6 +412,17 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                 Animated.spring(anim1, { toValue: 1, useNativeDriver: true, damping: 14 }),
                 Animated.spring(anim3, { toValue: 1, useNativeDriver: true, damping: 14 }),
             ]).start();
+            // Entrance for header/podium/list header
+            createStaggeredEntrance(screenMotion, 420, 90).start();
+
+            // Per-row staggered reveal
+            const rows = finalEntries;
+            const rowAnims = rows.map((r, i) => {
+                const v = ensureAnimatedValue(rowMotionValues, r.id, 0);
+                v.setValue(0);
+                return Animated.timing(v, { toValue: 1, duration: 320, delay: i * 70, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+            });
+            Animated.stagger(40, rowAnims).start();
         }
     }, [loading, metric, entries, anim1, anim2, anim3]);
 
@@ -468,15 +492,17 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
             <StatusBar style="light" />
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
-                <View style={styles.header}>
-                    <Pressable style={styles.backButton} onPress={() => navigation?.goBack?.()} hitSlop={10}>
-                        <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-                        <Text style={styles.backText}>Profile</Text>
-                    </Pressable>
-                    <View style={styles.headerTitleContainer} pointerEvents="none">
-                        <Text style={styles.headerTitle}>RANKINGS</Text>
+                <Animated.View style={createFadeSlideStyle(screenMotion[0], 12)}>
+                    <View style={styles.header}>
+                        <Pressable style={styles.backButton} onPress={() => navigation?.goBack?.()} hitSlop={10}>
+                            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+                            <Text style={styles.backText}>Profile</Text>
+                        </Pressable>
+                        <View style={styles.headerTitleContainer} pointerEvents="none">
+                            <Text style={styles.headerTitle}>RANKINGS</Text>
+                        </View>
                     </View>
-                </View>
+                </Animated.View>
 
                 <FlatList
                     data={rest}
@@ -505,38 +531,47 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                                     <Text style={styles.emptyText}>No rankings yet.</Text>
                                 </View>
                             ) : (
-                                <View style={styles.podiumContainer}>
-                                    {podiumOrder.map(({ entry, medal, anim }) => (
-                                        <PodiumCard
-                                            key={medal.rank}
-                                            entry={entry}
-                                            medal={medal}
-                                            animValue={anim}
-                                            metric={metric}
-                                            onPress={openProfilePreview}
-                                        />
-                                    ))}
-                                </View>
+                                <Animated.View style={createFadeSlideStyle(screenMotion[1], 14)}>
+                                    <View style={styles.podiumContainer}>
+                                        {podiumOrder.map(({ entry, medal, anim }) => (
+                                            <PodiumCard
+                                                key={medal.rank}
+                                                entry={entry}
+                                                medal={medal}
+                                                animValue={anim}
+                                                metric={metric}
+                                                onPress={openProfilePreview}
+                                            />
+                                        ))}
+                                    </View>
+                                </Animated.View>
                             )}
 
                             {/* List header */}
                             {!loading && rest.length > 0 && (
-                                <View style={styles.listHeaderRow}>
-                                    <Text style={styles.listHeaderText}>RANK</Text>
-                                    <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 50 }]}>PLAYER</Text>
-                                    <Text style={styles.listHeaderText}>{metric === 'xp' ? 'XP' : 'QUEST'}</Text>
-                                </View>
+                                <Animated.View style={createFadeSlideStyle(screenMotion[2], 12)}>
+                                    <View style={styles.listHeaderRow}>
+                                        <Text style={styles.listHeaderText}>RANK</Text>
+                                        <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 50 }]}>PLAYER</Text>
+                                        <Text style={styles.listHeaderText}>{metric === 'xp' ? 'XP' : 'QUEST'}</Text>
+                                    </View>
+                                </Animated.View>
                             )}
                         </>
                     }
-                    renderItem={({ item }) => (
-                        <LeaderboardRow
-                            item={item}
-                            isMe={item.id === currentUserId}
-                            metric={metric}
-                            onPress={openProfilePreview}
-                        />
-                    )}
+                    renderItem={({ item, index }) => {
+                        const motion = ensureAnimatedValue(rowMotionValues, item.id, 0);
+                        return (
+                            <Animated.View key={item.id} style={createFadeSlideStyle(motion, 20)}>
+                                <LeaderboardRow
+                                    item={item}
+                                    isMe={item.id === currentUserId}
+                                    metric={metric}
+                                    onPress={openProfilePreview}
+                                />
+                            </Animated.View>
+                        );
+                    }}
                     ItemSeparatorComponent={() => <View style={styles.separator} />}
                 />
             </SafeAreaView>
