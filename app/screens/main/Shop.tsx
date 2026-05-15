@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Dimensions, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
@@ -21,6 +21,7 @@ import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
 import { FONTS } from '../../constants/fonts';
 import { invalidateProfileCache } from './ProfileDashboardScreen';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
 
@@ -46,6 +47,25 @@ const DEFAULT_AVATAR_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
   Body: 'body-masc-a', HairBase: 'hairb-flat-m', HairFringe: 'hairf-chill-m', Eyes: 'eyes-default', Mouth: 'mouth-neutral', Top: 'top-cit-m', Bottom: 'bot-cit-m',
 };
 
+function createFilterMotionValues(activeFilter: ShopCategory): Record<ShopCategory, Animated.Value> {
+  return {
+    all: new Animated.Value(activeFilter === 'all' ? 1 : 0),
+    clothing: new Animated.Value(activeFilter === 'clothing' ? 1 : 0),
+    accessories: new Animated.Value(activeFilter === 'accessories' ? 1 : 0),
+    face: new Animated.Value(activeFilter === 'face' ? 1 : 0),
+    hairstyles: new Animated.Value(activeFilter === 'hairstyles' ? 1 : 0),
+    backgrounds: new Animated.Value(activeFilter === 'backgrounds' ? 1 : 0),
+  };
+}
+
+function ensureAnimatedValue(map: Map<string, Animated.Value>, key: string, initialValue = 0) {
+  const existing = map.get(key);
+  if (existing) return existing;
+  const next = new Animated.Value(initialValue);
+  map.set(key, next);
+  return next;
+}
+
 function normalizeAccessories(value: unknown): Partial<Record<AvatarSlot, string>> {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value as Partial<Record<AvatarSlot, string>>;
   return DEFAULT_AVATAR_ACCESSORIES;
@@ -56,6 +76,7 @@ type ShopScreenProps = { onTabPress?: (tab: MainTab) => void; };
 export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+  const AnimatedPressable = useMemo(() => Animated.createAnimatedComponent(Pressable), []);
 
   const navigation = useNavigation<any>();
   const { balance, refreshBalance } = useTokenBalance();
@@ -64,6 +85,15 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
   const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
   const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
+  const screenMotion = useRef(createMotionValues(4)).current;
+  const avatarPulse = useRef(new Animated.Value(0)).current;
+  const filterMotion = useRef(createFilterMotionValues('all')).current;
+  const cardMotionValues = useRef(new Map<string, Animated.Value>()).current;
+  const ownedPulseValues = useRef(new Map<string, Animated.Value>()).current;
+  const lastFilterRef = useRef<ShopCategory>('all');
+  const lastOwnedIdsRef = useRef<Set<string>>(new Set(DEFAULT_OWNED_IDS));
+  const hasInitializedOwnedRef = useRef(false);
+  const hasAnimatedAccessoriesRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -99,6 +129,10 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     return () => { mounted = false; if (profileChannel) supabase.removeChannel(profileChannel); };
   }, []);
 
+  useEffect(() => {
+    createStaggeredEntrance(screenMotion, 360, 75).start();
+  }, [screenMotion]);
+
   const columnWidth = useMemo(() => (Dimensions.get('window').width - H_PADDING * 2 - GRID_GAP * 2) / 3, []);
 
   const currentGender = useMemo(() => getAvatarGenderFromAccessories(appliedAccessories), [appliedAccessories]);
@@ -114,6 +148,103 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       return leftOwned ? 1 : -1;
     });
   }, [filter, ownedIds, currentGender]);
+
+  useEffect(() => {
+    const previousFilter = lastFilterRef.current;
+    const nextValue = filterMotion[filter];
+    const previousValue = filterMotion[previousFilter];
+
+    if (previousFilter === filter) {
+      nextValue.setValue(1);
+      return;
+    }
+
+    previousValue.stopAnimation();
+    nextValue.stopAnimation();
+    Animated.parallel([
+      Animated.timing(previousValue, {
+        toValue: 0,
+        duration: 160,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(nextValue, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    lastFilterRef.current = filter;
+  }, [filter, filterMotion]);
+
+  useEffect(() => {
+    if (!hasInitializedOwnedRef.current) {
+      ownedIds.forEach((id) => {
+        ensureAnimatedValue(ownedPulseValues, id, 1).setValue(1);
+      });
+      lastOwnedIdsRef.current = new Set(ownedIds);
+      hasInitializedOwnedRef.current = true;
+      return;
+    }
+
+    const newlyOwnedIds = [...ownedIds].filter((id) => !lastOwnedIdsRef.current.has(id));
+    newlyOwnedIds.forEach((id) => {
+      const motion = ensureAnimatedValue(ownedPulseValues, id, 0);
+      motion.stopAnimation();
+      motion.setValue(0);
+      Animated.timing(motion, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    });
+
+    lastOwnedIdsRef.current = new Set(ownedIds);
+  }, [ownedIds, ownedPulseValues]);
+
+  useEffect(() => {
+    if (!hasAnimatedAccessoriesRef.current) {
+      hasAnimatedAccessoriesRef.current = true;
+      return;
+    }
+
+    avatarPulse.stopAnimation();
+    avatarPulse.setValue(0);
+    Animated.sequence([
+      Animated.timing(avatarPulse, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(avatarPulse, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [appliedAccessories, avatarPulse]);
+
+  useEffect(() => {
+    const visibleCardAnimations = visibleItems.map((item, index) => {
+      const motion = ensureAnimatedValue(cardMotionValues, item.id, 0);
+      motion.stopAnimation();
+      motion.setValue(0);
+      return Animated.timing(motion, {
+        toValue: 1,
+        duration: 320,
+        delay: index * 70,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      });
+    });
+
+    Animated.parallel(visibleCardAnimations).start();
+  }, [visibleItems, cardMotionValues]);
 
   const completePurchase = useCallback(async (item: AccessoryItem) => {
     if (ownedIds.has(item.id)) return;
@@ -193,99 +324,153 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     <View style={styles.root}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader
-          title="Shop"
-          right={
-            <View style={styles.balanceChip}>
-              <TokenPixelIcon width={16} height={16} />
-              <Text style={styles.balanceText}>{balance}</Text>
-            </View>
-          }
-        />
-
-        <View style={styles.previewCard}>
-          <View style={styles.avatarContainer}>
-            {ALL_SLOTS_Z_ORDER.map((slot) => {
-              const accessoryId = appliedAccessories[slot];
-              if (!accessoryId) return null;
-              const accessory = getAccessoryById(accessoryId);
-              if (!accessory) return null;
-              const Sprite = accessory.Sprite;
-              return (
-                <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
-                  <Sprite width="100%" height="100%" />
-                </View>
-              );
-            })}
-          </View>
-
-          <View style={styles.previewTextBlock}>
-            <Text style={styles.previewTitle}>Your Avatar</Text>
-          </View>
-
-          <Button
-            label="Customize"
-            size="sm"
-            variant="Outline"
-            color={colors.border}
-            leftIcon={<Ionicons name="sparkles" size={18} color={colors.favor} />}
-            onPress={() => {
-              void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
-              navigation.navigate('Customize');
-            }}
-            style={{ backgroundColor: colors.surface2 }}
+        <Animated.View style={createFadeSlideStyle(screenMotion[0], 10)}>
+          <ScreenHeader
+            title="Shop"
+            right={
+              <View style={styles.balanceChip}>
+                <TokenPixelIcon width={16} height={16} />
+                <Text style={styles.balanceText}>{balance}</Text>
+              </View>
+            }
           />
-        </View>
+        </Animated.View>
 
-        <View style={styles.filterRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} bounces={false} style={styles.filterScroll} contentContainerStyle={styles.filterScrollContent}>
-            {FILTERS.map(({ key, label }, index) => {
-              const active = filter === key;
-              const isLast = index === FILTERS.length - 1;
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => {
-                    void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
-                    setFilter(key);
-                  }}
-                  style={[styles.filterPill, active && styles.filterPillActive, !isLast && styles.filterPillGap]}
-                >
-                  <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+        <Animated.View
+          style={[
+            createFadeSlideStyle(screenMotion[1], 12),
+            {
+              transform: [
+                {
+                  scale: avatarPulse.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [1, 1.015, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.previewCard}>
+            <View style={styles.avatarContainer}>
+              {ALL_SLOTS_Z_ORDER.map((slot) => {
+                const accessoryId = appliedAccessories[slot];
+                if (!accessoryId) return null;
+                const accessory = getAccessoryById(accessoryId);
+                if (!accessory) return null;
+                const Sprite = accessory.Sprite;
+                return (
+                  <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
+                    <Sprite width="100%" height="100%" />
+                  </View>
+                );
+              })}
+            </View>
 
-        <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.sectionLabel}>{FILTERS.find((f) => f.key === filter)?.label.toUpperCase() ?? 'ALL'}</Text>
-          <View style={styles.grid}>
-            {visibleItems.map((item) => {
-              const owned = ownedIds.has(item.id);
-              return (
-                <Pressable key={item.id} onPress={() => setDetailItem(item)} style={({ pressed }) => [styles.card, { width: columnWidth }, pressed && styles.cardPressed]}>
-                  <View style={styles.cardPreview}>
-                    {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64, style: getAccessoryPreviewStyle(item, 64) })}
-                    {owned && (
-                      <View style={styles.ownedCorner}><Ionicons name="checkmark-circle" size={18} color={colors.item} /></View>
-                    )}
-                  </View>
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                    <View style={styles.costRow}>
-                      {owned ? (
-                        <Text style={styles.ownedLabel}>Owned</Text>
-                      ) : (
-                        <><TokenPixelIcon width={12} height={12} /><Text style={styles.priceText}>{item.price === 0 ? 'Free' : item.price}</Text></>
-                      )}
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            })}
+            <View style={styles.previewTextBlock}>
+              <Text style={styles.previewTitle}>Your Avatar</Text>
+            </View>
+
+            <Button
+              label="Customize"
+              size="sm"
+              variant="Outline"
+              color={colors.border}
+              leftIcon={<Ionicons name="sparkles" size={18} color={colors.favor} />}
+              onPress={() => {
+                void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 });
+                navigation.navigate('Customize');
+              }}
+              style={{ backgroundColor: colors.surface2 }}
+            />
           </View>
-        </ScrollView>
+        </Animated.View>
+
+        <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
+          <View style={styles.filterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} bounces={false} style={styles.filterScroll} contentContainerStyle={styles.filterScrollContent}>
+              {FILTERS.map(({ key, label }, index) => {
+                const active = filter === key;
+                const isLast = index === FILTERS.length - 1;
+                const motion = filterMotion[key];
+                const animatedFilterStyle = {
+                  opacity: motion.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }),
+                  transform: [
+                    {
+                      scale: motion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }),
+                    },
+                    {
+                      translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [0, -1] }),
+                    },
+                  ],
+                };
+
+                return (
+                  <AnimatedPressable
+                    key={key}
+                    onPress={() => {
+                      void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                      setFilter(key);
+                    }}
+                    style={[styles.filterPill, active && styles.filterPillActive, animatedFilterStyle, !isLast && styles.filterPillGap]}
+                  >
+                    <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{label}</Text>
+                  </AnimatedPressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={createFadeSlideStyle(screenMotion[3], 12)}>
+          <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent} showsVerticalScrollIndicator={false}>
+            <Animated.View style={createFadeSlideStyle(screenMotion[3], 8)}>
+              <Text style={styles.sectionLabel}>{FILTERS.find((f) => f.key === filter)?.label.toUpperCase() ?? 'ALL'}</Text>
+            </Animated.View>
+            <View style={styles.grid}>
+              {visibleItems.map((item) => {
+                const owned = ownedIds.has(item.id);
+                const cardMotion = ensureAnimatedValue(cardMotionValues, item.id, 0);
+                const ownedMotion = ensureAnimatedValue(ownedPulseValues, item.id, owned ? 1 : 0);
+
+                const animatedCardStyle = createFadeSlideStyle(cardMotion, 12);
+                const ownedCheckStyle = {
+                  opacity: ownedMotion.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1] }),
+                  transform: [
+                    {
+                      scale: ownedMotion.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }),
+                    },
+                  ],
+                };
+
+                return (
+                  <Animated.View key={item.id} style={[animatedCardStyle, { width: columnWidth }]}>
+                    <Pressable onPress={() => setDetailItem(item)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+                      <View style={styles.cardPreview}>
+                        {item.Sprite && React.createElement(item.Sprite, { width: 64, height: 64, style: getAccessoryPreviewStyle(item, 64) })}
+                        {owned && (
+                          <Animated.View style={[styles.ownedCorner, ownedCheckStyle]}>
+                            <Ionicons name="checkmark-circle" size={18} color={colors.item} />
+                          </Animated.View>
+                        )}
+                      </View>
+                      <View style={styles.cardInfo}>
+                        <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                        <View style={styles.costRow}>
+                          {owned ? (
+                            <Text style={styles.ownedLabel}>Owned</Text>
+                          ) : (
+                            <><TokenPixelIcon width={12} height={12} /><Text style={styles.priceText}>{item.price === 0 ? 'Free' : item.price}</Text></>
+                          )}
+                        </View>
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </Animated.View>
       </SafeAreaView>
       <BottomNav activeTab="Shop" onTabPress={onTabPress} />
       {detailItem && (
