@@ -55,7 +55,7 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
         }
 
         setLoading(true);
-        
+
         // CRITICAL FIX: type 'signup' explicitly matches the initial registration request
         const { error } = await supabase.auth.verifyOtp({
             email: email,
@@ -63,12 +63,14 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
             type: 'signup'
         });
 
-        setLoading(false);
-
         if (error) {
+            setLoading(false);
             void appSoundManager.playAuthErrorBuzz();
             alert('Verification Failed', error.message);
         } else {
+            // Keep spinner showing — AppNavigator will swap the stack to
+            // ProfileSetup once the SIGNED_IN session update lands. Resetting
+            // loading here would briefly reveal the login form underneath.
             void appSoundManager.playAuthSuccessChime();
             onVerified();
         }

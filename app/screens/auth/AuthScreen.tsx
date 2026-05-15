@@ -216,11 +216,10 @@ export default function AuthScreen({ navigation }: Props) {
             <OtpVerificationScreen
                 email={trimmedEmail}
                 onVerified={() => {
-                    setIsVerifying(false);
-                    setActiveTab('Left'); // Reset background tab state
-                    setPassword('');
-                    setConfirmPassword('');
-                    // AppNavigator handles auto-routing to ProfileSetup.
+                    // Do NOT reset isVerifying/tab/password here. AppNavigator
+                    // will swap this entire AuthFlow stack out to ProfileSetup
+                    // once the SIGNED_IN session lands. Resetting would briefly
+                    // reveal the login form underneath, causing a UI flicker.
                 }}
                 onBack={() => setIsVerifying(false)}
             />
