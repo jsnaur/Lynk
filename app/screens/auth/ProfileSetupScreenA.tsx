@@ -150,7 +150,7 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
       </View>
       </Animated.View>
 
-      <Animated.View style={createFadeSlideStyle(motion[2], 12)}>
+      <Animated.View style={[{ flex: 1 }, createFadeSlideStyle(motion[2], 12)]}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
       <View style={[styles.utilityInfoForm, styles.utilityInfoFormFlexBox]}>
