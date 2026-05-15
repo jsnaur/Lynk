@@ -7,6 +7,7 @@ import {
     ScrollView,
     Image,
     Animated,
+    Easing,
     PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { BADGES, BadgeCategory, getBadgeById } from '../../constants/badges';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -133,6 +135,19 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
     const tooltipTimer = useRef<number | null>(null);
     const tooltipAnim = useRef(new Animated.Value(0)).current;
 
+    // Motion values
+    const screenMotion = useRef(createMotionValues(4)).current; // header, preview, grids, footer
+    const badgeMotionValues = useRef(new Map<string, Animated.Value>()).current;
+    const previewPulse = useRef(new Animated.Value(0)).current;
+
+    function ensureAnimatedValue(map: Map<string, Animated.Value>, key: string, initialValue = 0) {
+        const existing = map.get(key);
+        if (existing) return existing;
+        const next = new Animated.Value(initialValue);
+        map.set(key, next);
+        return next;
+    }
+
     useEffect(() => {
         return () => {
             if (tooltipTimer.current) {
@@ -158,6 +173,33 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
             },
         })
     ).current;
+
+    // Screen entrance
+    useEffect(() => {
+        createStaggeredEntrance(screenMotion, 360, 75).start();
+    }, [screenMotion]);
+
+    // Animate badge items when list updates
+    useEffect(() => {
+        const allBadges = [...questBadges, ...reputationBadges, ...specialBadges];
+        const animations = allBadges.map((b, i) => {
+            const motion = ensureAnimatedValue(badgeMotionValues, b.id, 0);
+            motion.stopAnimation();
+            motion.setValue(0);
+            return Animated.timing(motion, { toValue: 1, duration: 320, delay: i * 60, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+        });
+        Animated.parallel(animations).start();
+    }, [badges]);
+
+    // Preview pulse when selection count changes
+    useEffect(() => {
+        previewPulse.stopAnimation();
+        previewPulse.setValue(0);
+        Animated.sequence([
+            Animated.timing(previewPulse, { toValue: 1, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(previewPulse, { toValue: 0, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]).start();
+    }, [selectedCount]);
 
     const handleBadgePress = (badgeId: string) => {
         setBadges((prev) =>
@@ -220,10 +262,13 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
             <Pressable style={styles.overlay} onPress={onClose} />
             <Animated.View style={[styles.container, { transform: [{ translateY: panY }] }]}>
                 <View style={styles.dragArea} {...panResponder.panHandlers}>
-                    <View style={styles.modalHandle}>
+                    <Animated.View style={createFadeSlideStyle(screenMotion[0], 10)}>
+                        <View style={styles.modalHandle}>
                         <View style={styles.handleBar} />
-                    </View>
-                    <View style={styles.header}>
+                        </View>
+                    </Animated.View>
+                    <Animated.View style={createFadeSlideStyle(screenMotion[0], 10)}>
+                        <View style={styles.header}>
                         <View style={styles.headerLeft}>
                             <Text style={styles.headerTitle}>Choose Badges</Text>
                             <Text style={styles.headerSubtitle}>
@@ -233,10 +278,12 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
                         <Pressable style={styles.doneButton} onPress={handleDone}>
                             <Text style={styles.doneButtonText}>Done</Text>
                         </Pressable>
-                    </View>
+                        </View>
+                    </Animated.View>
                 </View>
 
-                <View style={styles.previewSection}>
+                <Animated.View style={[createFadeSlideStyle(screenMotion[1], 12), { transform: [{ scale: previewPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) }] }]}>
+                    <View style={styles.previewSection}>
                     {Array.from({ length: maxBadges }).map((_, index) => {
                         const badge = selectedBadges[index];
                         const isFilled = !!badge;
@@ -277,39 +324,61 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
                             </Pressable>
                         );
                     })}
-                </View>
+                    </View>
+                </Animated.View>
 
                 <ScrollView
                     style={styles.badgeGridContainer}
                     contentContainerStyle={styles.badgeGridContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    <View style={styles.section}>
+                    <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
+                        <View style={styles.section}>
                         <Text style={styles.sectionTitle}>QUEST MILESTONES</Text>
                         <View style={styles.badgeGrid}>
-                            {questBadges.map((badge) => (
-                                <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
-                            ))}
+                            {questBadges.map((badge, idx) => {
+                                const motion = ensureAnimatedValue(badgeMotionValues, badge.id, 0);
+                                return (
+                                    <Animated.View key={badge.id} style={createFadeSlideStyle(motion, 8)}>
+                                        <BadgeItem badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
+                                    </Animated.View>
+                                );
+                            })}
                         </View>
-                    </View>
+                        </View>
+                    </Animated.View>
 
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>REPUTATION</Text>
-                        <View style={styles.badgeGrid}>
-                            {reputationBadges.map((badge) => (
-                                <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
-                            ))}
+                    <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>REPUTATION</Text>
+                            <View style={styles.badgeGrid}>
+                                {reputationBadges.map((badge) => {
+                                    const motion = ensureAnimatedValue(badgeMotionValues, badge.id, 0);
+                                    return (
+                                        <Animated.View key={badge.id} style={createFadeSlideStyle(motion, 8)}>
+                                            <BadgeItem badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
+                                        </Animated.View>
+                                    );
+                                })}
+                            </View>
                         </View>
-                    </View>
+                    </Animated.View>
 
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>SPECIAL</Text>
-                        <View style={styles.badgeGrid}>
-                            {specialBadges.map((badge) => (
-                                <BadgeItem key={badge.id} badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
-                            ))}
+                    <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>SPECIAL</Text>
+                            <View style={styles.badgeGrid}>
+                                {specialBadges.map((badge) => {
+                                    const motion = ensureAnimatedValue(badgeMotionValues, badge.id, 0);
+                                    return (
+                                        <Animated.View key={badge.id} style={createFadeSlideStyle(motion, 8)}>
+                                            <BadgeItem badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
+                                        </Animated.View>
+                                    );
+                                })}
+                            </View>
                         </View>
-                    </View>
+                    </Animated.View>
 
                     <View style={{ height: 36 }} />
                 </ScrollView>

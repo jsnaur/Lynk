@@ -1,5 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
+  Animated,
+  Easing,
   View,
   Text,
   Pressable,
@@ -18,6 +20,7 @@ import { screenHeaderTheme, useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { useNotificationPreferences } from '../../contexts/NotificationPreferencesContext';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 // ============================================================================
 // REUSABLE COMPONENTS
@@ -243,6 +246,14 @@ export default function SettingsScreen({ navigation }: any) {
     return unsubscribe;
   }, []);
 
+  // Motion values: header + 5 sections
+  const screenMotion = useRef(createMotionValues(6)).current;
+
+  useEffect(() => {
+    // stagger header and each major settings section
+    createStaggeredEntrance(screenMotion, 380, 70).start();
+  }, [screenMotion]);
+
   const handleToggleSfx = (value: boolean) => {
     appSoundManager.setEnabled(value);
     if (value) {
@@ -297,6 +308,7 @@ export default function SettingsScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       {/* ── Header ── */}
+      <Animated.View style={createFadeSlideStyle(screenMotion[0], 12)}>
       <View style={styles.header}>
         {/* Back button — left-anchored, never grows */}
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -314,9 +326,11 @@ export default function SettingsScreen({ navigation }: any) {
         {/* Right spacer — mirrors back button width so title stays centred */}
         <View style={styles.headerSpacer} />
       </View>
+      </Animated.View>
 
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         {/* SECTION 1: ACCOUNT */}
+        <Animated.View style={createFadeSlideStyle(screenMotion[1], 12)}>
         <SettingsSection label="ACCOUNT">
           <SettingsNavRow
             icon="lock"
@@ -336,8 +350,10 @@ export default function SettingsScreen({ navigation }: any) {
             onPress={() => {}}
           />
         </SettingsSection>
+        </Animated.View>
 
         {/* SECTION 2: NOTIFICATIONS */}
+        <Animated.View style={createFadeSlideStyle(screenMotion[2], 12)}>
         <SettingsSection label="NOTIFICATIONS">
           <SettingsToggleRow
             icon="sword-cross"
@@ -377,8 +393,10 @@ export default function SettingsScreen({ navigation }: any) {
             isLast
           />
         </SettingsSection>
+        </Animated.View>
 
         {/* SECTION 3: APP */}
+        <Animated.View style={createFadeSlideStyle(screenMotion[3], 12)}>
         <SettingsSection label="APP">
           <SettingsNavRow
             icon={theme === 'dark' ? 'weather-night' : 'weather-sunny'}
@@ -409,8 +427,10 @@ export default function SettingsScreen({ navigation }: any) {
             onPress={() => {}}
           />
         </SettingsSection>
+        </Animated.View>
 
         {/* SECTION 4: SUPPORT */}
+        <Animated.View style={createFadeSlideStyle(screenMotion[4], 12)}>
         <SettingsSection label="SUPPORT">
           <SettingsNavRow
             icon="message-text-outline"
@@ -443,9 +463,11 @@ export default function SettingsScreen({ navigation }: any) {
             }}
           />
         </SettingsSection>
+        </Animated.View>
 
         {/* SECTION 5: ACCOUNT ACTIONS */}
         <View style={styles.accountActionsGap} />
+        <Animated.View style={createFadeSlideStyle(screenMotion[5], 12)}>
         <SettingsSection label="">
           <SettingsNavRow
             icon="logout"
@@ -466,6 +488,7 @@ export default function SettingsScreen({ navigation }: any) {
             onPress={() => setDeleteModalVisible(true)}
           />
         </SettingsSection>
+        </Animated.View>
 
         <View style={{ height: 40 }} />
       </ScrollView>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
@@ -8,8 +8,9 @@ import ForgotPass3 from '../screens/auth/ForgotPass3';
 import { supabase } from '../lib/supabase';
 import appSoundManager from '../lib/SoundManager';
 import { Session } from '@supabase/supabase-js';
-import { View, ActivityIndicator } from 'react-native';
+import { Animated, ActivityIndicator, View } from 'react-native';
 import { COLORS } from '../constants/colors';
+import { createBaseStackScreenOptions } from './navigationMotion';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ const AppNavigator = () => {
   const [loading, setLoading] = useState(true);
   const [isNewUser, setIsNewUser] = useState(false);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const shellOpacity = useRef(new Animated.Value(0)).current;
 
   const checkSessionAndProfile = useCallback(async (currentSession: Session | null) => {
     if (currentSession?.user) {
@@ -35,6 +37,14 @@ const AppNavigator = () => {
       setIsNewUser(false);
     }
   }, []);
+
+  useEffect(() => {
+    Animated.timing(shellOpacity, {
+      toValue: loading ? 0 : 1,
+      duration: 240,
+      useNativeDriver: true,
+    }).start();
+  }, [loading, shellOpacity]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -76,9 +86,9 @@ const AppNavigator = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.bg }}>
+      <Animated.View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.bg, opacity: shellOpacity }}>
         <ActivityIndicator size="large" color={COLORS.favor} />
-      </View>
+      </Animated.View>
     );
   }
 
@@ -100,11 +110,7 @@ const AppNavigator = () => {
 
     return (
       <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          animation: 'fade',
-          contentStyle: { backgroundColor: COLORS.bg },
-        }}
+        screenOptions={createBaseStackScreenOptions(COLORS.bg)}
       >
         <Stack.Screen
           name="PasswordReset"
@@ -118,11 +124,7 @@ const AppNavigator = () => {
 
   return (
     <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        animation: 'fade',
-        contentStyle: { backgroundColor: COLORS.bg },
-      }}
+      screenOptions={createBaseStackScreenOptions(COLORS.bg)}
     >
       {session && session.user ? (
         isNewUser ? (

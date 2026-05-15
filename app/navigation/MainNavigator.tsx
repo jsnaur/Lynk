@@ -14,6 +14,7 @@ import DailyRewardSheet from '../screens/main/DailyRewardSheet'; // Import the s
 import { useDailyReward } from '../hooks/useDailyReward'; // Import the hook
 import { MainTab } from '../components/BottomNav';
 import { useTheme } from '../contexts/ThemeContext';
+import { createBaseStackScreenOptions } from './navigationMotion';
 
 const Stack = createNativeStackNavigator();
 
@@ -143,7 +144,7 @@ const MainNavigator = () => {
   const { colors } = useTheme();
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+    <Stack.Navigator screenOptions={createBaseStackScreenOptions(colors.bg)}>
       <Stack.Screen name="HomeFeed" component={MainTabsScreen} />
       <Stack.Screen
         name="QuestDetail"

@@ -1,6 +1,6 @@
 // app/screens/auth/ProfileSetupScreenA.tsx
 
-import React, { FC, useCallback, useMemo, useState } from "react";
+import React, { FC, useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,9 +11,11 @@ import { FONTS } from "../../constants/fonts";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS } from "../../constants/accessories";
 import Button from "../../components/buttons/Button";
-import appSoundManager from "../../lib/SoundManager";
+import appSoundManager, { AppSoundCategory } from "../../lib/SoundManager";
 
 import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
+import { Animated } from 'react-native';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 const majorOptions = [
   "Computer Science", "Information Technology", "Business", "Architecture",
@@ -109,6 +111,8 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
     setDisplayNameError("");
     setMajorOpen(false);
     setYearOpen(false);
+    // play SetupProgress SFX
+    void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 }).catch(() => {});
     void appSoundManager.playProgressDing(0.45);
 
     navigation.navigate("ProfileSetupB", {
@@ -120,9 +124,16 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
     });
   }, [navigation, selectedBodyId, displayName, selectedMajor, graduationYear, selectedBody]);
 
+  const motion = useRef(createMotionValues(3)).current;
+
+  useEffect(() => {
+    createStaggeredEntrance(motion).start();
+  }, [motion]);
+
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
-    <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
+    <Animated.View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }, createFadeSlideStyle(motion[0], 8)]}>
+      <Animated.View style={createFadeSlideStyle(motion[1], 10)}>
       <View style={localStyles.topLockedSection}>
       <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox]}>
         <View style={styles.progressBarTrack}>
@@ -137,7 +148,9 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
         </View>
       </View>
       </View>
+      </Animated.View>
 
+      <Animated.View style={createFadeSlideStyle(motion[2], 12)}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
       <View style={[styles.utilityInfoForm, styles.utilityInfoFormFlexBox]}>
@@ -365,7 +378,8 @@ const ProfileSetupScreenA: FC<Props> = ({ navigation }) => {
           style={localStyles.continueButton}
         />
       </SafeAreaView>
-    </View>
+      </Animated.View>
+    </Animated.View>
     </SafeAreaView>
   );
 };

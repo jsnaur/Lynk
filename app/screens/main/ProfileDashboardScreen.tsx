@@ -2,6 +2,8 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import {
+    Animated,
+    Easing,
     Image,
     Pressable,
     ScrollView,
@@ -25,6 +27,7 @@ import { useCustomAlert } from '../../contexts/AlertContext';
 import ScreenHeader from '../../components/navigation/ScreenHeader';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 // Profile Assets
 import VerifiedIcon from "../../../assets/ProfileAssets/Verified_Icon.svg";
@@ -221,6 +224,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
     const { alert } = useCustomAlert();
     const { balance, refreshBalance } = useTokenBalance();
+    const screenMotion = useRef(createMotionValues(5)).current;
+    const avatarPulse = useRef(new Animated.Value(0)).current;
+    const badgeMotion = useRef(new Animated.Value(0)).current;
+    const leaderboardMotion = useRef(new Animated.Value(0)).current;
+    const tokenMotion = useRef(new Animated.Value(0)).current;
+    const questMotion = useRef(new Animated.Value(0)).current;
+    const lastProfileAccessoriesRef = useRef<string>('');
 
     const [profile, setProfile] = useState<any>(CACHED_PROFILE);
     const [initialLoading, setInitialLoading] = useState<boolean>(!HAS_FETCHED_INITIALLY_PROFILE);
@@ -272,6 +282,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const prevLevelRef = useRef<number>(1);
     const lastAlertedLevelRef = useRef<number>(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    useEffect(() => {
+        createStaggeredEntrance(screenMotion, 360, 75).start();
+    }, [screenMotion]);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -442,18 +456,62 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const displayName = profile?.display_name || profile?.displayName || 'Anonymous';
     const bioDisplay = profile?.bio || 'Tell your campus a little about yourself...';
 
+    useEffect(() => {
+        const serializedAccessories = JSON.stringify(profileAccessories);
+        if (!lastProfileAccessoriesRef.current) {
+            lastProfileAccessoriesRef.current = serializedAccessories;
+            return;
+        }
+
+        if (lastProfileAccessoriesRef.current === serializedAccessories) return;
+        lastProfileAccessoriesRef.current = serializedAccessories;
+
+        avatarPulse.stopAnimation();
+        avatarPulse.setValue(0);
+        Animated.sequence([
+            Animated.timing(avatarPulse, {
+                toValue: 1,
+                duration: 120,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+            }),
+            Animated.timing(avatarPulse, {
+                toValue: 0,
+                duration: 200,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [profileAccessories, avatarPulse]);
+
+    useEffect(() => {
+        badgeMotion.setValue(0);
+        leaderboardMotion.setValue(0);
+        tokenMotion.setValue(0);
+        questMotion.setValue(0);
+
+        Animated.stagger(80, [
+            Animated.timing(badgeMotion, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(leaderboardMotion, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(tokenMotion, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(questMotion, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]).start();
+    }, [activeQuestCount, completedQuestCount, badgeMotion, leaderboardMotion, tokenMotion, questMotion]);
+
     return (
         <View style={styles.root}>
             <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
             <SafeAreaView style={styles.safeArea}>
-                <ScreenHeader
-                    title="Profile"
-                    right={
-                        <Pressable style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]} hitSlop={10} onPress={openSettings}>
-                            <Ionicons name="settings-outline" size={24} color={colors.textPrimary} style={styles.settingsIcon} />
-                        </Pressable>
-                    }
-                />
+                <Animated.View style={createFadeSlideStyle(screenMotion[0], 10)}>
+                    <ScreenHeader
+                        title="Profile"
+                        right={
+                            <Pressable style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]} hitSlop={10} onPress={openSettings}>
+                                <Ionicons name="settings-outline" size={24} color={colors.textPrimary} style={styles.settingsIcon} />
+                            </Pressable>
+                        }
+                    />
+                </Animated.View>
 
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
@@ -482,7 +540,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         <ProfileSkeleton />
                     ) : (
                         <>
-                            <View style={styles.identityBlock}>
+                            <Animated.View style={[createFadeSlideStyle(screenMotion[1], 12), { transform: [{ scale: avatarPulse.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.01, 1] }) }] }]}>
+                                <View style={styles.identityBlock}>
                                 <View style={styles.identityRow}>
                                     <View style={styles.avatarColumn}>
                                         <View style={styles.avatarFrame}>
@@ -508,9 +567,11 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                         </Pressable>
                                     </View>
                                 </View>
-                            </View>
+                                </View>
+                            </Animated.View>
 
-                            <View style={styles.badgesBlock}>
+                            <Animated.View style={createFadeSlideStyle(screenMotion[2], 12)}>
+                                <View style={styles.badgesBlock}>
                                 <View style={styles.blockHeaderRow}>
                                     <Text style={styles.blockTitle}>Badges</Text>
                                     {state.equippedBadgeIds.length > 0 && (
@@ -521,12 +582,15 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                     )}
                                 </View>
                                 {state.equippedBadgeIds.length === 0 ? (
+                                    <Animated.View style={{ transform: [{ scale: badgeMotion.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) }], opacity: badgeMotion.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }}>
                                     <Pressable style={styles.badgeEmptyStrip} onPress={openBadgeSelector}>
                                         <Ionicons name="ribbon-outline" size={16} color={colors.textSecondary} />
                                         <Text style={styles.badgeEmptyStripText}>Choose up to 3 badges to show off</Text>
                                         <Ionicons name="chevron-forward" size={14} color={colors.favor} />
                                     </Pressable>
+                                    </Animated.View>
                                 ) : (
+                                    <Animated.View style={{ transform: [{ scale: badgeMotion.interpolate({ inputRange: [0, 1], outputRange: [0.985, 1] }) }], opacity: badgeMotion.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }}>
                                     <View style={styles.badgeRow}>
                                         {Array.from({ length: EQUIPPED_BADGE_SLOTS }).map((_, index) => {
                                             const badgeId = state.equippedBadgeIds[index];
@@ -537,10 +601,13 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                             return <BadgeSlot key={badge.id} image={badge.icon} label={badge.name} />;
                                         })}
                                     </View>
+                                    </Animated.View>
                                 )}
-                            </View>
+                                </View>
+                            </Animated.View>
 
-                            <View style={styles.reputationBlock}>
+                            <Animated.View style={createFadeSlideStyle(screenMotion[3], 12)}>
+                                <View style={styles.reputationBlock}>
                                 <View style={styles.blockHeaderRow}>
                                     <Text style={styles.blockTitle}>Reputation</Text>
                                     <View style={styles.rankChip}>
@@ -565,9 +632,12 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                     <Text style={styles.levelRangeText}>LVL {nextLevel}</Text>
                                 </View>
 
-                                <LeaderboardCard onPress={openLeaderboard} />
+                                <Animated.View style={createFadeSlideStyle(leaderboardMotion, 8)}>
+                                    <LeaderboardCard onPress={openLeaderboard} />
+                                </Animated.View>
 
-                                <Pressable style={styles.tokenCard} onPress={openShop}>
+                                <Animated.View style={createFadeSlideStyle(tokenMotion, 8)}>
+                                    <Pressable style={styles.tokenCard} onPress={openShop}>
                                     <View style={styles.tokenLeftCluster}>
                                         <Image source={ASSETS.token} style={styles.tokenIcon} />
                                         <View>
@@ -580,9 +650,11 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                         <Text style={styles.tokenUnit}>TKN</Text>
                                         <Ionicons name="chevron-forward" size={16} color={colors.token} />
                                     </View>
-                                </Pressable>
+                                    </Pressable>
+                                </Animated.View>
 
-                                <Pressable style={styles.questCard} onPress={openQuest}>
+                                <Animated.View style={createFadeSlideStyle(questMotion, 8)}>
+                                    <Pressable style={styles.questCard} onPress={openQuest}>
                                     <View style={styles.questLeftCluster}>
                                         <Image source={QuestIcon} style={styles.questIcon} />
                                         <View>
@@ -591,8 +663,10 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                         </View>
                                     </View>
                                     <Ionicons name="chevron-forward" size={16} color={colors.token} />
-                                </Pressable>
-                            </View>
+                                    </Pressable>
+                                </Animated.View>
+                                </View>
+                            </Animated.View>
                         </>
                     )}
                 </ScrollView>

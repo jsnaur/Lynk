@@ -1,6 +1,7 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,6 +15,7 @@ import EnvelopePixelSprite from '../../../assets/ForgotPassAssets/Envelope_Pixel
 import { forgotStyles } from './ForgotPass.styles';
 import { supabase } from '../../lib/supabase';
 import appSoundManager from '../../lib/SoundManager';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 const OTP_LENGTH = 6;
 
@@ -24,6 +26,8 @@ export default function ForgotPass2({ navigation, route }: any) {
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refs = useRef<Array<TextInput | null>>(Array(OTP_LENGTH).fill(null));
+  const motionValues = useRef(createMotionValues(3)).current;
+  const otpMotionValues = useRef(createMotionValues(OTP_LENGTH)).current;
 
   const email: string = route?.params?.email ?? '';
   const maskedEmail = useMemo(() => {
@@ -35,6 +39,11 @@ export default function ForgotPass2({ navigation, route }: any) {
 
   const code = digits.join('');
   const canVerify = code.length === OTP_LENGTH && !loading;
+
+  useEffect(() => {
+    createStaggeredEntrance(motionValues).start();
+    createStaggeredEntrance(otpMotionValues, 200, 45).start();
+  }, [motionValues, otpMotionValues]);
 
   const handleDigit = (text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, '').slice(-1);
@@ -91,18 +100,23 @@ export default function ForgotPass2({ navigation, route }: any) {
   return (
     <SafeAreaView style={forgotStyles.root}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
-          <View style={forgotStyles.backRow}>
-            <BackIcon width={24} height={24} />
-            <Text style={forgotStyles.backText}>Back to Login</Text>
-          </View>
-        </Pressable>
-        <View style={forgotStyles.topDivider} />
+        <Animated.View style={createFadeSlideStyle(motionValues[0], 10)}>
+          <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
+            <View style={forgotStyles.backRow}>
+              <BackIcon width={24} height={24} />
+              <Text style={forgotStyles.backText}>Back to Login</Text>
+            </View>
+          </Pressable>
+        </Animated.View>
+        <Animated.View style={createFadeSlideStyle(motionValues[1], 8)}>
+          <View style={forgotStyles.topDivider} />
+        </Animated.View>
 
-        <View style={forgotStyles.inboxCard}>
-          <View style={forgotStyles.mailSpriteWrap}>
-            <EnvelopePixelSprite width={58} height={58} />
-          </View>
+        <Animated.View style={createFadeSlideStyle(motionValues[2], 14)}>
+          <View style={forgotStyles.inboxCard}>
+            <View style={forgotStyles.mailSpriteWrap}>
+              <EnvelopePixelSprite width={58} height={58} />
+            </View>
 
           <Text style={forgotStyles.inboxTitle}>Enter the Code</Text>
           <Text style={forgotStyles.inboxSubtitle}>
@@ -112,64 +126,67 @@ export default function ForgotPass2({ navigation, route }: any) {
           </Text>
 
           {/* OTP digit boxes */}
-          <View style={forgotStyles.otpRow}>
-            {digits.map((digit, i) => (
-              <Pressable key={i} style={{ flex: 1 }} onPress={() => refs.current[i]?.focus()}>
-                <View
-                  style={[
-                    forgotStyles.otpBox,
-                    focusedIndex === i && forgotStyles.otpBoxFocused,
-                    !!digit && forgotStyles.otpBoxFilled,
-                  ]}
-                >
-                  <TextInput
-                    ref={(r) => { refs.current[i] = r; }}
-                    value={digit}
-                    onChangeText={(t) => handleDigit(t, i)}
-                    onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
-                    onFocus={() => setFocusedIndex(i)}
-                    onBlur={() => setFocusedIndex(null)}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    style={forgotStyles.otpDigit}
-                    caretHidden
-                    selectTextOnFocus
-                  />
-                </View>
-              </Pressable>
-            ))}
-          </View>
+            <View style={forgotStyles.otpRow}>
+              {digits.map((digit, i) => (
+                <Animated.View key={i} style={[{ flex: 1 }, createFadeSlideStyle(otpMotionValues[i], 8)]}>
+                  <Pressable style={{ flex: 1 }} onPress={() => refs.current[i]?.focus()}>
+                    <View
+                      style={[
+                        forgotStyles.otpBox,
+                        focusedIndex === i && forgotStyles.otpBoxFocused,
+                        !!digit && forgotStyles.otpBoxFilled,
+                      ]}
+                    >
+                      <TextInput
+                        ref={(r) => { refs.current[i] = r; }}
+                        value={digit}
+                        onChangeText={(t) => handleDigit(t, i)}
+                        onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
+                        onFocus={() => setFocusedIndex(i)}
+                        onBlur={() => setFocusedIndex(null)}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        style={forgotStyles.otpDigit}
+                        caretHidden
+                        selectTextOnFocus
+                      />
+                    </View>
+                  </Pressable>
+                </Animated.View>
+              ))}
+            </View>
 
           {error ? <Text style={[forgotStyles.errorText, { textAlign: 'center' }]}>{error}</Text> : null}
 
-          <Pressable
-            disabled={!canVerify}
-            onPress={handleVerify}
-            style={({ pressed }) => [
-              forgotStyles.actionBtn,
-              { width: '100%', marginTop: 4 },
-              !canVerify && forgotStyles.actionBtnDisabled,
-              pressed && canVerify && forgotStyles.actionBtnPressed,
-            ]}
-          >
-            {loading
-              ? <ActivityIndicator color="#14121A" />
-              : <Text style={forgotStyles.actionText}>Verify Code</Text>
-            }
-          </Pressable>
+            <Pressable
+              disabled={!canVerify}
+              onPress={handleVerify}
+              style={({ pressed }) => [
+                forgotStyles.actionBtn,
+                { width: '100%', marginTop: 14 },
+                !canVerify && forgotStyles.actionBtnDisabled,
+                pressed && canVerify && forgotStyles.actionBtnPressed,
+              ]}
+            >
+              {loading
+                ? <ActivityIndicator color="#14121A" />
+                : <Text style={forgotStyles.actionText}>Verify Code</Text>
+              }
+            </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [forgotStyles.resendWrap, pressed && { opacity: 0.7 }]}
-            onPress={handleResend}
-            disabled={resending}
-          >
-            <Text style={forgotStyles.resendLead}>Didn't receive it? </Text>
-            {resending
-              ? <ActivityIndicator size="small" color="#11E0E8" />
-              : <Text style={forgotStyles.resendAction}>Resend code</Text>
-            }
-          </Pressable>
-        </View>
+            <Pressable
+              style={({ pressed }) => [forgotStyles.resendWrap, pressed && { opacity: 0.7 }]}
+              onPress={handleResend}
+              disabled={resending}
+            >
+              <Text style={forgotStyles.resendLead}>Didn't receive it? </Text>
+              {resending
+                ? <ActivityIndicator size="small" color="#11E0E8" />
+                : <Text style={forgotStyles.resendAction}>Resend code</Text>
+              }
+            </Pressable>
+          </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

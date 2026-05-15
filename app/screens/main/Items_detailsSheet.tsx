@@ -1,7 +1,7 @@
 import React, { type ComponentType, useEffect, useMemo, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TokenPixelIcon from '../../../assets/ShopAssets/Token_Pixel_Icon.svg';
 import { ACCESSORY_ITEMS, AvatarSlot } from '../../constants/accessories';
@@ -11,6 +11,7 @@ import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { getAccessoryPreviewStyle } from '../../constants/accessories';
 import RarityBadge from '../../components/chips/RarityBadge';
 import { FONTS } from '../../constants/fonts';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 type ThemeColors = Record<keyof typeof darkColors, string>;
 
@@ -68,12 +69,15 @@ export default function ItemsDetailsSheet({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const previousVisibleRef = useRef(false);
+  const screenMotion = useRef(createMotionValues(5)).current; // handle, close, hero, title, stats/actions
   const accessory = useMemo(() => ACCESSORY_ITEMS.find((entry) => entry.id === item?.id) ?? null, [item?.id]);
   const previewStyle = accessory ? getAccessoryPreviewStyle(accessory, 96) : undefined;
 
   useEffect(() => {
     if (visible && !previousVisibleRef.current) {
       void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
+      // animate entrance for sheet sections
+      createStaggeredEntrance(screenMotion, 360, 70).start();
     } else if (!visible && previousVisibleRef.current) {
       void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
     }
@@ -99,40 +103,49 @@ export default function ItemsDetailsSheet({
           <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
           <View style={styles.sheetTint} pointerEvents="none" />
 
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
-          </View>
-
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons name="close" size={26} color={colors.textSecondary} />
-          </Pressable>
-
-          <View style={styles.hero}>
-            <View style={styles.spriteRing}>
-              <Sprite width={96} height={96} style={previewStyle} />
-              {accessory?.rarity && (
-                <View style={styles.rarityWrap} pointerEvents="none">
-                  <RarityBadge rarity={accessory.rarity as any} fontFamily={FONTS.display} />
-                </View>
-              )}
+          <Animated.View style={createFadeSlideStyle(screenMotion[0], 8)}>
+            <View style={styles.handleRow}>
+              <View style={styles.handle} />
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{categoryLabel}{isAccessory && ' Accessory'}</Text>
+          </Animated.View>
+
+          <Animated.View style={createFadeSlideStyle(screenMotion[1], 8)}>
+            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+              <Ionicons name="close" size={26} color={colors.textSecondary} />
+            </Pressable>
+          </Animated.View>
+
+          <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
+            <View style={styles.hero}>
+              <View style={styles.spriteRing}>
+                <Sprite width={96} height={96} style={previewStyle} />
+                {accessory?.rarity && (
+                  <View style={styles.rarityWrap} pointerEvents="none">
+                    <RarityBadge rarity={accessory.rarity as any} fontFamily={FONTS.display} />
+                  </View>
+                )}
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{categoryLabel}{isAccessory && ' Accessory'}</Text>
+              </View>
             </View>
-          </View>
+          </Animated.View>
 
-          <Text style={styles.title}>{item.name}</Text>
-          <Text style={styles.subtitle}>
-            {owned
-              ? equipped
-                ? 'Currently equipped on your avatar.'
-                : 'In your locker — equip anytime.'
-              : item.price === 0
-                ? 'Free cosmetic for your campus avatar.'
-                : 'Unlock this for your avatar.'}
-          </Text>
+          <Animated.View style={createFadeSlideStyle(screenMotion[3], 10)}>
+            <Text style={styles.title}>{item.name}</Text>
+            <Text style={styles.subtitle}>
+              {owned
+                ? equipped
+                  ? 'Currently equipped on your avatar.'
+                  : 'In your locker — equip anytime.'
+                : item.price === 0
+                  ? 'Free cosmetic for your campus avatar.'
+                  : 'Unlock this for your avatar.'}
+            </Text>
+          </Animated.View>
 
-          <View style={styles.statsRow}>
+          <Animated.View style={createFadeSlideStyle(screenMotion[4], 10)}>
+            <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Your balance</Text>
               <View style={styles.statValueRow}>
@@ -154,7 +167,66 @@ export default function ItemsDetailsSheet({
                 </View>
               )}
             </View>
-          </View>
+            </View>
+
+            {!owned && !canAfford && (
+              <View style={styles.warnBanner}>
+                <Ionicons name="warning-outline" size={18} color={colors.warning} />
+                <Text style={styles.warnText}>Not enough tokens. Complete quests to earn more.</Text>
+              </View>
+            )}
+
+            <View style={styles.actions}>
+              {owned ? (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      if (!equipped) onEquip();
+                      onClose();
+                    }}
+                    style={({ pressed }) => [
+                      styles.primaryBtn,
+                      equipped && styles.primaryBtnMuted,
+                      pressed && styles.pressed,
+                    ]}
+                    disabled={equipped}
+                  >
+                    <Text style={styles.primaryBtnText}>{equipped ? 'Equipped' : 'Equip now'}</Text>
+                  </Pressable>
+                  <Pressable onPress={onClose} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
+                    <Text style={styles.secondaryBtnText}>Done</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      if (!canAfford && item.price > 0) {
+                        void appSoundManager.play(AppSoundCategory.PurchaseError, { debounceMs: 0 });
+                        return;
+                      }
+
+                      onPurchase();
+                      onClose();
+                    }}
+                    style={({ pressed }) => [
+                      styles.primaryBtn,
+                      (!canAfford && item.price > 0) && styles.primaryBtnDisabled,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityState={{ disabled: !canAfford && item.price > 0 }}
+                  >
+                    <Text style={styles.primaryBtnText}>
+                      {item.price === 0 ? 'Claim free' : `Buy for ${item.price} tokens`}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={onClose} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
+                    <Text style={styles.secondaryBtnText}>Not now</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </Animated.View>
 
           {!owned && !canAfford && (
             <View style={styles.warnBanner}>

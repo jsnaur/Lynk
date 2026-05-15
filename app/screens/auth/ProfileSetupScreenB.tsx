@@ -1,5 +1,5 @@
-import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, type DimensionValue } from "react-native";
+import React, { FC, useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { View, Text, Pressable, StyleSheet, ScrollView, type DimensionValue, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -9,7 +9,8 @@ import { FONTS } from "../../constants/fonts";
 import { supabase } from "../../lib/supabase";
 import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from "../../constants/accessories";
 import Button from "../../components/buttons/Button";
-import appSoundManager from "../../lib/SoundManager";
+import appSoundManager, { AppSoundCategory } from "../../lib/SoundManager";
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 import SelectedCheckIcon from "../../../assets/ProfileSetupPic/Vector.svg";
 
@@ -107,6 +108,12 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
     }
   }, [displayName, selectedMajor, graduationYear, selectedBodyId, navigation]);
 
+  const motion = useRef(createMotionValues(3)).current;
+
+  useEffect(() => {
+    createStaggeredEntrance(motion).start();
+  }, [motion]);
+
   const handleContinue = useCallback(async () => {
     if (!displayName || !selectedMajor || !graduationYear || !selectedBodyId) {
       setErrorMessage("Please complete the profile flow.");
@@ -149,6 +156,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
       }
 
       void appSoundManager.playProgressDing(1);
+      void appSoundManager.play(AppSoundCategory.SetupProgress, { debounceMs: 0 }).catch(() => {});
       navigation.reset({ index: 0, routes: [{ name: "Main" as never }] });
     } catch (err) {
       console.error(err);
@@ -158,7 +166,8 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
-    <View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }]}>
+    <Animated.View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }, createFadeSlideStyle(motion[0], 8)]}>
+      <Animated.View style={createFadeSlideStyle(motion[1], 10)}>
       <View style={localStyles.topLockedSection}>
         <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox, localStyles.stickyProgressHeader]}>
           <View style={styles.progressBarTrack}>
@@ -206,9 +215,11 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
             </View>
           </View>
         </View>
-
       </View>
 
+      </Animated.View>
+
+      <Animated.View style={createFadeSlideStyle(motion[2], 12)}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
         <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
@@ -254,7 +265,9 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
           </View>
         ) : null}
       </ScrollView>
+      </Animated.View>
 
+      <Animated.View style={createFadeSlideStyle(motion[2], 12)}>
       <SafeAreaView edges={["bottom"]} style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}>
         <View style={localStyles.footerButtonRow}>
           <Button
@@ -271,7 +284,8 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
           />
         </View>
       </SafeAreaView>
-    </View>
+      </Animated.View>
+    </Animated.View>
     </SafeAreaView>
   );
 };

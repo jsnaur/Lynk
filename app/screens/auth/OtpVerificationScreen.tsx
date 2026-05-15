@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
+    Animated,
     View,
     Text,
     TextInput,
@@ -14,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import appSoundManager from '../../lib/SoundManager';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 interface OtpVerificationScreenProps {
     email: string;
@@ -25,6 +27,7 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
     const { alert } = useCustomAlert();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const motion = useRef(createMotionValues(3)).current; // back, header+email, input+actions
     
     // Timer state for Resend button to prevent rate limiting
     const [timeLeft, setTimeLeft] = useState(60);
@@ -39,6 +42,10 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
             setCanResend(true);
         }
     }, [timeLeft]);
+
+    useEffect(() => {
+        createStaggeredEntrance(motion).start();
+    }, [motion]);
 
     async function handleVerify() {
         if (code.length !== 6) {
@@ -92,50 +99,56 @@ export default function OtpVerificationScreen({ email, onVerified, onBack }: Otp
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
                 
                 {/* Back Button */}
-                <Pressable onPress={onBack} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                </Pressable>
+                <Animated.View style={createFadeSlideStyle(motion[0], 10)}>
+                    <Pressable onPress={onBack} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                    </Pressable>
+                </Animated.View>
 
                 <View style={styles.content}>
-                    <Text style={styles.title}>Check your email</Text>
-                    <Text style={styles.subtitle}>
-                        We sent a 6-digit verification code to:
-                    </Text>
-                    <Text style={styles.emailText}>{email}</Text>
+                    <Animated.View style={createFadeSlideStyle(motion[1], 12)}>
+                        <Text style={styles.title}>Check your email</Text>
+                        <Text style={styles.subtitle}>
+                            We sent a 6-digit verification code to:
+                        </Text>
+                        <Text style={styles.emailText}>{email}</Text>
+                    </Animated.View>
 
-                    {/* OTP Input */}
-                    <TextInput
-                        style={styles.input}
-                        placeholder="••••••"
-                        placeholderTextColor="#9ca3af"
-                        keyboardType="number-pad"
-                        maxLength={6}
-                        value={code}
-                        onChangeText={setCode}
-                    />
+                    <Animated.View style={createFadeSlideStyle(motion[2], 12)}>
+                        {/* OTP Input */}
+                        <TextInput
+                            style={styles.input}
+                            placeholder="••••••"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            value={code}
+                            onChangeText={setCode}
+                        />
 
-                    {/* Verify Button */}
-                    <Pressable
-                        style={[styles.button, loading && styles.buttonDisabled]}
-                        onPress={handleVerify}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                        ) : (
-                            <Text style={styles.buttonText}>Verify Account</Text>
-                        )}
-                    </Pressable>
-
-                    {/* Resend Logic */}
-                    <View style={styles.resendContainer}>
-                        <Text style={styles.resendText}>Didn't receive a code? </Text>
-                        <Pressable onPress={handleResend} disabled={!canResend}>
-                            <Text style={[styles.resendLink, !canResend && styles.resendLinkDisabled]}>
-                                {canResend ? 'Resend' : `Resend in ${timeLeft}s`}
-                            </Text>
+                        {/* Verify Button */}
+                        <Pressable
+                            style={[styles.button, loading && styles.buttonDisabled]}
+                            onPress={handleVerify}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.buttonText}>Verify Account</Text>
+                            )}
                         </Pressable>
-                    </View>
+
+                        {/* Resend Logic */}
+                        <View style={styles.resendContainer}>
+                            <Text style={styles.resendText}>Didn't receive a code? </Text>
+                            <Pressable onPress={handleResend} disabled={!canResend}>
+                                <Text style={[styles.resendLink, !canResend && styles.resendLinkDisabled]}>
+                                    {canResend ? 'Resend' : `Resend in ${timeLeft}s`}
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </Animated.View>
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>

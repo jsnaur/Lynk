@@ -10,9 +10,11 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
+import { Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { FONTS } from '../../constants/fonts';
@@ -62,6 +64,8 @@ export default function EditProfileModal({
 
     const slideAnim = useRef(new Animated.Value(36)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
+    // Screen-local motion values: handle, header, form
+    const screenMotion = useRef(createMotionValues(3)).current;
 
     const [displayName, setDisplayName] = useState(initialData.displayName);
     const [bio, setBio] = useState(initialData.bio);
@@ -144,6 +148,8 @@ export default function EditProfileModal({
                 useNativeDriver: true,
             }),
         ]).start();
+        // stagger sub-section entrances
+        createStaggeredEntrance(screenMotion, 360, 70).start();
     }, [slideAnim, opacityAnim]);
 
     const handleSave = async () => {
@@ -182,29 +188,34 @@ export default function EditProfileModal({
                 },
             ]}
         >
-            <View style={styles.modalHandle}>
-                <View style={styles.handleBar} />
-            </View>
+            <Animated.View style={createFadeSlideStyle(screenMotion[0], 8)}>
+                <View style={styles.modalHandle}>
+                    <View style={styles.handleBar} />
+                </View>
+            </Animated.View>
 
-            <View style={styles.header}>
-                <Pressable onPress={onClose} hitSlop={10} style={styles.cancelPressable}>
-                    <Text style={styles.cancelButton}>Cancel</Text>
-                </Pressable>
+            <Animated.View style={createFadeSlideStyle(screenMotion[1], 12)}>
+                <View style={styles.header}>
+                    <Pressable onPress={onClose} hitSlop={10} style={styles.cancelPressable}>
+                        <Text style={styles.cancelButton}>Cancel</Text>
+                    </Pressable>
 
-                <Text style={styles.headerTitle} numberOfLines={1} pointerEvents="none">Edit Profile</Text>
+                    <Text style={styles.headerTitle} numberOfLines={1} pointerEvents="none">Edit Profile</Text>
 
-                <Pressable onPress={handleSave} style={styles.savePressable}>
-                    <View style={styles.saveButton}>
-                        <Text style={styles.saveButtonText}>Save</Text>
-                    </View>
-                </Pressable>
-            </View>
+                    <Pressable onPress={handleSave} style={styles.savePressable}>
+                        <View style={styles.saveButton}>
+                            <Text style={styles.saveButtonText}>Save</Text>
+                        </View>
+                    </Pressable>
+                </View>
+            </Animated.View>
 
             <KeyboardAvoidingView
                 style={styles.keyboardAvoidingContainer}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
             >
+                <Animated.View style={createFadeSlideStyle(screenMotion[2], 12)}>
                 <ScrollView
                     style={styles.formContainer}
                     showsVerticalScrollIndicator={false}
@@ -462,6 +473,7 @@ export default function EditProfileModal({
                     )}
                 </View>
             </ScrollView>
+            </Animated.View>
             </KeyboardAvoidingView>
         </Animated.View>
         <ContentBlockedModal

@@ -7,6 +7,7 @@ import ProfileSetupScreenB from '../screens/auth/ProfileSetupScreenB';
 import ForgotPass1 from '../screens/auth/ForgotPass1';
 import ForgotPass2 from '../screens/auth/ForgotPass2';
 import ForgotPass3 from '../screens/auth/ForgotPass3';
+import { createBaseStackScreenOptions } from './navigationMotion';
 
 export type AuthStackParamList = {
   Auth: undefined;
@@ -27,11 +28,7 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 const AuthNavigator = () => {
   return (
     <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        animation: 'fade',
-        contentStyle: { backgroundColor: COLORS.bg },
-      }}
+      screenOptions={createBaseStackScreenOptions(COLORS.bg)}
     >
       <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="ForgotPass1" component={ForgotPass1} />

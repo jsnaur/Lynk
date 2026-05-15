@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackIcon from '../../../assets/ForgotPassAssets/Back_Icon.svg';
 import LockIcon from '../../../assets/ForgotPassAssets/Lock_Icon.svg';
@@ -9,6 +9,7 @@ import { forgotStyles } from './ForgotPass.styles';
 import { supabase } from '../../lib/supabase';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import appSoundManager from '../../lib/SoundManager';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 // Safety net: if Supabase's recovery-session updateUser promise hangs (a known
 // edge case where the password is updated server-side but the client never
@@ -24,6 +25,9 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [timeLeftSec, setTimeLeftSec] = useState(11 * 60 + 23);
+  const motionValues = useRef(createMotionValues(2)).current;
+  const requirementValues = useRef(createMotionValues(4)).current;
+  const successMotion = useRef(new Animated.Value(0)).current;
 
   // isRecoveryMode is true when this screen is shown after the user taps the email reset link
   const isRecoveryMode: boolean = route?.params?.isRecoveryMode ?? false;
@@ -52,6 +56,20 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
     if (!success) return;
     void appSoundManager.playAuthSuccessChime();
   }, [success]);
+
+  useEffect(() => {
+    createStaggeredEntrance(motionValues).start();
+    createStaggeredEntrance(requirementValues, 70).start();
+  }, [motionValues, requirementValues]);
+
+  useEffect(() => {
+    if (!success) return;
+    Animated.timing(successMotion, {
+      toValue: 1,
+      duration: 320,
+      useNativeDriver: true,
+    }).start();
+  }, [success, successMotion]);
 
   const timerLabel = useMemo(() => {
     const minutes = Math.floor(timeLeftSec / 60);
@@ -135,27 +153,29 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
   if (success) {
     return (
       <SafeAreaView style={forgotStyles.root}>
-        <View style={forgotStyles.pass3Card}>
-          <View style={forgotStyles.iconWrap}>
-            <CheckIcon width={28} height={28} />
-          </View>
+        <Animated.View style={createFadeSlideStyle(successMotion, 14)}>
+          <View style={forgotStyles.pass3Card}>
+            <View style={forgotStyles.iconWrap}>
+              <CheckIcon width={28} height={28} />
+            </View>
 
           <Text style={forgotStyles.pass3Title}>Password Updated</Text>
           <Text style={forgotStyles.pass3Subtitle}>
             Your password has been updated.{'\n'}You can now sign in with your new password.
           </Text>
 
-          <Pressable
-            onPress={handleGoToLogin}
-            style={({ pressed }) => [
-              forgotStyles.pass3Cta,
-              forgotStyles.pass3CtaEnabled,
-              pressed && forgotStyles.actionBtnPressed,
-            ]}
-          >
-            <Text style={forgotStyles.pass3CtaText}>Go to Login</Text>
-          </Pressable>
-        </View>
+            <Pressable
+              onPress={handleGoToLogin}
+              style={({ pressed }) => [
+                forgotStyles.pass3Cta,
+                forgotStyles.pass3CtaEnabled,
+                pressed && forgotStyles.actionBtnPressed,
+              ]}
+            >
+              <Text style={forgotStyles.pass3CtaText}>Go to Login</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
       </SafeAreaView>
     );
   }
@@ -166,34 +186,39 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
         {/* In recovery mode, there's no previous screen to go back to */}
         {!isRecoveryMode && (
           <>
-            <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
-              <View style={forgotStyles.backRow}>
-                <BackIcon width={24} height={24} />
-                <Text style={forgotStyles.backText}>Back to Login</Text>
-              </View>
-            </Pressable>
-            <View style={forgotStyles.topDivider} />
+            <Animated.View style={createFadeSlideStyle(motionValues[0], 10)}>
+              <Pressable onPress={() => navigation.navigate('Auth')} style={forgotStyles.backWrap}>
+                <View style={forgotStyles.backRow}>
+                  <BackIcon width={24} height={24} />
+                  <Text style={forgotStyles.backText}>Back to Login</Text>
+                </View>
+              </Pressable>
+            </Animated.View>
+            <Animated.View style={createFadeSlideStyle(motionValues[1], 8)}>
+              <View style={forgotStyles.topDivider} />
+            </Animated.View>
           </>
         )}
 
-        <View style={forgotStyles.pass3Card}>
-          <View style={forgotStyles.iconWrap}>
-            <LockIcon width={28} height={28} />
-          </View>
+        <Animated.View style={createFadeSlideStyle(success ? successMotion : motionValues[1], 14)}>
+          <View style={forgotStyles.pass3Card}>
+            <View style={forgotStyles.iconWrap}>
+              <LockIcon width={28} height={28} />
+            </View>
 
           <Text style={forgotStyles.pass3Title}>New Password</Text>
           <Text style={forgotStyles.pass3Subtitle}>
             Create a strong password{'\n'}for your LYNK account.
           </Text>
 
-          <View style={forgotStyles.pass3Badge}>
-            <CheckIcon width={14} height={14} />
-            <Text style={forgotStyles.pass3BadgeText}>
-              {isRecoveryMode
-                ? 'Code verified — set your new password'
-                : `Secure code verified — expires in ${timerLabel}`}
-            </Text>
-          </View>
+            <View style={forgotStyles.pass3Badge}>
+              <CheckIcon width={14} height={14} />
+              <Text style={forgotStyles.pass3BadgeText}>
+                {isRecoveryMode
+                  ? 'Code verified — set your new password'
+                  : `Secure code verified — expires in ${timerLabel}`}
+              </Text>
+            </View>
 
           <View style={forgotStyles.passInputWrap}>
             <View style={[forgotStyles.passInputShell, password.length > 0 && !hasLength && forgotStyles.inputError]}>
@@ -229,60 +254,69 @@ export default function ForgotPass3({ navigation, route, onExitRecovery }: any) 
             </View>
 
             <View style={forgotStyles.reqList}>
-              <View style={forgotStyles.reqRow}>
-                {hasLength ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasLength && forgotStyles.reqTextPass]}>At least 8 characters</Text>
-              </View>
-              <View style={forgotStyles.reqRow}>
-                {hasUpper ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasUpper && forgotStyles.reqTextPass]}>One uppercase letter</Text>
-              </View>
-              <View style={forgotStyles.reqRow}>
-                {hasNumber ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasNumber && forgotStyles.reqTextPass]}>One number</Text>
-              </View>
-              <View style={forgotStyles.reqRow}>
-                {hasSpecial ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
-                <Text style={[forgotStyles.reqText, hasSpecial && forgotStyles.reqTextPass]}>One special character</Text>
-              </View>
+              <Animated.View style={createFadeSlideStyle(requirementValues[0], 8)}>
+                <View style={forgotStyles.reqRow}>
+                  {hasLength ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
+                  <Text style={[forgotStyles.reqText, hasLength && forgotStyles.reqTextPass]}>At least 8 characters</Text>
+                </View>
+              </Animated.View>
+              <Animated.View style={createFadeSlideStyle(requirementValues[1], 8)}>
+                <View style={forgotStyles.reqRow}>
+                  {hasUpper ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
+                  <Text style={[forgotStyles.reqText, hasUpper && forgotStyles.reqTextPass]}>One uppercase letter</Text>
+                </View>
+              </Animated.View>
+              <Animated.View style={createFadeSlideStyle(requirementValues[2], 8)}>
+                <View style={forgotStyles.reqRow}>
+                  {hasNumber ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
+                  <Text style={[forgotStyles.reqText, hasNumber && forgotStyles.reqTextPass]}>One number</Text>
+                </View>
+              </Animated.View>
+              <Animated.View style={createFadeSlideStyle(requirementValues[3], 8)}>
+                <View style={forgotStyles.reqRow}>
+                  {hasSpecial ? <CheckIcon width={14} height={14} /> : <UncheckedIcon width={14} height={14} />}
+                  <Text style={[forgotStyles.reqText, hasSpecial && forgotStyles.reqTextPass]}>One special character</Text>
+                </View>
+              </Animated.View>
             </View>
           </View>
 
-          <View style={forgotStyles.passInputWrap}>
-            <View style={[forgotStyles.passInputShell, showMismatchError && forgotStyles.inputError]}>
-              <LockIcon width={16} height={16} />
-              <TextInput
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirm new password"
-                placeholderTextColor="#71758A"
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={forgotStyles.passInputField}
-              />
-              <Pressable onPress={() => setShowConfirmPassword((prev) => !prev)}>
-                <Text style={forgotStyles.eyeAction}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
-              </Pressable>
+            <View style={forgotStyles.passInputWrap}>
+              <View style={[forgotStyles.passInputShell, showMismatchError && forgotStyles.inputError]}>
+                <LockIcon width={16} height={16} />
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirm new password"
+                  placeholderTextColor="#71758A"
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={forgotStyles.passInputField}
+                />
+                <Pressable onPress={() => setShowConfirmPassword((prev) => !prev)}>
+                  <Text style={forgotStyles.eyeAction}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
+                </Pressable>
+              </View>
+              {showMismatchError && <Text style={forgotStyles.errorText}>Passwords do not match.</Text>}
             </View>
-            {showMismatchError && <Text style={forgotStyles.errorText}>Passwords do not match.</Text>}
-          </View>
 
-          <Pressable
-            disabled={!canSubmit}
-            onPress={handleReset}
-            style={({ pressed }) => [
-              forgotStyles.pass3Cta,
-              canSubmit && forgotStyles.pass3CtaEnabled,
-              pressed && canSubmit && forgotStyles.actionBtnPressed,
-            ]}
-          >
-            {loading
-              ? <ActivityIndicator color="#0F0F14" />
-              : <Text style={forgotStyles.pass3CtaText}>Set New Password</Text>
-            }
-          </Pressable>
-        </View>
+            <Pressable
+              disabled={!canSubmit}
+              onPress={handleReset}
+              style={({ pressed }) => [
+                forgotStyles.pass3Cta,
+                canSubmit && forgotStyles.pass3CtaEnabled,
+                pressed && canSubmit && forgotStyles.actionBtnPressed,
+              ]}
+            >
+              {loading
+                ? <ActivityIndicator color="#0F0F14" />
+                : <Text style={forgotStyles.pass3CtaText}>Set New Password</Text>
+              }
+            </Pressable>
+          </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
