@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNav, { MainTab } from '../../components/BottomNav';
@@ -18,6 +18,7 @@ import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
 import { FONTS } from '../../constants/fonts';
 import { registerQuestScreenCacheInvalidator } from './screenCacheRegistry';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 type QuestStatus = 'Awaiting approval' | 'In progress' | 'Pending resolution' | 'Resolved';
 
@@ -131,6 +132,9 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
   const [currentUserId, setCurrentUserId] = useState<string | null>(CACHED_CURRENT_USER_ID);
   const moderationUnsubsRef = useRef<Array<() => void>>([]);
 
+  const screenMotion = useRef(createMotionValues(3)).current; // segmented, sectionHeader+filter, list
+  const hasPlayedEntranceRef = useRef(false);
+
   const fetchQuests = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -165,12 +169,12 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
         const isAccepter = q.accepted_by === user.id || (q.participants?.find((p: any) => p.user_id === user.id) && ['accepted', 'completed', 'failed', 'resolved'].includes(q.participants.find((p: any) => p.user_id === user.id).status));
         const isResolved = q.status === 'completed' || q.status === 'resolved';
         const hasAcceptedParticipants = q.accepted_by || (q.participants?.some((p: any) => p.status === 'accepted'));
-        
+
         const acceptorObj = Array.isArray(q.acceptor) ? q.acceptor[0] : q.acceptor;
         const fetchedAcceptorName = acceptorObj?.display_name || acceptorObj?.first_name || 'your quest partner';
 
         let role = ''; let statusLabel = ''; let statusColor: string = colors.textSecondary; let isActionable = false; let historyTag: 'Posted' | 'Accepted' | undefined; let cardTint = theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-        
+
         let accent: string = colors.textSecondary;
         if (q.category === 'favor') accent = colors.favor;
         if (q.category === 'study') accent = colors.study;
@@ -258,66 +262,92 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
     Animated.timing(slideAnim, { toValue: activeSection === 'History' ? 1 : 0, duration: 240, useNativeDriver: true }).start();
   }, [activeSection, slideAnim]);
 
+  useEffect(() => {
+    if (isInitialLoading || hasPlayedEntranceRef.current) return;
+    hasPlayedEntranceRef.current = true;
+    screenMotion.forEach((m) => m.setValue(0));
+    createStaggeredEntrance(screenMotion, 420, 90).start();
+  }, [isInitialLoading, screenMotion]);
+
+  useEffect(() => {
+    if (!hasPlayedEntranceRef.current) return;
+    const sectionValues = [screenMotion[1], screenMotion[2]];
+    Animated.sequence([
+      Animated.parallel(
+        sectionValues.map((m) =>
+          Animated.timing(m, { toValue: 0, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        ),
+      ),
+      createStaggeredEntrance(sectionValues, 560, 150),
+    ]).start();
+  }, [activeSection, screenMotion]);
+
   return (
     <View style={styles.root}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScreenHeader title="My Quests" />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={async () => { setIsRefreshing(true); await fetchQuests(); setIsRefreshing(false); }} tintColor={colors.item} />}>
-          <View style={styles.segmentedControl} onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}>
-            {segmentWidth > 0 && <Animated.View pointerEvents="none" style={[styles.segmentIndicator, { width: (segmentWidth - 12) / 2, transform: [{ translateX: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, (segmentWidth - 12) / 2 + 4] }) }] }]} />}
-            {(['Active', 'History'] as const).map((label) => (
-              <Pressable
-                key={label}
-                onPress={() => {
-                  void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
-                  setActiveSection(label);
-                }}
-                style={({ pressed }) => [styles.segment, pressed && styles.segmentPressed]}
-              >
-                <Text style={[styles.segmentText, activeSection === label && styles.segmentTextSelected]}>{label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <View style={styles.sectionHeaderRow}>
-            {activeSection === 'History' ? <Text style={styles.sectionTitle}>Filter</Text> : <><Text style={styles.sectionTitle}>{activeSection} Quests</Text><View style={styles.countBadge}><Text style={styles.countText}>{quests.length}</Text></View></>}
-          </View>
-
-          {activeSection === 'History' && (
-            <View style={styles.filterRow}>
-              {HISTORY_FILTERS.map((filter) => (
+          <Animated.View style={createFadeSlideStyle(screenMotion[0], 12)}>
+            <View style={styles.segmentedControl} onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}>
+              {segmentWidth > 0 && <Animated.View pointerEvents="none" style={[styles.segmentIndicator, { width: (segmentWidth - 12) / 2, transform: [{ translateX: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, (segmentWidth - 12) / 2 + 4] }) }] }]} />}
+              {(['Active', 'History'] as const).map((label) => (
                 <Pressable
-                  key={filter}
+                  key={label}
                   onPress={() => {
                     void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
-                    setHistoryFilter(filter);
+                    setActiveSection(label);
                   }}
-                  style={({ pressed }) => [styles.filterChip, historyFilter === filter && styles.filterChipSelected, pressed && styles.filterChipPressed]}
+                  style={({ pressed }) => [styles.segment, pressed && styles.segmentPressed]}
                 >
-                  <Text style={[styles.filterChipText, historyFilter === filter && styles.filterChipTextSelected]}>{filter}</Text>
+                  <Text style={[styles.segmentText, activeSection === label && styles.segmentTextSelected]}>{label}</Text>
                 </Pressable>
               ))}
             </View>
-          )}
+          </Animated.View>
 
-          <View style={styles.list}>
-            {isInitialLoading ? (
-              Array.from({ length: 4 }).map((_, index) => <QuestCardSkeleton key={`quest-skeleton-${index}`} />)
-            ) : (
-              filteredHistoryQuests.map((q) => (
-                <QuestCard key={q.id} item={q} variant={activeSection === 'History' ? 'history' : 'active'}
-                  onPress={() => {
-                    if (activeSection === 'Active') {
-                      void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
-                      navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 }});
-                    }
-                  }}
-                  onResolve={q.isActionable ? () => { setSelectedQuestId(q.id); setResolutionModalVisible(true); } : undefined}
-                />
-              ))
+          <Animated.View style={createFadeSlideStyle(screenMotion[1], 12)}>
+            <View style={styles.sectionHeaderRow}>
+              {activeSection === 'History' ? <Text style={styles.sectionTitle}>Filter</Text> : <><Text style={styles.sectionTitle}>{activeSection} Quests</Text><View style={styles.countBadge}><Text style={styles.countText}>{quests.length}</Text></View></>}
+            </View>
+
+            {activeSection === 'History' && (
+              <View style={styles.filterRow}>
+                {HISTORY_FILTERS.map((filter) => (
+                  <Pressable
+                    key={filter}
+                    onPress={() => {
+                      void appSoundManager.play(AppSoundCategory.TabSwitch, { debounceMs: 0 });
+                      setHistoryFilter(filter);
+                    }}
+                    style={({ pressed }) => [styles.filterChip, historyFilter === filter && styles.filterChipSelected, pressed && styles.filterChipPressed]}
+                  >
+                    <Text style={[styles.filterChipText, historyFilter === filter && styles.filterChipTextSelected]}>{filter}</Text>
+                  </Pressable>
+                ))}
+              </View>
             )}
-          </View>
+          </Animated.View>
+
+          <Animated.View style={createFadeSlideStyle(screenMotion[2], 20)}>
+            <View style={styles.list}>
+              {isInitialLoading ? (
+                Array.from({ length: 4 }).map((_, index) => <QuestCardSkeleton key={`quest-skeleton-${index}`} />)
+              ) : (
+                filteredHistoryQuests.map((q) => (
+                  <QuestCard key={q.id} item={q} variant={activeSection === 'History' ? 'history' : 'active'}
+                    onPress={() => {
+                      if (activeSection === 'Active') {
+                        void appSoundManager.play(AppSoundCategory.PostExpand, { debounceMs: 0 });
+                        navigation?.navigate?.('QuestDetail', { quest: { id: q.id, category: q.accent === colors.favor ? 'favor' : q.accent === colors.study ? 'study' : 'item', title: q.title, preview: `${q.role} · ${q.status}`, posterName: 'You', ago: 'now', xp: q.xp || 80, token: q.token || 15 } });
+                      }
+                    }}
+                    onResolve={q.isActionable ? () => { setSelectedQuestId(q.id); setResolutionModalVisible(true); } : undefined}
+                  />
+                ))
+              )}
+            </View>
+          </Animated.View>
         </ScrollView>
       </SafeAreaView>
       <BottomNav activeTab="Quests" onTabPress={onTabPress} />
@@ -333,7 +363,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   title: { ...screenHeaderTheme.text.title, color: colors.textPrimary },
   content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 112 },
   segmentedControl: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, padding: 4, gap: 4, position: 'relative' },
-  segmentIndicator: { position: 'absolute', top: 4, left: 4, height: 38, borderRadius: 10, backgroundColor: theme === 'dark' ? colors.border : '#FFFFFF', elevation: theme === 'light' ? 2 : 0, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2 },
+  segmentIndicator: { position: 'absolute', top: 4, left: 4, height: 38, borderRadius: 10, backgroundColor: theme === 'dark' ? colors.border : '#FFFFFF', elevation: theme === 'light' ? 2 : 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2 },
   segment: { flex: 1, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   segmentPressed: { opacity: 0.88 },
   segmentText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
