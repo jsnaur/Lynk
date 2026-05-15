@@ -205,6 +205,26 @@ export default function QuestScreen({ navigation, onTabPress }: QuestScreenProps
     return unsubscribe;
   }, [fetchQuests, navigation]);
 
+  // Live-refresh when any of the current user's quests or participations
+  // change status (e.g. poster resolves and rewards land in profile).
+  useEffect(() => {
+    if (!currentUserId) return;
+    const channel = supabase
+      .channel(`quest_screen_live_${currentUserId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'quest_participants', filter: `user_id=eq.${currentUserId}` },
+        () => { fetchQuests(); },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'quests', filter: `user_id=eq.${currentUserId}` },
+        () => { fetchQuests(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUserId, fetchQuests]);
+
   useEffect(() => {
     moderationUnsubsRef.current.forEach((fn) => fn());
     moderationUnsubsRef.current = [];
