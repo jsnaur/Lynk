@@ -9,6 +9,7 @@ import {
     Animated,
     Easing,
     PanResponder,
+    useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { darkColors, withOpacity } from '../../constants/colors';
@@ -53,6 +54,8 @@ const getBadgeImage = (id: string) => getBadgeById(id)?.icon;
 function BadgeItem({ badge, onPress, onLongPress }: { badge: Badge; onPress?: (id: string) => void; onLongPress?: (id: string) => void }) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+    const { width } = useWindowDimensions();
+    const badgeCellWidth = Math.max(96, Math.floor((width - 48) / 3));
 
     const isDefault = badge.state === 'default';
     const isSelected = badge.state === 'selected';
@@ -80,7 +83,7 @@ function BadgeItem({ badge, onPress, onLongPress }: { badge: Badge; onPress?: (i
 
     return (
         <Pressable
-            style={styles.badgeWrapper}
+            style={[styles.badgeWrapper, { width: badgeCellWidth }]}
             onPress={() => {
                 if (isDisabled || isLocked) return;
                 onPress?.(badge.id);
@@ -205,7 +208,10 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
         setBadges((prev) =>
             prev.map((badge) => {
                 if (badge.id === badgeId) {
-                        if (badge.state === 'selected') return { ...badge, state: 'default' };
+                        if (badge.state === 'selected') {
+                            try { void appSoundManager.play(AppSoundCategory.BadgeEquip, { force: true }); } catch (e) {}
+                            return { ...badge, state: 'default' };
+                        }
                         else if (selectedCount < maxBadges && badge.state !== 'locked' && badge.state !== 'disabled') {
                             try { void appSoundManager.play(AppSoundCategory.BadgeEquip, { force: true }); } catch (e) {}
                             return { ...badge, state: 'selected' };
@@ -327,28 +333,31 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
                     </View>
                 </Animated.View>
 
-                <ScrollView
-                    style={styles.badgeGridContainer}
-                    contentContainerStyle={styles.badgeGridContent}
-                    showsVerticalScrollIndicator={false}
+                <Animated.View
+                    style={[
+                        styles.badgeGridMotionContainer,
+                        createFadeSlideStyle(screenMotion[2], 10),
+                    ]}
                 >
-                    <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
+                    <ScrollView
+                        style={styles.badgeGridContainer}
+                        contentContainerStyle={styles.badgeGridContent}
+                        showsVerticalScrollIndicator={false}
+                    >
                         <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>QUEST MILESTONES</Text>
-                        <View style={styles.badgeGrid}>
-                            {questBadges.map((badge, idx) => {
-                                const motion = ensureAnimatedValue(badgeMotionValues, badge.id, 0);
-                                return (
-                                    <Animated.View key={badge.id} style={createFadeSlideStyle(motion, 8)}>
-                                        <BadgeItem badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
-                                    </Animated.View>
-                                );
-                            })}
+                            <Text style={styles.sectionTitle}>QUEST MILESTONES</Text>
+                            <View style={styles.badgeGrid}>
+                                {questBadges.map((badge, idx) => {
+                                    const motion = ensureAnimatedValue(badgeMotionValues, badge.id, 0);
+                                    return (
+                                        <Animated.View key={badge.id} style={createFadeSlideStyle(motion, 8)}>
+                                            <BadgeItem badge={badge} onPress={handleBadgePress} onLongPress={() => showTooltipFor(badge.id)} />
+                                        </Animated.View>
+                                    );
+                                })}
+                            </View>
                         </View>
-                        </View>
-                    </Animated.View>
 
-                    <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>REPUTATION</Text>
                             <View style={styles.badgeGrid}>
@@ -362,9 +371,7 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
                                 })}
                             </View>
                         </View>
-                    </Animated.View>
 
-                    <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>SPECIAL</Text>
                             <View style={styles.badgeGrid}>
@@ -378,10 +385,10 @@ export default function BadgeSelectorModal({ onClose, onDone, maxBadges = 3, ini
                                 })}
                             </View>
                         </View>
-                    </Animated.View>
 
-                    <View style={{ height: 36 }} />
-                </ScrollView>
+                        <View style={{ height: 36 }} />
+                    </ScrollView>
+                </Animated.View>
 
                 {tooltipText && (
                     <Animated.View
@@ -543,11 +550,16 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     },
     badgeGridContainer: {
         flex: 1,
-        paddingHorizontal: 20,
+        paddingHorizontal: 24,
         paddingVertical: 16,
+        minHeight: 0,
+    },
+    badgeGridMotionContainer: {
+        flex: 1,
     },
     badgeGridContent: {
-        paddingBottom: 48,
+        flexGrow: 1,
+        paddingBottom: 36,
     },
     section: {
         marginBottom: 24,
@@ -564,13 +576,13 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     badgeGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'flex-start',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     badgeWrapper: {
-        width: '33.33%', // 3 columns exactly
         alignItems: 'center',
-        marginBottom: 20,
-        paddingHorizontal: 8, // Creates the gap uniformly
+        marginBottom: 16,
+        paddingHorizontal: 0,
     },
     badgeContainer: {
         width: 72, 
