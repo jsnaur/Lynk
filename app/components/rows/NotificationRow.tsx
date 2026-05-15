@@ -47,10 +47,16 @@ const getNotificationIcon = (
             return { name: 'cash', color: COLORS.token };
         case 'quest_started':
             return { name: 'play-circle', color: COLORS.xp };
+        case 'quest_accepted':
+            return { name: 'checkmark-done-circle', color: COLORS.favor };
         case 'quest_applied':
             return { name: 'person-add', color: COLORS.item };
         case 'applicant_accepted':
             return { name: 'checkmark-circle', color: COLORS.favor };
+        case 'quest_resolved':
+            return { name: 'flag', color: COLORS.xp };
+        case 'quest_rated':
+            return { name: 'star', color: COLORS.token };
         case 'new_comment':
             return { name: 'chatbubble', color: COLORS.favor };
         case 'new_reply':
@@ -78,9 +84,14 @@ const getBackgroundColor = (
             return withOpacity(COLORS.xp, 0.12);
         case 'quest_applied':
             return withOpacity(COLORS.item, 0.12);
+        case 'quest_accepted':
         case 'applicant_accepted':
         case 'new_comment':
             return withOpacity(COLORS.favor, 0.12);
+        case 'quest_resolved':
+            return withOpacity(COLORS.xp, 0.12);
+        case 'quest_rated':
+            return withOpacity(COLORS.token, 0.12);
         case 'new_reply':
             return withOpacity(COLORS.study, 0.12);
         case 'quest_dropped':
