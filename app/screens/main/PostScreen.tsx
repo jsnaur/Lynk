@@ -122,8 +122,12 @@ export default function PostScreen({ navigation }: { navigation: any }) {
       title: titleTrim,
       description: descTrim,
       location: locTrim,
+      participantCount: maxParticipants,
     });
-  }, [category, titleTrim, descTrim, locTrim]);
+  }, [category, titleTrim, descTrim, locTrim, maxParticipants]);
+
+  const perHelperXp = Math.floor(appraisal.bonusXp / Math.max(1, maxParticipants));
+  const perHelperToken = Math.floor(tokenBounty / Math.max(1, maxParticipants));
 
   useEffect(() => {
     setTokenBounty(appraisal.tokenBounty);
@@ -163,13 +167,17 @@ export default function PostScreen({ navigation }: { navigation: any }) {
 
   const changeTokens = useCallback((delta: number) => {
     setTokenBounty((v) => {
-      const next = v + delta;
+      const step = Math.max(1, maxParticipants);
+      const next = v + delta * step;
       const minimumAllowed = Math.max(TOKEN_MIN, appraisal.tokenBounty);
       if (next < minimumAllowed) return minimumAllowed;
-      if (next > TOKEN_MAX) return TOKEN_MAX;
+      if (next > TOKEN_MAX) {
+        const capped = Math.floor(TOKEN_MAX / step) * step;
+        return Math.max(minimumAllowed, capped);
+      }
       return next;
     });
-  }, [appraisal.tokenBounty]);
+  }, [appraisal.tokenBounty, maxParticipants]);
 
   const playButtonPressSound = useCallback((rate?: number) => {
     void appSoundManager.play(AppSoundCategory.ButtonPress, {
@@ -715,6 +723,11 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 <Text style={styles.appraiserHeadline}>
                   Recommended reward: +{appraisal.bonusXp} XP and {appraisal.tokenBounty} TK
                 </Text>
+                {maxParticipants > 1 && (
+                  <Text style={styles.appraiserCopy}>
+                    Pool splits evenly — each helper earns +{perHelperXp} XP and {perHelperToken} TK.
+                  </Text>
+                )}
                 <Text style={styles.appraiserCopy}>{appraisal.rationale}</Text>
                 <View style={styles.appraiserStatsRow}>
                   <View style={styles.appraiserStat}>
