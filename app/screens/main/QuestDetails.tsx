@@ -832,6 +832,9 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   const ago = quest?.ago ?? 'Just now';
   const xp = questData?.bonus_xp != null ? 50 + questData.bonus_xp : (quest?.xp ?? 150);
   const token = questData?.token_bounty ?? quest?.token ?? 25;
+  const questImageUrl = (
+    questData?.image_url ?? (quest as { image_url?: string | null } | undefined)?.image_url ?? null
+  ) as string | null;
   
   const isPoster = currentUserId === questData?.user_id;
   const isAutoAccept = questData?.is_auto_accept ?? true;
@@ -1311,6 +1314,16 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
 
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.preview}>{preview}</Text>
+
+              {questImageUrl ? (
+                <Pressable onPress={() => setFullscreenImage(questImageUrl)}>
+                  <Image
+                    source={{ uri: questImageUrl }}
+                    style={styles.questImage}
+                    resizeMode="cover"
+                  />
+                </Pressable>
+              ) : null}
 
               <View style={styles.metaRow}>
                 <Pressable 
@@ -1810,6 +1823,12 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 21,
     fontSize: 14,
+  },
+  questImage: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 10,
+    backgroundColor: COLORS.surface2,
   },
   metaRow: {
     flexDirection: 'row',
