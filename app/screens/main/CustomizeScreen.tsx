@@ -407,13 +407,13 @@ export default function CustomizeScreen({
       return;
     }
 
-    void appSoundManager.play(AppSoundCategory.ItemEquip, { debounceMs: 0 });
-
     // Instant local state update
     const newAppliedState = { ...appliedAccessories };
     if (wasApplied) {
+      void appSoundManager.play(AppSoundCategory.ItemEquip, { debounceMs: 0 });
       delete newAppliedState[slotToUpdate];
     } else {
+      void appSoundManager.play(AppSoundCategory.ItemEquip, { debounceMs: 0 });
       newAppliedState[slotToUpdate] = selectedAccessory.id;
       void appSoundManager.play(AppSoundCategory.LikePost);
     }
