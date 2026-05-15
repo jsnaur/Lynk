@@ -346,6 +346,29 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
         return next;
     }
 
+    // Sort logic wrapped in useMemo to prevent unnecessary calculations & ReferenceErrors
+    const finalEntries = useMemo(() => {
+        const metricSorted = [...entries].sort((a, b) => {
+            if (metric === 'xp') {
+                return b.total_xp - a.total_xp;
+            }
+            if (b.completed_quests !== a.completed_quests) {
+                return b.completed_quests - a.completed_quests;
+            }
+            return b.total_xp - a.total_xp;
+        });
+        return metricSorted.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+    }, [entries, metric]);
+
+    const top3 = useMemo(() => finalEntries.slice(0, 3), [finalEntries]);
+    const rest = useMemo(() => finalEntries.slice(3), [finalEntries]);
+
+    const podiumOrder = useMemo(() => [
+        { entry: top3[1] ?? null, medal: MEDALS[1], anim: anim2 },
+        { entry: top3[0] ?? null, medal: MEDALS[0], anim: anim1 },
+        { entry: top3[2] ?? null, medal: MEDALS[2], anim: anim3 },
+    ], [top3, anim1, anim2, anim3]);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -403,10 +426,12 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
 
     // Animate podium on load/tab switch
     useEffect(() => {
-        if (!loading && entries.length > 0) {
+        if (!loading && finalEntries.length > 0) {
             anim1.setValue(0);
             anim2.setValue(0);
             anim3.setValue(0);
+            screenMotion.forEach(m => m.setValue(0));
+            
             Animated.stagger(120, [
                 Animated.spring(anim2, { toValue: 1, useNativeDriver: true, damping: 14 }),
                 Animated.spring(anim1, { toValue: 1, useNativeDriver: true, damping: 14 }),
@@ -416,36 +441,14 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
             createStaggeredEntrance(screenMotion, 420, 90).start();
 
             // Per-row staggered reveal
-            const rows = finalEntries;
-            const rowAnims = rows.map((r, i) => {
+            const rowAnims = finalEntries.map((r, i) => {
                 const v = ensureAnimatedValue(rowMotionValues, r.id, 0);
                 v.setValue(0);
                 return Animated.timing(v, { toValue: 1, duration: 320, delay: i * 70, easing: Easing.out(Easing.cubic), useNativeDriver: true });
             });
             Animated.stagger(40, rowAnims).start();
         }
-    }, [loading, metric, entries, anim1, anim2, anim3]);
-
-    // Sort logic handled natively in React to avoid excess DB calls
-    const metricSorted = [...entries].sort((a, b) => {
-        if (metric === 'xp') {
-            return b.total_xp - a.total_xp;
-        }
-        if (b.completed_quests !== a.completed_quests) {
-            return b.completed_quests - a.completed_quests;
-        }
-        return b.total_xp - a.total_xp;
-    });
-
-    const finalEntries = metricSorted.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-    const top3 = finalEntries.slice(0, 3);
-    const rest = finalEntries.slice(3);
-
-    const podiumOrder = [
-        { entry: top3[1] ?? null, medal: MEDALS[1], anim: anim2 },
-        { entry: top3[0] ?? null, medal: MEDALS[0], anim: anim1 },
-        { entry: top3[2] ?? null, medal: MEDALS[2], anim: anim3 },
-    ];
+    }, [loading, metric, finalEntries, anim1, anim2, anim3, screenMotion, rowMotionValues]);
 
     const openProfilePreview = async (entry: LeaderboardEntry) => {
         setSelectedProfile({

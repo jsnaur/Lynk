@@ -20,7 +20,8 @@ import ScreenHeader from '../../components/navigation/ScreenHeader';
 import { TYPOGRAPHY } from '../../constants/typography';
 import { SPACING } from '../../constants/spacing';
 import { FONTS } from '../../constants/fonts';
-import { invalidateProfileCache } from './ProfileDashboardScreen';
+import { getShopCacheSnapshot, setProfileCacheSnapshot, setShopCacheSnapshot } from './screenCacheRegistry';
+import { getProfileCacheSnapshot } from './screenCacheRegistry';
 import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 type ShopCategory = 'all' | 'clothing' | 'accessories' | 'face' | 'hairstyles' | 'backgrounds';
@@ -78,13 +79,18 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const AnimatedPressable = useMemo(() => Animated.createAnimatedComponent(Pressable), []);
 
+  const initialShopCache = useMemo(() => getShopCacheSnapshot(), []);
+
   const navigation = useNavigation<any>();
   const { balance, refreshBalance } = useTokenBalance();
   const { alert } = useCustomAlert();
   const [filter, setFilter] = useState<ShopCategory>('all');
-  const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(DEFAULT_OWNED_IDS));
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set(initialShopCache.ownedItemIds.length > 0 ? initialShopCache.ownedItemIds : Array.from(DEFAULT_OWNED_IDS)));
   const [detailItem, setDetailItem] = useState<AccessoryItem | null>(null);
-  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>({});
+  const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>(() => ({
+    ...DEFAULT_AVATAR_ACCESSORIES,
+    ...initialShopCache.appliedAccessories,
+  }));
   const screenMotion = useRef(createMotionValues(4)).current;
   const avatarPulse = useRef(new Animated.Value(0)).current;
   const filterMotion = useRef(createFilterMotionValues('all')).current;
@@ -110,21 +116,32 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
 
       if (!mounted) return;
 
-      if (!profileResult.error && profileResult.data) {
-        setAppliedAccessories(normalizeAccessories(profileResult.data.equipped_accessories));
+      if (!profileResult.error) {
+        const nextAccessories = normalizeAccessories(profileResult.data?.equipped_accessories);
+        setShopCacheSnapshot({ appliedAccessories: nextAccessories });
+        setAppliedAccessories(nextAccessories);
       }
       if (!inventoryResult.error && inventoryResult.data) {
-        setOwnedIds(new Set(inventoryResult.data.map((row) => row.item_id)));
+        const nextOwnedIds = inventoryResult.data.map((row) => row.item_id);
+        setShopCacheSnapshot({ ownedItemIds: nextOwnedIds });
+        setOwnedIds(new Set(nextOwnedIds));
+      } else {
+        setShopCacheSnapshot({ ownedItemIds: Array.from(DEFAULT_OWNED_IDS) });
       }
 
       if (!profileChannel) {
         profileChannel = supabase.channel(`profiles:shop:${user.id}`)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, async () => {
               const { data: refreshedData } = await supabase.from('profiles').select('equipped_accessories').eq('id', user.id).single();
-              if (mounted) setAppliedAccessories(normalizeAccessories(refreshedData?.equipped_accessories));
+              if (mounted) {
+                const nextAccessories = normalizeAccessories(refreshedData?.equipped_accessories);
+                setShopCacheSnapshot({ appliedAccessories: nextAccessories });
+                setAppliedAccessories(nextAccessories);
+              }
           }).subscribe();
       }
     };
+
     void fetchProfileAndInventory();
     return () => { mounted = false; if (profileChannel) supabase.removeChannel(profileChannel); };
   }, []);
@@ -258,7 +275,9 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       }
       return;
     }
-    setOwnedIds((prev) => new Set(prev).add(item.id));
+    const nextOwnedItemIds = ownedIds.has(item.id) ? Array.from(ownedIds) : [...ownedIds, item.id];
+    setShopCacheSnapshot({ ownedItemIds: nextOwnedItemIds });
+    setOwnedIds(new Set(nextOwnedItemIds));
     await refreshBalance();
     void appSoundManager.play(AppSoundCategory.PurchaseSuccess);
   }, [ownedIds, refreshBalance, alert]);
@@ -277,6 +296,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
     const previousAccessory = appliedAccessories[item.slot] ?? '';
     const nextAccessories = { ...appliedAccessories, [item.slot]: item.id };
 
+    setShopCacheSnapshot({ appliedAccessories: nextAccessories });
     setAppliedAccessories(nextAccessories);
     void appSoundManager.play(AppSoundCategory.ItemEquip, { debounceMs: 0 });
 
@@ -292,6 +312,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
         } else {
           delete next[item.slot];
         }
+        setShopCacheSnapshot({ appliedAccessories: next });
         return next;
       });
       alert('Error', 'You need to be signed in to equip items.');
@@ -303,7 +324,10 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
       .update({ equipped_accessories: nextAccessories })
       .eq('id', user.id);
 
-    if (!error) invalidateProfileCache();
+    if (!error) {
+      const existingProfile = getProfileCacheSnapshot()?.profile ?? null;
+      setProfileCacheSnapshot({ profile: existingProfile ? { ...existingProfile, equipped_accessories: nextAccessories } : { equipped_accessories: nextAccessories } });
+    }
 
     if (error) {
       console.error('Failed to equip item:', error);
@@ -314,6 +338,9 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
         } else {
           delete next[item.slot];
         }
+        setShopCacheSnapshot({ appliedAccessories: next });
+        const existingProfile = getProfileCacheSnapshot()?.profile ?? null;
+        setProfileCacheSnapshot({ profile: existingProfile ? { ...existingProfile, equipped_accessories: next } : { equipped_accessories: next } });
         return next;
       });
       alert('Equip failed', 'Please try again.');
@@ -422,7 +449,7 @@ export default function ShopScreen({ onTabPress }: ShopScreenProps) {
           </View>
         </Animated.View>
 
-        <Animated.View style={createFadeSlideStyle(screenMotion[3], 12)}>
+        <Animated.View style={[styles.gridSection, createFadeSlideStyle(screenMotion[3], 12)]}>
           <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent} showsVerticalScrollIndicator={false}>
             <Animated.View style={createFadeSlideStyle(screenMotion[3], 8)}>
               <Text style={styles.sectionLabel}>{FILTERS.find((f) => f.key === filter)?.label.toUpperCase() ?? 'ALL'}</Text>
@@ -502,6 +529,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   filterPillActive: { borderColor: colors.favor, backgroundColor: 'rgba(0, 245, 255, 0.12)' },
   filterLabel: { fontSize: 13, fontFamily: 'DMSans-Medium', fontWeight: '500', color: colors.textSecondary },
   filterLabelActive: { color: colors.favor, fontWeight: '600' },
+  gridSection: { flex: 1 },
   gridScroll: { flex: 1 },
   gridContent: { paddingHorizontal: H_PADDING, paddingTop: 16, paddingBottom: 112 },
   sectionLabel: { fontSize: 11, letterSpacing: 1.5, fontFamily: 'DMSans-Bold', fontWeight: '600', color: colors.textSecondary, marginBottom: 12, alignSelf: 'flex-start' },

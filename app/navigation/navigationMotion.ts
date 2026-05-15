@@ -15,7 +15,7 @@ export const MOTION = {
   revealOffset: 10,
 };
 
-export function createBaseStackScreenOptions(backgroundColor = COLORS.bg): StackScreenOptions {
+export function createBaseStackScreenOptions(backgroundColor: string = COLORS.bg): StackScreenOptions {
   return {
     headerShown: false,
     animation: 'fade',
