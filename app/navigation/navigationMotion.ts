@@ -37,9 +37,13 @@ export function createFadeSlideStyle(animation: Animated.Value, offset = MOTION.
   };
 }
 
-export function createStaggeredEntrance(values: Animated.Value[], duration = MOTION.entranceDuration) {
+export function createStaggeredEntrance(
+  values: Animated.Value[],
+  duration = MOTION.entranceDuration,
+  staggerDelay = MOTION.staggerDelay,
+) {
   return Animated.stagger(
-    MOTION.staggerDelay,
+    staggerDelay,
     values.map((value) =>
       Animated.timing(value, {
         toValue: 1,
@@ -49,4 +53,8 @@ export function createStaggeredEntrance(values: Animated.Value[], duration = MOT
       })
     )
   );
+}
+
+export function createMotionValues(count: number, initialValue = 0) {
+  return Array.from({ length: count }, () => new Animated.Value(initialValue));
 }
