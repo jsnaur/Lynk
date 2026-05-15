@@ -22,6 +22,7 @@ import { FONTS } from '../../constants/fonts';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
+import { getBadgeById } from '../../constants/badges';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -147,7 +148,25 @@ function fmtXP(xp: number): string {
     return String(xp);
 }
 
-const XP_THRESHOLDS = [0, 1000, 3000, 6000, 10000, 15000, 22000, 31000, 42000, 55000];
+const XP_THRESHOLDS = [0, 200, 400, 600, 800, 1000, 1500, 2500, 3000, 50000];
+
+const REPUTATION_TITLES: Record<number, string> = {
+    1: 'Cub',
+    2: 'Stray',
+    3: 'Prowler',
+    4: 'Hunter',
+    5: 'Wildcat',
+    6: 'Alpha',
+    7: 'Pack Leader',
+    8: 'Apex',
+    9: 'Teknoy Sidekick',
+    10: 'Lynk Master',
+};
+
+function getReputationTitle(level: number): string {
+    const clamped = Math.max(1, Math.min(10, level));
+    return REPUTATION_TITLES[clamped];
+}
 
 function calculateLevelFromXP(totalXP: number): number {
     let currentLevel = 1;
@@ -168,25 +187,7 @@ function calculateLevelProgressFromXP(totalXP: number) {
     return { currentLevel, xpInCurrentLevel, xpNeededForNextLevel, progressPercent };
 }
 
-function getBadgeSet(totalXP: number, completedQuests: number): string[] {
-    const badges = ['Guardian'];
-    if (completedQuests >= 5 || totalXP >= 1000) badges.push('Achiever');
-    if (completedQuests >= 15 || totalXP >= 3000) badges.push('Scholar');
-    return badges.slice(0, 3);
-}
-
-function getReputationLabel(totalXP: number): string {
-    if (totalXP >= 30_000) return 'Campus Legend';
-    if (totalXP >= 15_000) return 'Elite Helper';
-    if (totalXP >= 6_000) return 'Trusted Contributor';
-    if (totalXP >= 1_000) return 'Campus Helper';
-    return 'Rising Helper';
-}
-
 const PROFILE_BADGE_ASSETS = {
-    badgeHat: require("../../../assets/ProfileAssets/BadgeHat.png"),
-    badgeMedal: require("../../../assets/ProfileAssets/BadgeMedal.png"),
-    badgeShield: require("../../../assets/ProfileAssets/BadgeShield.png"),
     experience: require("../../../assets/ProfileAssets/Star_Icon.png"),
 };
 
@@ -450,7 +451,79 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
         }
     }, [loading, metric, finalEntries, anim1, anim2, anim3, screenMotion, rowMotionValues]);
 
+    const fetchAndSetProfilePreview = async (targetUserId: string) => {
+        const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('id, display_name, equipped_accessories, major, graduation_year, bio, total_xp, equipped_badges')
+            .eq('id', targetUserId)
+            .maybeSingle();
+
+        if (error || !profileData) return;
+
+        const { data: leaderboardData } = await supabase
+            .from('leaderboard')
+            .select('total_xp')
+            .eq('id', targetUserId)
+            .maybeSingle();
+
+        const totalXP = Number(leaderboardData?.total_xp ?? profileData.total_xp ?? 0);
+        const levelData = calculateLevelProgressFromXP(totalXP);
+
+        const { count: higherXPCount } = await supabase
+            .from('leaderboard')
+            .select('id', { count: 'exact', head: true })
+            .gt('total_xp', totalXP);
+        const rank = (higherXPCount ?? 0) + 1;
+
+        const { data: mainQuests } = await supabase
+            .from('quests')
+            .select('id, status')
+            .or(`user_id.eq.${targetUserId},accepted_by.eq.${targetUserId}`);
+        const { data: partData } = await supabase
+            .from('quest_participants')
+            .select('quest_id')
+            .eq('user_id', targetUserId)
+            .in('status', ['accepted', 'completed', 'failed', 'resolved']);
+
+        const partQuestIds = partData?.map((p) => p.quest_id) || [];
+        let extraQuests: { id: string; status: string }[] = [];
+        if (partQuestIds.length > 0) {
+            const existingIds = mainQuests?.map((q) => q.id) || [];
+            const missingIds = partQuestIds.filter((id) => !existingIds.includes(id));
+            if (missingIds.length > 0) {
+                const { data: extra } = await supabase.from('quests').select('id, status').in('id', missingIds);
+                if (extra) extraQuests = extra;
+            }
+        }
+
+        const allQuests = [...(mainQuests || []), ...extraQuests];
+        const seen = new Set<string>();
+        let completedQuests = 0;
+        allQuests.forEach((q) => {
+            if (seen.has(q.id)) return;
+            seen.add(q.id);
+            if (q.status === 'completed' || q.status === 'resolved') completedQuests++;
+        });
+
+        setSelectedProfile({
+            id: profileData.id,
+            displayName: profileData.display_name || 'Anonymous',
+            accessories: normalizeAccessories(profileData.equipped_accessories),
+            major: profileData.major,
+            graduationYear: profileData.graduation_year,
+            bio: profileData.bio,
+            rank,
+            totalXP,
+            completedQuests,
+            badges: Array.isArray(profileData.equipped_badges) ? profileData.equipped_badges : [],
+            reputation: getReputationTitle(levelData.currentLevel),
+            level: levelData.currentLevel,
+        });
+    };
+
     const openProfilePreview = async (entry: LeaderboardEntry) => {
+        const initialLevelData = calculateLevelProgressFromXP(entry.total_xp);
+
         setSelectedProfile({
             id: entry.id,
             displayName: entry.display_name ?? 'Anonymous',
@@ -458,29 +531,16 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
             major: null,
             graduationYear: null,
             bio: null,
-            level: entry.level,
+            level: initialLevelData.currentLevel,
             totalXP: entry.total_xp,
             completedQuests: entry.completed_quests,
             rank: entry.rank,
-            badges: getBadgeSet(entry.total_xp, entry.completed_quests),
-            reputation: getReputationLabel(entry.total_xp),
+            badges: [],
+            reputation: getReputationTitle(initialLevelData.currentLevel),
         });
         setProfilePreviewVisible(true);
 
-        const { data: profileData } = await supabase
-            .from('profiles')
-            .select('major, graduation_year, bio')
-            .eq('id', entry.id)
-            .maybeSingle();
-
-        if (profileData) {
-            setSelectedProfile((prev) => prev ? {
-                ...prev,
-                major: profileData.major,
-                graduationYear: profileData.graduation_year,
-                bio: profileData.bio,
-            } : null);
-        }
+        await fetchAndSetProfilePreview(entry.id);
     };
 
     const profileSubtitle = selectedProfile
@@ -488,7 +548,7 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
         : '';
     const levelData = calculateLevelProgressFromXP(selectedProfile?.totalXP ?? 0);
     const nextLevel = Math.min(levelData.currentLevel + 1, 10);
-    const selectedBadges = selectedProfile?.badges ?? ['Guardian'];
+    const selectedBadges = selectedProfile?.badges ?? [];
 
     return (
         <View style={styles.root}>
@@ -634,30 +694,30 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                                 <Text style={styles.previewStatLabel}>Level</Text>
                             </View>
                         </View>
-                        <View style={styles.previewSection}>
-                            <View style={styles.previewSectionHeaderRow}>
-                                <Text style={styles.previewSectionTitle}>Badges</Text>
+                        {selectedBadges.length > 0 && (
+                            <View style={styles.previewSection}>
+                                <View style={styles.previewSectionHeaderRow}>
+                                    <Text style={styles.previewSectionTitle}>Badges</Text>
+                                </View>
+                                <View style={styles.previewBadgeRow}>
+                                    {selectedBadges.map((badgeId) => {
+                                        const badge = getBadgeById(badgeId);
+                                        if (!badge) return null;
+                                        return (
+                                            <View key={badge.id} style={styles.previewBadgeSlot}>
+                                                <Image source={badge.icon} style={styles.previewBadgeImage} resizeMode="contain" />
+                                                <Text style={styles.previewBadgeLabel}>{badge.name}</Text>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
                             </View>
-                            <View style={styles.previewBadgeRow}>
-                                <View style={styles.previewBadgeSlot}>
-                                    <Image source={PROFILE_BADGE_ASSETS.badgeShield} style={styles.previewBadgeImage} resizeMode="contain" />
-                                    <Text style={styles.previewBadgeLabel}>{selectedBadges[0] || 'Guardian'}</Text>
-                                </View>
-                                <View style={styles.previewBadgeSlot}>
-                                    <Image source={PROFILE_BADGE_ASSETS.badgeMedal} style={styles.previewBadgeImage} resizeMode="contain" />
-                                    <Text style={styles.previewBadgeLabel}>{selectedBadges[1] || 'Achiever'}</Text>
-                                </View>
-                                <View style={styles.previewBadgeSlot}>
-                                    <Image source={PROFILE_BADGE_ASSETS.badgeHat} style={styles.previewBadgeImage} resizeMode="contain" />
-                                    <Text style={styles.previewBadgeLabel}>{selectedBadges[2] || 'Scholar'}</Text>
-                                </View>
-                            </View>
-                        </View>
+                        )}
                         <View style={styles.previewSection}>
                             <View style={styles.previewSectionHeaderRow}>
                                 <Text style={styles.previewSectionTitle}>Reputation</Text>
                                 <View style={styles.previewRankChip}>
-                                    <Text style={styles.previewRankChipText}>{selectedProfile?.reputation || 'Campus Helper'}</Text>
+                                    <Text style={styles.previewRankChipText}>{selectedProfile?.reputation || getReputationTitle(levelData.currentLevel)}</Text>
                                 </View>
                             </View>
                             <View style={styles.previewKarmaLabelRow}>
@@ -673,12 +733,6 @@ export default function LeaderboardScreen({ onTabPress, navigation }: Props) {
                             <View style={styles.previewLevelRow}>
                                 <Text style={styles.previewLevelRangeText}>LVL {levelData.currentLevel}</Text>
                                 <Text style={styles.previewLevelRangeText}>LVL {nextLevel}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.previewStatsRow}>
-                            <View style={styles.previewStatCard}>
-                                <Text style={styles.previewStatValue}>{fmtXP(selectedProfile?.totalXP ?? 0)}</Text>
-                                <Text style={styles.previewStatLabel}>Total EXP</Text>
                             </View>
                         </View>
                     </Pressable>
