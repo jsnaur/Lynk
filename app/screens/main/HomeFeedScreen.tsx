@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    Animated,
     FlatList,
     InteractionManager,
     Pressable,
@@ -27,6 +28,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import appSoundManager, {AppSoundCategory} from '../../lib/SoundManager';
 import { useCustomAlert } from '../../contexts/AlertContext';
 import { useNotificationPreferences } from '../../contexts/NotificationPreferencesContext';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
@@ -129,6 +131,8 @@ export default function HomeFeedScreen({
     const [unreadNotifCount, setUnreadNotifCount] = useState(0);
     const notifChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
     const flatListRef = useRef<FlatList>(null);
+    const screenMotion = useRef(createMotionValues(3)).current; // header, filterBar, feed
+    const hasPlayedEntranceRef = useRef(false);
     const [highlightedQuestId, setHighlightedQuestId] = useState<string | null>(null);
     const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const highlightRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -322,6 +326,13 @@ export default function HomeFeedScreen({
     }, []);
 
     useEffect(() => {
+        if (initialLoading || hasPlayedEntranceRef.current) return;
+        hasPlayedEntranceRef.current = true;
+        screenMotion.forEach((m) => m.setValue(0));
+        createStaggeredEntrance(screenMotion, 420, 90).start();
+    }, [initialLoading, screenMotion]);
+
+    useEffect(() => {
         if (!feedRefreshSignal) return;
         setRefreshing(true);
         fetchProfile(true);
@@ -457,7 +468,7 @@ export default function HomeFeedScreen({
             {/* Adapts status bar icons based on active theme */}
             <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
             <SafeAreaView style={styles.safeArea}>
-                <View style={styles.header}>
+                <Animated.View style={[styles.header, createFadeSlideStyle(screenMotion[0], 12)]}>
                     <Pressable
                         style={styles.profileButton}
                         onPress={() => {
@@ -519,9 +530,9 @@ export default function HomeFeedScreen({
                             )}
                         </Pressable>
                     </View>
-                </View>
+                </Animated.View>
 
-                <View style={styles.filterBar}>
+                <Animated.View style={[styles.filterBar, createFadeSlideStyle(screenMotion[1], 12)]}>
                     {FEED_FILTERS.map((filter) => {
                         const selected = activeFilter === filter.key;
                         const activeColor = FILTER_ACTIVE_COLORS[filter.key];
@@ -555,7 +566,7 @@ export default function HomeFeedScreen({
                             </Pressable>
                         );
                     })}
-                </View>
+                </Animated.View>
 
                 {initialLoading ? (
                     <ScrollView contentContainerStyle={styles.feedContent} showsVerticalScrollIndicator={false}>
@@ -564,6 +575,7 @@ export default function HomeFeedScreen({
                         ))}
                     </ScrollView>
                 ) : (
+                    <Animated.View style={[styles.feedAnimatedWrap, createFadeSlideStyle(screenMotion[2], 14)]}>
                     <FlatList
                         ref={flatListRef}
                         data={filteredQuests}
@@ -623,6 +635,7 @@ export default function HomeFeedScreen({
                         windowSize={5}
                         removeClippedSubviews={true}
                     />
+                    </Animated.View>
                 )}
             </SafeAreaView>
 
@@ -786,6 +799,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     filterBar: { borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
     filterChip: { flex: 1, minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
     filterChipText: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
+    feedAnimatedWrap: { flex: 1 },
     feedContent: { padding: 16, gap: 12, paddingBottom: 112 },
     emptyStateContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64 },
     emptyStateTitle: { fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 },
