@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TextureSvg from '../../../assets/AuthAssets/texture.svg';
 import {
+    Animated,
+    Easing,
     Image,
     ImageBackground,
     KeyboardAvoidingView,
@@ -25,8 +27,7 @@ import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
 import { Button, InlineCtaButton } from '../../components/buttons';
 import { AuthTab } from '../../components/inputs';
 import { useCustomAlert } from '../../contexts/AlertContext';
-
-type AuthMode = 'Left' | 'Right';
+import { MOTION, createFadeSlideStyle, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 const ASSETS = {
     background:
@@ -129,6 +130,15 @@ export default function AuthScreen({ navigation }: Props) {
     const { alert } = useCustomAlert();
     const [activeTab, setActiveTab] = useState<'Left' | 'Right'>('Left');
     const [switcherWidth, setSwitcherWidth] = useState(0);
+    const [showRegistrationExtras, setShowRegistrationExtras] = useState(false);
+    const [showForgotLinkVisible, setShowForgotLinkVisible] = useState(false);
+
+    const heroAnim = useRef(new Animated.Value(0)).current;
+    const switcherAnim = useRef(new Animated.Value(0)).current;
+    const formAnim = useRef(new Animated.Value(0)).current;
+    const ctaAnim = useRef(new Animated.Value(0)).current;
+    const registrationAnim = useRef(new Animated.Value(0)).current;
+    const forgotLinkAnim = useRef(new Animated.Value(0)).current;
 
     // Form State
     const [email, setEmail] = useState('');
@@ -159,6 +169,46 @@ export default function AuthScreen({ navigation }: Props) {
     const isPasswordValid = password.length >= 6; // Supabase defaults to min 6 chars
     const doPasswordsMatch = activeTab === 'Left' || password === confirmPassword;
     const isFormReady = isValidEmail && isPasswordValid && doPasswordsMatch;
+
+    useEffect(() => {
+        createStaggeredEntrance([heroAnim, switcherAnim, formAnim, ctaAnim], MOTION.entranceDuration).start();
+    }, [ctaAnim, formAnim, heroAnim, switcherAnim]);
+
+    useEffect(() => {
+        if (activeTab === 'Right') {
+            setShowRegistrationExtras(true);
+        }
+
+        registrationAnim.stopAnimation();
+        Animated.timing(registrationAnim, {
+            toValue: activeTab === 'Right' ? 1 : 0,
+            duration: MOTION.revealDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+        }).start(({ finished }) => {
+            if (finished && activeTab === 'Left') {
+                setShowRegistrationExtras(false);
+            }
+        });
+    }, [activeTab, registrationAnim]);
+
+    useEffect(() => {
+        if (showForgotLink) {
+            setShowForgotLinkVisible(true);
+        }
+
+        forgotLinkAnim.stopAnimation();
+        Animated.timing(forgotLinkAnim, {
+            toValue: showForgotLink ? 1 : 0,
+            duration: MOTION.revealDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+        }).start(({ finished }) => {
+            if (finished && !showForgotLink) {
+                setShowForgotLinkVisible(false);
+            }
+        });
+    }, [forgotLinkAnim, showForgotLink]);
 
     // ── OTP screen: hand off entirely to OtpVerificationScreen ───────────────
     if (isVerifying) {
@@ -285,15 +335,15 @@ export default function AuthScreen({ navigation }: Props) {
                             keyboardShouldPersistTaps="handled"
                             showsVerticalScrollIndicator={false}
                         >
-                            <View style={styles.heroBlock}>
+                            <Animated.View style={[styles.heroBlock, createFadeSlideStyle(heroAnim, 18)]}>
                                 <Image source={require('../../../assets/logowithoutbg.png')} style={styles.mascot} />
                                 <Text style={styles.logo}>LYNK</Text>
                                 <Text style={styles.tagline}>Let Your Network Know</Text>
-                            </View>
+                            </Animated.View>
 
                             {/* ── Tab Switcher ── */}
-                            <View
-                                style={styles.switcherContainer}
+                            <Animated.View
+                                style={[styles.switcherContainer, createFadeSlideStyle(switcherAnim, 14)]}
                                 onLayout={(event) => setSwitcherWidth(event.nativeEvent.layout.width)}
                             >
                                 <AuthTab
@@ -303,10 +353,10 @@ export default function AuthScreen({ navigation }: Props) {
                                     onTabChange={handleTabChange}
                                     style={{ width: switcherWidth > 0 ? Math.min(switcherWidth, 326) : 326 }}
                                 />
-                            </View>
+                            </Animated.View>
 
                             {/* ── Form ── */}
-                            <View style={styles.formBlock}>
+                            <Animated.View style={[styles.formBlock, createFadeSlideStyle(formAnim, 14)]}>
                                 <View style={styles.fieldBlock}>
                                     <View
                                         style={[
@@ -380,48 +430,76 @@ export default function AuthScreen({ navigation }: Props) {
                                     />
                                 </View>
 
-                                {activeTab === 'Right' && (
-                                    <View style={styles.inputShell}>
-                                        <Ionicons
-                                            name="lock-closed"
-                                            size={17}
-                                            color={COLORS.textSecondary}
-                                            style={styles.inputIcon}
-                                        />
-                                        <TextInput
-                                            autoCapitalize="none"
-                                            placeholder="Confirm Password"
-                                            placeholderTextColor={COLORS.textSecondary}
-                                            secureTextEntry={!showConfirmPassword}
-                                            style={styles.input}
-                                            value={confirmPassword}
-                                            onChangeText={setConfirmPassword}
-                                            onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
-                                        />
-                                        <IconButton
-                                            iconName={showConfirmPassword ? 'eye' : 'eye-off'}
-                                            size={18}
-                                            color={COLORS.textSecondary}
-                                            onPress={() => setShowConfirmPassword((prev) => !prev)}
-                                        />
-                                    </View>
+                                {showRegistrationExtras && (
+                                    <Animated.View
+                                        style={{
+                                            opacity: registrationAnim,
+                                            transform: [
+                                                {
+                                                    translateY: registrationAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [MOTION.revealOffset, 0],
+                                                    }),
+                                                },
+                                            ],
+                                        }}
+                                    >
+                                        <View style={styles.inputShell}>
+                                            <Ionicons
+                                                name="lock-closed"
+                                                size={17}
+                                                color={COLORS.textSecondary}
+                                                style={styles.inputIcon}
+                                            />
+                                            <TextInput
+                                                autoCapitalize="none"
+                                                placeholder="Confirm Password"
+                                                placeholderTextColor={COLORS.textSecondary}
+                                                secureTextEntry={!showConfirmPassword}
+                                                style={styles.input}
+                                                value={confirmPassword}
+                                                onChangeText={setConfirmPassword}
+                                                onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
+                                            />
+                                            <IconButton
+                                                iconName={showConfirmPassword ? 'eye' : 'eye-off'}
+                                                size={18}
+                                                color={COLORS.textSecondary}
+                                                onPress={() => setShowConfirmPassword((prev) => !prev)}
+                                            />
+                                        </View>
+                                    </Animated.View>
                                 )}
 
-                                {activeTab === 'Left' && showForgotLink && (
-                                    <InlineCtaButton
-                                        state="Active"
-                                        label="Forgot password?"
-                                        onPress={() => {
-                                            setPassword('');
-                                            setConfirmPassword('');
-                                            navigation.navigate('ForgotPass1');
+                                {showForgotLinkVisible && (
+                                    <Animated.View
+                                        style={{
+                                            opacity: forgotLinkAnim,
+                                            transform: [
+                                                {
+                                                    translateY: forgotLinkAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [MOTION.revealOffset, 0],
+                                                    }),
+                                                },
+                                            ],
                                         }}
-                                    />
+                                    >
+                                        <InlineCtaButton
+                                            state="Active"
+                                            label="Forgot password?"
+                                            onPress={() => {
+                                                setPassword('');
+                                                setConfirmPassword('');
+                                                navigation.navigate('ForgotPass1');
+                                            }}
+                                        />
+                                    </Animated.View>
                                 )}
-                            </View>
+                            </Animated.View>
 
                             {/* ── CTA ── */}
-                            <View style={styles.ctaBlock}>
+                            <Animated.View style={[styles.ctaBlock, createFadeSlideStyle(ctaAnim, 12)]}>
                                 <Button
                                     label={activeTab === 'Left' ? 'Log In' : 'Create Account'}
                                     onPress={handleAuth}
@@ -441,7 +519,7 @@ export default function AuthScreen({ navigation }: Props) {
                                         </Text>
                                     </Text>
                                 )}
-                            </View>
+                            </Animated.View>
                         </ScrollView>
                     </SafeAreaView>
                 </ImageBackground>
