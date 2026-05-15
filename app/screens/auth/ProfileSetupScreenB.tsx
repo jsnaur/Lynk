@@ -108,7 +108,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
     }
   }, [displayName, selectedMajor, graduationYear, selectedBodyId, navigation]);
 
-  const motion = useRef(createMotionValues(3)).current;
+  const motion = useRef(createMotionValues(1)).current;
 
   useEffect(() => {
     createStaggeredEntrance(motion).start();
@@ -167,7 +167,6 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <Animated.View style={[styles.profileSetupScreen, styles.utilityInfoFormFlexBox, { flex: 1 }, createFadeSlideStyle(motion[0], 8)]}>
-      <Animated.View style={createFadeSlideStyle(motion[1], 10)}>
       <View style={localStyles.topLockedSection}>
         <View style={[styles.setupProgressHeader, styles.setupProgressHeaderFlexBox, localStyles.stickyProgressHeader]}>
           <View style={styles.progressBarTrack}>
@@ -203,10 +202,10 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
             <View style={styles.textCommon}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={[styles.hintTitle, styles.hintTitleTypo]}>{avatarTitle}</Text>
-                <Ionicons 
-                  name={selectedBody?.gender === "Masc" ? "male" : "female"} 
-                  size={16} 
-                  color={genderIconColor} 
+                <Ionicons
+                  name={selectedBody?.gender === "Masc" ? "male" : "female"}
+                  size={16}
+                  color={genderIconColor}
                 />
               </View>
               <Text style={[styles.hintBody, styles.hintBodyTypo]}>
@@ -215,11 +214,9 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+
       </View>
 
-      </Animated.View>
-
-      <Animated.View style={[{ flex: 1 }, createFadeSlideStyle(motion[2], 12)]}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
         <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
@@ -265,9 +262,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
           </View>
         ) : null}
       </ScrollView>
-      </Animated.View>
 
-      <Animated.View style={createFadeSlideStyle(motion[2], 12)}>
       <SafeAreaView edges={["bottom"]} style={{ backgroundColor: COLORS.bg, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}>
         <View style={localStyles.footerButtonRow}>
           <Button
@@ -284,7 +279,6 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
           />
         </View>
       </SafeAreaView>
-      </Animated.View>
     </Animated.View>
     </SafeAreaView>
   );
@@ -336,7 +330,7 @@ const localStyles = StyleSheet.create({
     width: '100%',
   },
   footerButton: {
-    height: 52, 
+    height: 52,
     flex: 1,
   },
   errorContainer: {
