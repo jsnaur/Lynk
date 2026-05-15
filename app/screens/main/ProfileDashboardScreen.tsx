@@ -37,7 +37,7 @@ import BadgeSelectorModal from './BadgeSelectorModal';
 import { getBadgeById, BADGES } from '../../constants/badges';
 import EditProfileModal from './EditProfileModal';
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
-import { registerProfileCacheInvalidator } from './screenCacheRegistry';
+import { registerProfileCacheInvalidator, getProfileCacheSnapshot, setProfileCacheSnapshot, setShopCacheSnapshot } from './screenCacheRegistry';
 
 const ASSETS = {
     experience: require("../../../assets/ProfileAssets/Star_Icon.png"),
@@ -224,6 +224,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
     const { alert } = useCustomAlert();
     const { balance, refreshBalance } = useTokenBalance();
+    const initialProfileCache = useMemo(() => getProfileCacheSnapshot(), []);
     const screenMotion = useRef(createMotionValues(5)).current;
     const avatarPulse = useRef(new Animated.Value(0)).current;
     const badgeMotion = useRef(new Animated.Value(0)).current;
@@ -232,14 +233,20 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const questMotion = useRef(new Animated.Value(0)).current;
     const lastProfileAccessoriesRef = useRef<string>('');
 
-    const [profile, setProfile] = useState<any>(CACHED_PROFILE);
+    CACHED_PROFILE = initialProfileCache?.profile ?? CACHED_PROFILE;
+    CACHED_TOTAL_XP = initialProfileCache?.totalXP ?? CACHED_TOTAL_XP;
+    CACHED_ACTIVE_QUEST_COUNT = initialProfileCache?.activeQuestCount ?? CACHED_ACTIVE_QUEST_COUNT;
+    CACHED_COMPLETED_QUEST_COUNT = initialProfileCache?.completedQuestCount ?? CACHED_COMPLETED_QUEST_COUNT;
+    HAS_FETCHED_INITIALLY_PROFILE = !!initialProfileCache?.profile || HAS_FETCHED_INITIALLY_PROFILE;
+
+    const [profile, setProfile] = useState<any>(initialProfileCache?.profile ?? CACHED_PROFILE);
     const [initialLoading, setInitialLoading] = useState<boolean>(!HAS_FETCHED_INITIALLY_PROFILE);
-    const [totalXP, setTotalXP] = useState<number>(CACHED_TOTAL_XP);
+    const [totalXP, setTotalXP] = useState<number>(initialProfileCache?.totalXP ?? CACHED_TOTAL_XP);
     const [levelUpAlertLevel, setLevelUpAlertLevel] = useState<number | null>(null);
     const [state, setState] = useState<ProfileState>({ badgeSelectorVisible: false, editProfileVisible: false, equippedBadgeIds: [] });
     const [ownedBadgeIds, setOwnedBadgeIds] = useState<string[]>([]);
-    const [activeQuestCount, setActiveQuestCount] = useState<number>(CACHED_ACTIVE_QUEST_COUNT);
-    const [completedQuestCount, setCompletedQuestCount] = useState<number>(CACHED_COMPLETED_QUEST_COUNT);
+    const [activeQuestCount, setActiveQuestCount] = useState<number>(initialProfileCache?.activeQuestCount ?? CACHED_ACTIVE_QUEST_COUNT);
+    const [completedQuestCount, setCompletedQuestCount] = useState<number>(initialProfileCache?.completedQuestCount ?? CACHED_COMPLETED_QUEST_COUNT);
 
     const openSettings = () => {
         void appSoundManager.play(AppSoundCategory.ModalOpen, { debounceMs: 0 });
@@ -295,6 +302,12 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                 if (data) {
                     setProfile(data);
                     CACHED_PROFILE = data;
+                    setProfileCacheSnapshot({
+                        profile: data,
+                        totalXP: data.total_xp || 0,
+                        activeQuestCount: CACHED_ACTIVE_QUEST_COUNT,
+                        completedQuestCount: CACHED_COMPLETED_QUEST_COUNT,
+                    });
                     const xpFromProfile = data.total_xp || 0;
                     setTotalXP(xpFromProfile);
                     CACHED_TOTAL_XP = xpFromProfile;
@@ -697,7 +710,8 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                                 } else {
                                     setProfile((prev: any) => (prev ? { ...prev, equipped_badges: ids } : prev));
                                     CACHED_PROFILE = CACHED_PROFILE ? { ...CACHED_PROFILE, equipped_badges: ids } : CACHED_PROFILE;
-                                    invalidateProfileCache();
+                                    setProfileCacheSnapshot({ profile: CACHED_PROFILE });
+                                    setShopCacheSnapshot({ appliedAccessories: CACHED_PROFILE?.equipped_accessories ?? {} });
                                 }
                             }
                         } catch (e) { console.error('Error saving equipped badges', e); }
@@ -713,8 +727,11 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                         setState((prev) => ({ ...prev, editProfileVisible: false }));
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
-                            if (user) await supabase.from('profiles').update({ display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear }).eq('id', user.id);
-                            invalidateProfileCache();
+                            if (user) {
+                                await supabase.from('profiles').update({ display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear }).eq('id', user.id);
+                                CACHED_PROFILE = CACHED_PROFILE ? { ...CACHED_PROFILE, display_name: data.displayName, bio: data.bio, major: data.major, graduation_year: data.graduationYear } : CACHED_PROFILE;
+                                setProfileCacheSnapshot({ profile: CACHED_PROFILE });
+                            }
                             await fetchProfile();
                         } catch (e) { console.error("Error updating profile", e); }
                     }}

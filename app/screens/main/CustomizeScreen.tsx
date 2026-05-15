@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { supabase } from '../../lib/supabase'; 
 import appSoundManager, { AppSoundCategory } from '../../lib/SoundManager';
-import { invalidateProfileCache } from './ProfileDashboardScreen';
+import { getProfileCacheSnapshot, getShopCacheSnapshot, setProfileCacheSnapshot, setShopCacheSnapshot } from './screenCacheRegistry';
 
 import {
   ACCESSORY_ITEMS,
@@ -46,6 +46,16 @@ function ensureAnimatedValue(map: Map<string, Animated.Value>, key: string, init
   return next;
 }
 
+const DEFAULT_CUSTOMIZE_ACCESSORIES: Partial<Record<AvatarSlot, string>> = {
+  Body: DEFAULT_BODY_BY_GENDER.Masc,
+  HairBase: 'hairb-flat-m',
+  HairFringe: 'hairf-chill-m',
+  Eyes: 'eyes-default',
+  Mouth: 'mouth-neutral',
+  Top: 'top-cit-m',
+  Bottom: 'bot-cit-m',
+};
+
 type CustomizeScreenProps = {
   initialOwnedAccessoryIds?: string[];
   initialAppliedAccessories?: Partial<Record<AvatarSlot, string>>;
@@ -61,6 +71,7 @@ export default function CustomizeScreen({
   const { alert } = useCustomAlert();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const AnimatedPressable = useMemo(() => Animated.createAnimatedComponent(Pressable), []);
+  const initialShopCache = useMemo(() => getShopCacheSnapshot(), []);
 
   const navigation = useNavigation<any>();
   
@@ -70,10 +81,10 @@ export default function CustomizeScreen({
   const [activeSlot, setActiveSlot] = useState<AvatarSlot>('Body');
   const [selectedAccessoryId, setSelectedAccessoryId] = useState<string | null>(null);
   const [appliedAccessories, setAppliedAccessories] = useState<Partial<Record<AvatarSlot, string>>>(
-    initialAppliedAccessories ?? {}
+    { ...DEFAULT_CUSTOMIZE_ACCESSORIES, ...(initialAppliedAccessories ?? initialShopCache.appliedAccessories ?? {}) }
   );
   const [savedAccessories, setSavedAccessories] = useState<Partial<Record<AvatarSlot, string>>>(
-    initialAppliedAccessories ?? {}
+    { ...DEFAULT_CUSTOMIZE_ACCESSORIES, ...(initialAppliedAccessories ?? initialShopCache.appliedAccessories ?? {}) }
   );
   const [isSaving, setIsSaving] = useState(false);
   const avatarMemoryRef = useRef<Record<AvatarBodyGender, Partial<Record<AvatarSlot, string>>>>({ Masc: {}, Fem: {} });
@@ -152,7 +163,9 @@ export default function CustomizeScreen({
       }
 
       setSavedAccessories(appliedAccessories);
-      invalidateProfileCache();
+      setShopCacheSnapshot({ appliedAccessories });
+      const existingProfile = getProfileCacheSnapshot()?.profile ?? null;
+      setProfileCacheSnapshot({ profile: existingProfile ? { ...existingProfile, equipped_accessories: appliedAccessories } : { equipped_accessories: appliedAccessories } });
       navigation.goBack();
     } catch (err) {
       console.error('Error saving avatar:', err);
@@ -183,6 +196,7 @@ export default function CustomizeScreen({
         avatarMemoryRef.current[profileGender] = { ...normalizedAccessories };
         setAppliedAccessories(normalizedAccessories);
         setSavedAccessories(normalizedAccessories);
+        setShopCacheSnapshot({ appliedAccessories: normalizedAccessories });
       }
 
       if (!inventoryResult.error && inventoryResult.data) {
