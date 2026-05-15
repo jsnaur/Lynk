@@ -227,64 +227,6 @@ export default function ItemsDetailsSheet({
               )}
             </View>
           </Animated.View>
-
-          {!owned && !canAfford && (
-            <View style={styles.warnBanner}>
-              <Ionicons name="warning-outline" size={18} color={colors.warning} />
-              <Text style={styles.warnText}>Not enough tokens. Complete quests to earn more.</Text>
-            </View>
-          )}
-
-          <View style={styles.actions}>
-            {owned ? (
-              <>
-                <Pressable
-                  onPress={() => {
-                    if (!equipped) onEquip();
-                    onClose();
-                  }}
-                  style={({ pressed }) => [
-                    styles.primaryBtn,
-                    equipped && styles.primaryBtnMuted,
-                    pressed && styles.pressed,
-                  ]}
-                  disabled={equipped}
-                >
-                  <Text style={styles.primaryBtnText}>{equipped ? 'Equipped' : 'Equip now'}</Text>
-                </Pressable>
-                <Pressable onPress={onClose} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
-                  <Text style={styles.secondaryBtnText}>Done</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Pressable
-                  onPress={() => {
-                    if (!canAfford && item.price > 0) {
-                      void appSoundManager.play(AppSoundCategory.PurchaseError, { debounceMs: 0 });
-                      return;
-                    }
-
-                    onPurchase();
-                    onClose();
-                  }}
-                  style={({ pressed }) => [
-                    styles.primaryBtn,
-                    (!canAfford && item.price > 0) && styles.primaryBtnDisabled,
-                    pressed && styles.pressed,
-                  ]}
-                  accessibilityState={{ disabled: !canAfford && item.price > 0 }}
-                >
-                  <Text style={styles.primaryBtnText}>
-                    {item.price === 0 ? 'Claim free' : `Buy for ${item.price} tokens`}
-                  </Text>
-                </Pressable>
-                <Pressable onPress={onClose} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
-                  <Text style={styles.secondaryBtnText}>Not now</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
         </View>
       </View>
     </Modal>
