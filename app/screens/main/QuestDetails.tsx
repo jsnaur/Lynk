@@ -14,6 +14,7 @@ import {
   Easing,
   Image,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -398,6 +399,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   
   const [questData, setQuestData] = useState<any>(quest);
   const [loading, setLoading] = useState(false);
+  const [chatRefreshing, setChatRefreshing] = useState(false);
   const [selectedComment, setSelectedComment] = useState<UIComment | null>(null);
   const [actionsVisible, setActionsVisible] = useState(false);
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
@@ -1257,6 +1259,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           }}
           style={styles.scroll}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            isParticipant && !commentsOpen && !viewingArchive ? (
+              <RefreshControl
+                refreshing={chatRefreshing}
+                onRefresh={async () => {
+                  if (!currentUserId) return;
+                  setChatRefreshing(true);
+                  try {
+                    await fetchQuestData(currentUserId);
+                  } finally {
+                    setChatRefreshing(false);
+                  }
+                }}
+                tintColor={colors.xp}
+                colors={[colors.xp]}
+              />
+            ) : undefined
+          }
         >
           
           {isPoster && (questData?.moderation_status === 'pending' || questData?.moderation_status === 'flagged') && (() => {
