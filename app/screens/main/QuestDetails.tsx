@@ -14,6 +14,7 @@ import {
   Easing,
   Image,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -398,6 +399,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
   
   const [questData, setQuestData] = useState<any>(quest);
   const [loading, setLoading] = useState(false);
+  const [chatRefreshing, setChatRefreshing] = useState(false);
   const [selectedComment, setSelectedComment] = useState<UIComment | null>(null);
   const [actionsVisible, setActionsVisible] = useState(false);
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
@@ -532,14 +534,29 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           .channel(`public:comments:quest_id=eq.${quest.id}`)
           .on(
             'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'quests', filter: `id=eq.${quest.id}` },
+            (payload) => {
+              if (!mounted) return;
+              const updated = payload.new as any;
+              if (updated?.status) {
+                questStatusRef.current = updated.status;
+              }
+              setQuestData((prev: any) => (prev ? { ...prev, ...updated } : updated));
+            }
+          )
+          .on(
+            'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'comments', filter: `quest_id=eq.${quest.id}` },
             (payload) => {
               if (mounted) {
                 const newC = payload.new;
-                if (newC.user_id === activeUserId) return; 
+                if (newC.user_id === activeUserId) return;
 
-                const expectedVisibility = (questStatusRef.current === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
-                if (newC.visibility !== expectedVisibility) return;
+                // Skip only when explicitly viewing the public archive of a closed quest
+                // and the new message is private (still in-progress chat from poster).
+                if (viewingArchiveRef.current && newC.visibility === 'private') return;
+                // Skip public broadcast if we're already inside the private group chat.
+                if (!viewingArchiveRef.current && questStatusRef.current !== 'open' && newC.visibility === 'public') return;
 
                 supabase
                   .from('profiles')
@@ -558,7 +575,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         visibility: newC.visibility,
                         image_url: newC.image_url,
                       };
-                      setComments((prev) => [...prev, newFormattedComment]);
+                      setComments((prev) => prev.some((c) => c.id === newFormattedComment.id) ? prev : [...prev, newFormattedComment]);
                       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
                     }
                   });
@@ -759,6 +776,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
       const { error } = await supabase
         .from('quest_participants')
         .update({ status: 'accepted' })
+        .eq('quest_id', questData.id)
+        .eq('user_id', applicantId);
+      if (error) throw error;
+      invalidateQuestScreenCache();
+      await fetchQuestData(currentUserId!);
+    } catch (error: any) {
+      alert("Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnacceptApplicant = async (applicantId: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('quest_participants')
+        .update({ status: 'applied' })
         .eq('quest_id', questData.id)
         .eq('user_id', applicantId);
       if (error) throw error;
@@ -1224,6 +1259,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           }}
           style={styles.scroll}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            isParticipant && !commentsOpen && !viewingArchive ? (
+              <RefreshControl
+                refreshing={chatRefreshing}
+                onRefresh={async () => {
+                  if (!currentUserId) return;
+                  setChatRefreshing(true);
+                  try {
+                    await fetchQuestData(currentUserId);
+                  } finally {
+                    setChatRefreshing(false);
+                  }
+                }}
+                tintColor={colors.xp}
+                colors={[colors.xp]}
+              />
+            ) : undefined
+          }
         >
           
           {isPoster && (questData?.moderation_status === 'pending' || questData?.moderation_status === 'flagged') && (() => {
@@ -1322,28 +1375,50 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                {applicantsExpanded && (
                  <View style={styles.applicantsList}>
                    {acceptedParticipants.length > 0 && (
-                     <Text style={styles.startQuestHint}>
-                       Accepted ({acceptedParticipants.length}/{maxParticipants})
-                     </Text>
-                   )}
-                   {appliedParticipants.length === 0 ? (
-                     <Text style={styles.emptyApplicants}>No applicants yet.</Text>
-                   ) : (
-                     appliedParticipants.map(p => (
-                       <View key={p.id} style={styles.applicantRow}>
-                         <View style={styles.applicantInfo}>
-                           <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
-                           <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
+                     <>
+                       <Text style={styles.startQuestHint}>
+                         Accepted ({acceptedParticipants.length}/{maxParticipants})
+                       </Text>
+                       {acceptedParticipants.map(p => (
+                         <View key={p.id} style={styles.applicantRow}>
+                           <View style={styles.applicantInfo}>
+                             <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
+                             <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
+                           </View>
+                           <Pressable
+                             style={[styles.unacceptApplicantBtn, loading && {opacity: 0.7}]}
+                             onPress={() => handleUnacceptApplicant(p.user_id)}
+                             disabled={loading}
+                           >
+                             <Text style={styles.unacceptApplicantText}>Unaccept</Text>
+                           </Pressable>
                          </View>
-                         <Pressable 
-                           style={[styles.acceptApplicantBtn, loading && {opacity: 0.7}]} 
-                           onPress={() => handleAcceptApplicant(p.user_id)}
-                           disabled={loading || acceptedParticipants.length >= maxParticipants}
-                         >
-                           <Text style={styles.acceptApplicantText}>Accept</Text>
-                         </Pressable>
-                       </View>
-                     ))
+                       ))}
+                     </>
+                   )}
+                   {appliedParticipants.length === 0 && acceptedParticipants.length === 0 ? (
+                     <Text style={styles.emptyApplicants}>No applicants yet.</Text>
+                   ) : appliedParticipants.length === 0 ? null : (
+                     <>
+                       {acceptedParticipants.length > 0 && (
+                         <Text style={styles.startQuestHint}>Pending Applicants</Text>
+                       )}
+                       {appliedParticipants.map(p => (
+                         <View key={p.id} style={styles.applicantRow}>
+                           <View style={styles.applicantInfo}>
+                             <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
+                             <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
+                           </View>
+                           <Pressable
+                             style={[styles.acceptApplicantBtn, loading && {opacity: 0.7}]}
+                             onPress={() => handleAcceptApplicant(p.user_id)}
+                             disabled={loading || acceptedParticipants.length >= maxParticipants}
+                           >
+                             <Text style={styles.acceptApplicantText}>Accept</Text>
+                           </Pressable>
+                         </View>
+                       ))}
+                     </>
                    )}
                    
                    <View style={styles.startQuestWrap}>
@@ -1874,6 +1949,19 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
   },
   acceptApplicantText: {
     color: COLORS.bg,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  unacceptApplicantBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  unacceptApplicantText: {
+    color: COLORS.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },

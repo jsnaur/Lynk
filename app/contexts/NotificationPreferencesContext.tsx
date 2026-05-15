@@ -17,7 +17,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
 };
 
 const PREF_TYPE_MAP: Record<keyof NotificationPreferences, string[]> = {
-  questActivity: ['quest_applied', 'applicant_accepted', 'quest_started', 'quest_completed', 'quest_dropped', 'high_bounty_quest'],
+  questActivity: ['quest_applied', 'applicant_accepted', 'quest_started', 'quest_completed', 'quest_dropped', 'quest_resolved', 'high_bounty_quest'],
   comments: ['new_comment', 'new_reply'],
   ratings: ['quest_rated'],
   xpLevelUp: ['daily_reward', 'badge_awarded', 'xp_levelup'],

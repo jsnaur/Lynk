@@ -8,6 +8,7 @@ import {
     StyleSheet,
     Text,
     View,
+    RefreshControl,
 } from 'react-native';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRef } from 'react';
@@ -270,6 +271,7 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
     const hasHydratedInitialLevelRef = useRef<boolean>(false);
     const prevLevelRef = useRef<number>(1);
     const lastAlertedLevelRef = useRef<number>(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -453,7 +455,29 @@ export default function ProfileDashboardScreen({ onTabPress, navigation }: Profi
                     }
                 />
 
-                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefreshing}
+                            onRefresh={async () => {
+                                setIsRefreshing(true);
+                                try {
+                                    await Promise.all([
+                                        fetchProfile(),
+                                        refreshBalance(),
+                                        fetchQuestCounts(),
+                                    ]);
+                                } finally {
+                                    setIsRefreshing(false);
+                                }
+                            }}
+                            tintColor={colors.xp}
+                            colors={[colors.xp]}
+                        />
+                    }
+                >
                     {initialLoading ? (
                         <ProfileSkeleton />
                     ) : (

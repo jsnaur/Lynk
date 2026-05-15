@@ -183,16 +183,26 @@ Boost 0=low difficulty, 6=medium difficulty, 15=high difficulty`;
  * Calculates dynamic XP and token bounty for a quest using the Guild Appraiser model.
  * Weights category, task difficulty, location specificity, and urgency signals.
  */
+function roundToMultiple(value: number, divisor: number, min: number, max: number) {
+  if (!divisor || divisor <= 1) return clamp(value, min, max);
+  const rounded = Math.round(value / divisor) * divisor;
+  const bumped = rounded < min ? Math.ceil(min / divisor) * divisor : rounded;
+  const capped = bumped > max ? Math.floor(max / divisor) * divisor : bumped;
+  return clamp(capped, 0, max);
+}
+
 export function appraiseQuest({
   category,
   title,
   description,
   location,
+  participantCount = 1,
 }: {
   category: FeedCategory | null;
   title: string;
   description: string;
   location: string;
+  participantCount?: number;
 }): GuildAppraisal {
   if (!description.trim()) {
     return {
@@ -239,7 +249,14 @@ export function appraiseQuest({
 
   tokenBounty = clamp(tokenBounty, 1, TOKEN_MAX);
 
-  const tier = totalXp >= 170 ? 'Champion' : totalXp >= 120 ? 'Knight' : 'Scout';
+  // Round bounties so they divide evenly across the requested participant slots.
+  // Why: every helper deserves the same payout; remainders would otherwise be lost.
+  const divisor = Math.max(1, Math.floor(participantCount));
+  const adjustedBonusXp = divisor > 1 ? roundToMultiple(bonusXp, divisor, divisor, BONUS_XP_MAX) : bonusXp;
+  const adjustedTokenBounty = divisor > 1 ? roundToMultiple(tokenBounty, divisor, divisor, TOKEN_MAX) : tokenBounty;
+  const adjustedTotalXp = GUILD_BASE_XP + adjustedBonusXp;
+
+  const tier = adjustedTotalXp >= 170 ? 'Champion' : adjustedTotalXp >= 120 ? 'Knight' : 'Scout';
   const confidence = difficultyScore >= 22 ? 'Strong' : difficultyScore >= 12 ? 'Good' : 'Light';
   const rationale =
     category === 'study'
@@ -249,9 +266,9 @@ export function appraiseQuest({
         : 'Favor quests are priced around effort and urgency, with a modest XP bump and token reward.';
 
   return {
-    bonusXp,
-    tokenBounty,
-    totalXp,
+    bonusXp: adjustedBonusXp,
+    tokenBounty: adjustedTokenBounty,
+    totalXp: adjustedTotalXp,
     tier,
     confidence,
     rationale,
@@ -274,11 +291,13 @@ export async function getAIEnhancedAppraisal({
   title,
   description,
   location,
+  participantCount = 1,
 }: {
   category: FeedCategory | null;
   title: string;
   description: string;
   location: string;
+  participantCount?: number;
 }): Promise<GuildAppraisal> {
   // Get base appraisal from rule-based system
   const baseAppraisal = appraiseQuest({
@@ -286,6 +305,7 @@ export async function getAIEnhancedAppraisal({
     title,
     description,
     location,
+    participantCount,
   });
 
   // Skip AI if insufficient content
@@ -299,12 +319,16 @@ export async function getAIEnhancedAppraisal({
   // Calculate AI-enhanced rewards
   const aiDifficultyBoost = aiAnalysis.complexity === 'high' ? 12 : aiAnalysis.complexity === 'medium' ? 6 : 0;
   const aiXpBoost = Math.round((Math.max(aiDifficultyBoost, aiAnalysis.difficultyBoost) * baseAppraisal.bonusXp) / 15);
-  const enhancedBonusXp = clamp(baseAppraisal.bonusXp + aiXpBoost, 0, BONUS_XP_MAX);
-  const enhancedTokenBounty = clamp(
+  const rawBonusXp = clamp(baseAppraisal.bonusXp + aiXpBoost, 0, BONUS_XP_MAX);
+  const rawTokenBounty = clamp(
     baseAppraisal.tokenBounty + (aiAnalysis.quality === 'excellent' ? 2 : aiAnalysis.quality === 'good' ? 1 : 0),
     TOKEN_MIN,
     TOKEN_MAX,
   );
+
+  const divisor = Math.max(1, Math.floor(participantCount));
+  const enhancedBonusXp = divisor > 1 ? roundToMultiple(rawBonusXp, divisor, divisor, BONUS_XP_MAX) : rawBonusXp;
+  const enhancedTokenBounty = divisor > 1 ? roundToMultiple(rawTokenBounty, divisor, divisor, TOKEN_MAX) : rawTokenBounty;
 
   const enhancedTotalXp = GUILD_BASE_XP + enhancedBonusXp;
   const enhancedTier =
