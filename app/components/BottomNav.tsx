@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
-import { useEffect, useState, useMemo } from 'react';
-import { Pressable, StyleSheet, View, Platform } from 'react-native';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, View, Platform, LayoutChangeEvent } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 
 import FeedActive from '../../assets/NavAssets/FeedActive.svg';
@@ -45,16 +45,83 @@ const NAV_ICONS = {
 	Profile: { active: ProfileActive, inactive: ProfileInactive },
 } as const;
 
+const ICON_BOX_SIZE = 52;
+const ROW_PADDING_H = 16;
+
+// Persists across mount/unmount as the user switches screens, so a newly
+// mounted BottomNav can animate from the previous tab to the new one.
+let lastSelectedTab: MainTab | null = null;
+
 export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavProps) {
 	const [selectedTab, setSelectedTab] = useState<MainTab>(activeTab);
 	const isFocused = useIsFocused();
-	
+
 	const { theme, colors } = useTheme();
 	const styles = useMemo(() => getStyles(theme, colors), [theme, colors]);
+
+	const [rowWidth, setRowWidth] = useState(0);
+	const translateX = useRef(new Animated.Value(0)).current;
+	const indicatorOpacity = useRef(new Animated.Value(0)).current;
+	const hasPositioned = useRef(false);
+
+	const activeIndex = NAV_ITEMS.findIndex((i) => i.label === selectedTab);
+
+	// slot center for each index, then offset back by half the indicator width
+	const indicatorOffset = (index: number) => {
+		if (rowWidth <= 0) return 0;
+		const usable = rowWidth - ROW_PADDING_H * 2;
+		const slot = usable / NAV_ITEMS.length;
+		const center = ROW_PADDING_H + slot * index + slot / 2;
+		return center - ICON_BOX_SIZE / 2;
+	};
 
 	useEffect(() => {
 		setSelectedTab(activeTab);
 	}, [activeTab]);
+
+	useEffect(() => {
+		if (rowWidth <= 0 || activeIndex < 0) return;
+		const target = indicatorOffset(activeIndex);
+
+		if (!hasPositioned.current) {
+			// First layout after mount. If we have a remembered previous tab,
+			// start the indicator at its slot and animate to the new one so
+			// the slide is visible even though this component just remounted.
+			const prevIndex = lastSelectedTab
+				? NAV_ITEMS.findIndex((i) => i.label === lastSelectedTab)
+				: activeIndex;
+			translateX.setValue(indicatorOffset(prevIndex >= 0 ? prevIndex : activeIndex));
+			hasPositioned.current = true;
+			Animated.timing(indicatorOpacity, {
+				toValue: 1,
+				duration: 120,
+				useNativeDriver: true,
+			}).start();
+			if (prevIndex !== activeIndex && prevIndex >= 0) {
+				Animated.timing(translateX, {
+					toValue: target,
+					duration: 260,
+					easing: Easing.out(Easing.cubic),
+					useNativeDriver: true,
+				}).start();
+			}
+			lastSelectedTab = selectedTab;
+			return;
+		}
+
+		Animated.timing(translateX, {
+			toValue: target,
+			duration: 260,
+			easing: Easing.out(Easing.cubic),
+			useNativeDriver: true,
+		}).start();
+		lastSelectedTab = selectedTab;
+	}, [activeIndex, rowWidth, translateX, indicatorOpacity, selectedTab]);
+
+	const onRowLayout = (e: LayoutChangeEvent) => {
+		const w = e.nativeEvent.layout.width;
+		if (w !== rowWidth) setRowWidth(w);
+	};
 
 	return (
 		<View style={styles.wrapper} collapsable={false}>
@@ -75,7 +142,20 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 			)}
 			
 			<View pointerEvents="none" style={styles.tintLayer} />
-			<View style={styles.row}>
+			<View style={styles.row} onLayout={onRowLayout}>
+				{rowWidth > 0 && (
+					<Animated.View
+						pointerEvents="none"
+						style={[
+							styles.indicator,
+							{
+								backgroundColor: withOpacity(colors.favor, 0.15),
+								transform: [{ translateX }],
+								opacity: indicatorOpacity,
+							},
+						]}
+					/>
+				)}
 				{NAV_ITEMS.map((item) => {
 					const tab = item.label;
 					const active = selectedTab === tab;
@@ -93,7 +173,7 @@ export default function BottomNav({ activeTab = 'Feed', onTabPress }: BottomNavP
 								onTabPress?.(tab);
 							}}
 						>
-							<View style={[styles.iconBox, active && { backgroundColor: withOpacity(colors.favor, 0.15) }]}>
+							<View style={styles.iconBox}>
 								<IconComponent width={56} height={56} />
 							</View>
 						</Pressable>
@@ -142,5 +222,13 @@ const getStyles = (theme: string, colors: any) => StyleSheet.create({
 		borderRadius: 12,
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	indicator: {
+		position: 'absolute',
+		top: 5,
+		left: 0,
+		width: 52,
+		height: 52,
+		borderRadius: 12,
 	},
 });
