@@ -26,6 +26,7 @@ import { ACCESSORY_ITEMS, ALL_SLOTS_Z_ORDER, AvatarSlot } from '../../constants/
 import { useTheme } from '../../contexts/ThemeContext';
 import appSoundManager, {AppSoundCategory} from '../../lib/SoundManager';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import { useNotificationPreferences } from '../../contexts/NotificationPreferencesContext';
 
 type HomeFeedScreenProps = {
     onTabPress?: (tab: MainTab) => void;
@@ -106,6 +107,9 @@ export default function HomeFeedScreen({
 }: HomeFeedScreenProps) {
     const { theme, colors } = useTheme();
     const { alert } = useCustomAlert();
+    const { isTypeAllowed } = useNotificationPreferences();
+    const isTypeAllowedRef = useRef(isTypeAllowed);
+    useEffect(() => { isTypeAllowedRef.current = isTypeAllowed; }, [isTypeAllowed]);
     const styles = useMemo(() => getStyles(colors), [colors]);
 
     const FILTER_ACTIVE_COLORS: Record<FeedCategory, string> = useMemo(() => ({
@@ -240,7 +244,41 @@ export default function HomeFeedScreen({
                 .on(
                     'postgres_changes',
                     {
-                        event: '*',
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `recipient_id=eq.${user.id}`,
+                    },
+                    async (payload) => {
+                        const inserted = payload?.new as any;
+                        const allowed = inserted?.type
+                            ? isTypeAllowedRef.current(inserted.type)
+                            : true;
+                        if (inserted && !inserted.is_read && allowed) {
+                            void appSoundManager.play(AppSoundCategory.Notification, {
+                                volume: 0.95,
+                                debounceMs: 200,
+                            });
+                        }
+                        await fetchUnreadNotifCount();
+                    },
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `recipient_id=eq.${user.id}`,
+                    },
+                    async () => {
+                        await fetchUnreadNotifCount();
+                    },
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'DELETE',
                         schema: 'public',
                         table: 'notifications',
                         filter: `recipient_id=eq.${user.id}`,
