@@ -347,6 +347,7 @@ export const forgotStyles = StyleSheet.create({
     justifyContent: 'center',
     marginVertical: 8,
     width: '100%',
+    marginBottom: 8,
   },
   otpBox: {
     height: 56,

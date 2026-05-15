@@ -163,7 +163,7 @@ export default function ForgotPass2({ navigation, route }: any) {
               onPress={handleVerify}
               style={({ pressed }) => [
                 forgotStyles.actionBtn,
-                { width: '100%', marginTop: 4 },
+                { width: '100%', marginTop: 14 },
                 !canVerify && forgotStyles.actionBtnDisabled,
                 pressed && canVerify && forgotStyles.actionBtnPressed,
               ]}
