@@ -28,6 +28,7 @@ import { useCustomAlert } from '../../contexts/AlertContext';
 import { ContentBlockedModal } from '../../components/modals';
 import { invalidateQuestScreenCache } from './QuestScreen';
 import { invalidateProfileCache } from './ProfileDashboardScreen';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 const TITLE_MAX = 60;
 const DESC_MAX = 280;
@@ -98,6 +99,13 @@ export default function PostScreen({ navigation }: { navigation: any }) {
   const [blockInfo, setBlockInfo] = useState<{ reason?: string; category?: ModerationCategory } | null>(null);
   const sheetTranslateY = useRef(new Animated.Value(0)).current;
   const isDismissingRef = useRef(false);
+  // Entrance motion: nav row + 7 sections (category, attachment, title, description, location, participants, reward)
+  const screenMotion = useRef(createMotionValues(8)).current;
+
+  useEffect(() => {
+    screenMotion.forEach((m) => m.setValue(0));
+    createStaggeredEntrance(screenMotion, 380, 60).start();
+  }, [screenMotion]);
 
   const titleTrim = title.trim();
   const descTrim = description.trim();
@@ -465,7 +473,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               <View style={styles.handleBar} />
             </View>
 
-            <View style={styles.navRow}>
+            <Animated.View style={[styles.navRow, createFadeSlideStyle(screenMotion[0], 10)]}>
             <Pressable
               onPress={() => {
                 void appSoundManager.play(AppSoundCategory.ModalClose, { debounceMs: 0 });
@@ -484,7 +492,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
             >
               <Text style={styles.publishText}>{isPublishing ? '...' : 'Publish'}</Text>
             </Pressable>
-            </View>
+            </Animated.View>
           </View>
 
           <ScrollView
@@ -504,7 +512,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
               }
             }}
           >
-            <View style={styles.section}>
+            <Animated.View style={[styles.section, createFadeSlideStyle(screenMotion[1], 12)]}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>CATEGORY</Text>
                 {!category && <View style={styles.requiredDot} />}
@@ -544,9 +552,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 })}
               </View>
               <FieldError message="Please select a category" visible={submitAttempted && !category} colors={colors} styles={styles} />
-            </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View style={[styles.section, createFadeSlideStyle(screenMotion[2], 12)]}>
               <Text style={styles.label}>ATTACHMENT (OPTIONAL)</Text>
               <Pressable
                 style={[styles.imageUploadBox, image && { borderStyle: 'solid' }]}
@@ -571,9 +579,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   </View>
                 )}
               </Pressable>
-            </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View style={[styles.section, createFadeSlideStyle(screenMotion[3], 12)]}>
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>QUEST TITLE</Text>
@@ -594,9 +602,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 autoCorrect
               />
               <FieldError message="Title is required" visible={submitAttempted && !titleTrim} colors={colors} styles={styles} />
-            </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View style={[styles.section, createFadeSlideStyle(screenMotion[4], 12)]}>
               <View style={styles.labelRowBetween}>
                 <View style={styles.labelCluster}>
                   <Text style={styles.label}>DESCRIPTION</Text>
@@ -618,9 +626,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 textAlignVertical="top"
               />
               <FieldError message="Description is required" visible={submitAttempted && !descTrim} colors={colors} styles={styles} />
-            </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View style={[styles.section, createFadeSlideStyle(screenMotion[5], 12)]}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>LOCATION ON CAMPUS</Text>
               </View>
@@ -636,9 +644,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   autoCorrect
                 />
               </View>
-            </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View style={[styles.section, createFadeSlideStyle(screenMotion[6], 12)]}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>MAX PARTICIPANTS (HELPERS NEEDED)</Text>
                 {maxParticipants < 1 && <View style={styles.requiredDot} />}
@@ -707,9 +715,9 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                 />
               </View>
               <FieldError message="Group size must be at least 1" visible={submitAttempted && maxParticipants < 1} colors={colors} styles={styles} />
-            </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View style={[styles.section, createFadeSlideStyle(screenMotion[7], 12)]}>
               <View style={styles.appraiserCard}>
                 <View style={styles.appraiserHeader}>
                   <View style={styles.appraiserTitleRow}>
@@ -811,7 +819,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   </Pressable>
                 </View>
               </View>
-            </View>
+            </Animated.View>
 
             {submitAttempted && !isValid && (
               <View style={styles.summaryCard}>
