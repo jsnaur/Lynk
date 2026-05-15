@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -25,8 +25,26 @@ import {
 import { withOpacity } from '../../constants/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCustomAlert } from '../../contexts/AlertContext';
+import { createFadeSlideStyle, createMotionValues, createStaggeredEntrance } from '../../navigation/navigationMotion';
 
 type UI_CATEGORY = 'Base' | 'Wearables';
+
+const CATEGORY_VALUES: UI_CATEGORY[] = ['Base', 'Wearables'];
+
+function buildCategoryMotion(activeCategory: UI_CATEGORY): Record<UI_CATEGORY, Animated.Value> {
+  return {
+    Base: new Animated.Value(activeCategory === 'Base' ? 1 : 0),
+    Wearables: new Animated.Value(activeCategory === 'Wearables' ? 1 : 0),
+  };
+}
+
+function ensureAnimatedValue(map: Map<string, Animated.Value>, key: string, initialValue = 0) {
+  const existing = map.get(key);
+  if (existing) return existing;
+  const next = new Animated.Value(initialValue);
+  map.set(key, next);
+  return next;
+}
 
 type CustomizeScreenProps = {
   initialOwnedAccessoryIds?: string[];
@@ -42,6 +60,7 @@ export default function CustomizeScreen({
   const { colors, theme } = useTheme();
   const { alert } = useCustomAlert();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+  const AnimatedPressable = useMemo(() => Animated.createAnimatedComponent(Pressable), []);
 
   const navigation = useNavigation<any>();
   
@@ -58,6 +77,16 @@ export default function CustomizeScreen({
   );
   const [isSaving, setIsSaving] = useState(false);
   const avatarMemoryRef = useRef<Record<AvatarBodyGender, Partial<Record<AvatarSlot, string>>>>({ Masc: {}, Fem: {} });
+  const screenMotion = useRef(createMotionValues(5)).current;
+  const avatarPulse = useRef(new Animated.Value(0)).current;
+  const categoryMotion = useRef(buildCategoryMotion('Base')).current;
+  const slotMotionValues = useRef(new Map<string, Animated.Value>()).current;
+  const itemMotionValues = useRef(new Map<string, Animated.Value>()).current;
+  const selectedMotionValues = useRef(new Map<string, Animated.Value>()).current;
+  const lastCategoryRef = useRef<UI_CATEGORY>('Base');
+  const lastSlotRef = useRef<AvatarSlot>('Body');
+  const lastSelectedRef = useRef<string | null>(null);
+  const hasAnimatedInitialAvatarRef = useRef(false);
 
   const hasUnsavedChanges = useMemo(
     () => JSON.stringify(savedAccessories) !== JSON.stringify(appliedAccessories),
@@ -166,6 +195,10 @@ export default function CustomizeScreen({
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    createStaggeredEntrance(screenMotion, 360, 75).start();
+  }, [screenMotion]);
+
   const currentSlots = activeCategory === 'Base' ? BASE_TRAIT_SLOTS : WEARABLE_SLOTS;
 
   // Auto-switch to the first slot of the category when changing categories
@@ -174,10 +207,141 @@ export default function CustomizeScreen({
     setSelectedAccessoryId(null);
   }, [activeCategory]);
 
+  useEffect(() => {
+    const previousCategory = lastCategoryRef.current;
+    const nextValue = categoryMotion[activeCategory];
+    const previousValue = categoryMotion[previousCategory];
+
+    if (previousCategory === activeCategory) {
+      nextValue.setValue(1);
+      return;
+    }
+
+    previousValue.stopAnimation();
+    nextValue.stopAnimation();
+    Animated.parallel([
+      Animated.timing(previousValue, {
+        toValue: 0,
+        duration: 150,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(nextValue, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    lastCategoryRef.current = activeCategory;
+  }, [activeCategory, categoryMotion]);
+
+  useEffect(() => {
+    const previousSlot = lastSlotRef.current;
+    const previousMotion = ensureAnimatedValue(slotMotionValues, previousSlot, 1);
+    const nextMotion = ensureAnimatedValue(slotMotionValues, activeSlot, 0);
+
+    if (previousSlot === activeSlot) {
+      nextMotion.setValue(1);
+      return;
+    }
+
+    previousMotion.stopAnimation();
+    nextMotion.stopAnimation();
+    Animated.parallel([
+      Animated.timing(previousMotion, {
+        toValue: 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(nextMotion, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    lastSlotRef.current = activeSlot;
+  }, [activeSlot, slotMotionValues]);
+
+  useEffect(() => {
+    if (!hasAnimatedInitialAvatarRef.current) {
+      hasAnimatedInitialAvatarRef.current = true;
+      return;
+    }
+
+    avatarPulse.stopAnimation();
+    avatarPulse.setValue(0);
+    Animated.sequence([
+      Animated.timing(avatarPulse, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(avatarPulse, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [appliedAccessories, avatarPulse]);
+
   const slotItems = useMemo(
     () => ACCESSORY_ITEMS.filter((item) => item.slot === activeSlot && isAccessoryAllowedForGender(item, currentGender)),
     [activeSlot, currentGender],
   );
+
+  useEffect(() => {
+    const visibleItemAnimations = slotItems.map((item, index) => {
+      const motion = ensureAnimatedValue(itemMotionValues, item.id, 0);
+      motion.stopAnimation();
+      motion.setValue(0);
+      return Animated.timing(motion, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 70,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      });
+    });
+
+    Animated.parallel(visibleItemAnimations).start();
+  }, [slotItems, itemMotionValues]);
+
+  useEffect(() => {
+    const newlySelectedId = selectedAccessoryId;
+    const previousSelectedId = lastSelectedRef.current;
+
+    if (previousSelectedId && previousSelectedId !== newlySelectedId) {
+      const previousMotion = ensureAnimatedValue(selectedMotionValues, previousSelectedId, 0);
+      previousMotion.stopAnimation();
+      Animated.timing(previousMotion, {
+        toValue: 0,
+        duration: 150,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+
+    if (newlySelectedId) {
+      const nextMotion = ensureAnimatedValue(selectedMotionValues, newlySelectedId, 0);
+      nextMotion.stopAnimation();
+      nextMotion.setValue(0);
+      Animated.timing(nextMotion, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+
+    lastSelectedRef.current = newlySelectedId;
+  }, [selectedAccessoryId, selectedMotionValues]);
 
   const selectedAccessory = useMemo(
     () => ACCESSORY_ITEMS.find((item) => item.id === selectedAccessoryId),
@@ -249,180 +413,249 @@ export default function CustomizeScreen({
     <View style={styles.root}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={handleGoBack}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={styles.backButton}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-          </Pressable>
-          <Text style={styles.title}>Customize</Text>
-          <Pressable
-            onPress={saveChanges}
-            disabled={!hasUnsavedChanges || isSaving}
-            style={({ pressed }) => [
-              styles.saveButton,
-              (!hasUnsavedChanges || isSaving) && styles.saveButtonDisabled,
-              pressed && hasUnsavedChanges && !isSaving && { opacity: 0.9 },
-            ]}
-          >
-            <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
-          </Pressable>
-        </View>
+        <Animated.View style={createFadeSlideStyle(screenMotion[0], 10)}>
+          <View style={styles.header}>
+            <Pressable
+              onPress={handleGoBack}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.backButton}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+            </Pressable>
+            <Text style={styles.title}>Customize</Text>
+            <Pressable
+              onPress={saveChanges}
+              disabled={!hasUnsavedChanges || isSaving}
+              style={({ pressed }) => [
+                styles.saveButton,
+                (!hasUnsavedChanges || isSaving) && styles.saveButtonDisabled,
+                pressed && hasUnsavedChanges && !isSaving && { opacity: 0.9 },
+              ]}
+            >
+              <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
 
-        <View style={styles.previewCard}>
-          <View style={styles.avatarContainer}>
-            {ALL_SLOTS_Z_ORDER.map((slot: AvatarSlot) => {
-              const accessoryId = appliedAccessories[slot];
-              if (!accessoryId) return null;
+        <Animated.View
+          style={[
+            createFadeSlideStyle(screenMotion[1], 12),
+            {
+              transform: [
+                {
+                  scale: avatarPulse.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [1, 1.015, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.previewCard}>
+            <View style={styles.avatarContainer}>
+              {ALL_SLOTS_Z_ORDER.map((slot: AvatarSlot) => {
+                const accessoryId = appliedAccessories[slot];
+                if (!accessoryId) return null;
 
-              const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
-              if (!accessory) return null;
+                const accessory = ACCESSORY_ITEMS.find((item) => item.id === accessoryId);
+                if (!accessory) return null;
 
-              const Sprite = accessory.Sprite;
+                const Sprite = accessory.Sprite;
 
-              return (
-                <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
-                  <Sprite width={140} height={140} />
+                return (
+                  <View key={slot} style={styles.layerAbsolute} pointerEvents="none">
+                    <Sprite width={140} height={140} />
+                  </View>
+                );
+              })}
+            </View>
+
+            <View style={styles.previewContent}>
+              <View style={styles.categoryToggleContainer}>
+                {CATEGORY_VALUES.map((category, index) => {
+                  const motion = categoryMotion[category];
+                  const isActive = activeCategory === category;
+                  const isLast = index === CATEGORY_VALUES.length - 1;
+                  return (
+                    <AnimatedPressable
+                      key={category}
+                      style={[
+                        styles.catBtn,
+                        !isLast && styles.catBtn,
+                        isLast && styles.catBtn_last,
+                        isActive && styles.catBtnActive,
+                        {
+                          opacity: motion.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }),
+                          transform: [
+                            {
+                              scale: motion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }),
+                            },
+                          ],
+                        },
+                      ]}
+                      onPress={() => handleCategoryChange(category)}
+                    >
+                      <Text style={[styles.catBtnText, isActive && styles.catBtnTextActive]}>
+                        {category === 'Base' ? 'Base Traits' : 'Wearables'}
+                      </Text>
+                    </AnimatedPressable>
+                  );
+                })}
+              </View>
+
+              <View style={styles.genderToggleContainer}>
+                <Pressable
+                  style={[styles.genderToggleBtn, currentGender === 'Masc' && styles.genderToggleBtnActive]}
+                  onPress={currentGender === 'Masc' ? undefined : handleGenderToggle}
+                  disabled={currentGender === 'Masc'}
+                >
+                  <Ionicons name="male" size={14} color={currentGender === 'Masc' ? colors.favor : colors.textSecondary} />
+                  <Text style={[styles.genderToggleText, currentGender === 'Masc' && styles.genderToggleTextActive]}>Masc</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.genderToggleBtn, styles.genderToggleBtn_last, currentGender === 'Fem' && styles.genderToggleBtnActive]}
+                  onPress={currentGender === 'Fem' ? undefined : handleGenderToggle}
+                  disabled={currentGender === 'Fem'}
+                >
+                  <Ionicons name="female" size={14} color={currentGender === 'Fem' ? colors.favor : colors.textSecondary} />
+                  <Text style={[styles.genderToggleText, currentGender === 'Fem' && styles.genderToggleTextActive]}>Fem</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.previewTextWrap}>
+                <Text style={styles.previewLabel}>{currentGender === 'Masc' ? 'Masculine' : 'Feminine'} Avatar</Text>
+                <Text style={styles.previewName}>{activeAccessoryForSlot?.name ?? 'None'}</Text>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={createFadeSlideStyle(screenMotion[2], 10)}>
+          <View style={styles.tabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+              {currentSlots.map((slot) => {
+                const isActiveTab = activeSlot === slot;
+                const motion = ensureAnimatedValue(slotMotionValues, slot, isActiveTab ? 1 : 0);
+                return (
+                  <AnimatedPressable
+                    key={slot}
+                    onPress={() => handleSlotChange(slot)}
+                    style={[
+                      styles.tab,
+                      isActiveTab && styles.tabActive,
+                      {
+                        opacity: motion.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }),
+                        transform: [
+                          {
+                            scale: motion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }),
+                          },
+                          {
+                            translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [0, -1] }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.tabText, isActiveTab && styles.tabTextActive]}>{slot}</Text>
+                  </AnimatedPressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={createFadeSlideStyle(screenMotion[3], 12)}>
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+            {slotItems.length === 0 ? (
+              <Animated.View style={createFadeSlideStyle(screenMotion[3], 6)}>
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No items available for this slot yet.</Text>
                 </View>
-              );
-            })}
-          </View>
+              </Animated.View>
+            ) : (
+              slotItems.map((item) => {
+                const owned = ownedIds.has(item.id);
+                const selected = selectedAccessoryId === item.id;
+                const applied = appliedAccessories[item.slot] === item.id;
+                const Sprite = item.Sprite;
+                const itemMotion = ensureAnimatedValue(itemMotionValues, item.id, 0);
+                const selectedMotion = ensureAnimatedValue(selectedMotionValues, item.id, selected ? 1 : 0);
 
-          <View style={styles.previewContent}>
-            <View style={styles.categoryToggleContainer}>
-              <Pressable
-                style={[styles.catBtn, activeCategory === 'Base' && styles.catBtnActive]}
-                onPress={() => handleCategoryChange('Base')}
-              >
-                <Text style={[styles.catBtnText, activeCategory === 'Base' && styles.catBtnTextActive]}>
-                  Base Traits
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.catBtn, styles.catBtn_last, activeCategory === 'Wearables' && styles.catBtnActive]}
-                onPress={() => handleCategoryChange('Wearables')}
-              >
-                <Text style={[styles.catBtnText, activeCategory === 'Wearables' && styles.catBtnTextActive]}>
-                  Wearables
-                </Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.genderToggleContainer}>
-              <Pressable
-                style={[styles.genderToggleBtn, currentGender === 'Masc' && styles.genderToggleBtnActive]}
-                onPress={currentGender === 'Masc' ? undefined : handleGenderToggle}
-                disabled={currentGender === 'Masc'}
-              >
-                <Ionicons name="male" size={14} color={currentGender === 'Masc' ? colors.favor : colors.textSecondary} />
-                <Text style={[styles.genderToggleText, currentGender === 'Masc' && styles.genderToggleTextActive]}>Masc</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.genderToggleBtn, styles.genderToggleBtn_last, currentGender === 'Fem' && styles.genderToggleBtnActive]}
-                onPress={currentGender === 'Fem' ? undefined : handleGenderToggle}
-                disabled={currentGender === 'Fem'}
-              >
-                <Ionicons name="female" size={14} color={currentGender === 'Fem' ? colors.favor : colors.textSecondary} />
-                <Text style={[styles.genderToggleText, currentGender === 'Fem' && styles.genderToggleTextActive]}>Fem</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.previewTextWrap}>
-              <Text style={styles.previewLabel}>{currentGender === 'Masc' ? 'Masculine' : 'Feminine'} Avatar</Text>
-              <Text style={styles.previewName}>{activeAccessoryForSlot?.name ?? 'None'}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.tabsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
-            {currentSlots.map((slot) => {
-              const isActiveTab = activeSlot === slot;
-              return (
-                <Pressable
-                  key={slot}
-                  onPress={() => handleSlotChange(slot)}
-                  style={[styles.tab, isActiveTab && styles.tabActive]}
-                >
-                  <Text style={[styles.tabText, isActiveTab && styles.tabTextActive]}>{slot}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {slotItems.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No items available for this slot yet.</Text>
-            </View>
-          ) : (
-            slotItems.map((item) => {
-              const owned = ownedIds.has(item.id);
-              const selected = selectedAccessoryId === item.id;
-              const applied = appliedAccessories[item.slot] === item.id;
-              const Sprite = item.Sprite;
-
-              return (
-                <Pressable
-                  key={item.id}
-                  onPress={() => handleSelectItem(item.id)}
-                  style={({ pressed }) => [
-                    styles.itemCard,
-                    selected && styles.itemCardSelected,
-                    pressed && { opacity: 0.92 },
-                  ]}
-                >
-                  <View style={styles.itemLeft}>
-                    <View style={styles.itemSpriteWrap}>
-                      <Sprite width={40} height={40} style={getAccessoryPreviewStyle(item, 40)} />
-                    </View>
-                    <View>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemMeta}>{owned ? 'Owned' : `Locked • ${item.price} tokens`}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.itemRight}>
-                    {applied ? (
-                      <View style={styles.statePill}>
-                        <Text style={styles.statePillText}>Equipped</Text>
+                return (
+                  <Animated.View
+                    key={item.id}
+                    style={[
+                      createFadeSlideStyle(itemMotion, 10),
+                      {
+                        transform: [
+                          {
+                            scale: selectedMotion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.015] }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Pressable
+                      onPress={() => handleSelectItem(item.id)}
+                      style={({ pressed }) => [
+                        styles.itemCard,
+                        selected && styles.itemCardSelected,
+                        pressed && { opacity: 0.92 },
+                      ]}
+                    >
+                      <View style={styles.itemLeft}>
+                        <View style={styles.itemSpriteWrap}>
+                          <Sprite width={40} height={40} style={getAccessoryPreviewStyle(item, 40)} />
+                        </View>
+                        <View>
+                          <Text style={styles.itemName}>{item.name}</Text>
+                          <Text style={styles.itemMeta}>{owned ? 'Owned' : `Locked • ${item.price} tokens`}</Text>
+                        </View>
                       </View>
-                    ) : selected ? (
-                      <Ionicons name="checkmark-circle" size={22} color={colors.item} />
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })
-          )}
-        </ScrollView>
 
-        <View style={styles.footer}>
-          <Pressable
-            onPress={toggleSelectedAccessory}
-            disabled={!canInteract || bodyUnequipBlocked}
-            style={({ pressed }) => [
-              styles.applyBtn,
-              isSelectedApplied && !bodyUnequipBlocked && styles.unequipBtn,
-              (!canInteract || bodyUnequipBlocked) && styles.applyBtnDisabled,
-              pressed && canInteract && !bodyUnequipBlocked && { opacity: 0.9 },
-            ]}
-          >
-            <Text style={[styles.applyBtnText, isSelectedApplied && !bodyUnequipBlocked && styles.unequipBtnText]}>
-              {!selectedAccessory 
-                ? 'Select an Item' 
-                : bodyUnequipBlocked
-                  ? 'Body is always equipped'
-                  : isSelectedApplied 
-                  ? `Unequip ${selectedAccessory.slot}` 
-                  : `Equip to ${selectedAccessory.slot}`
-              }
-            </Text>
-          </Pressable>
-        </View>
+                      <View style={styles.itemRight}>
+                        {applied ? (
+                          <View style={styles.statePill}>
+                            <Text style={styles.statePillText}>Equipped</Text>
+                          </View>
+                        ) : selected ? (
+                          <Ionicons name="checkmark-circle" size={22} color={colors.item} />
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                );
+              })
+            )}
+          </ScrollView>
+        </Animated.View>
+
+        <Animated.View style={createFadeSlideStyle(screenMotion[4], 10)}>
+          <View style={styles.footer}>
+            <Pressable
+              onPress={toggleSelectedAccessory}
+              disabled={!canInteract || bodyUnequipBlocked}
+              style={({ pressed }) => [
+                styles.applyBtn,
+                isSelectedApplied && !bodyUnequipBlocked && styles.unequipBtn,
+                (!canInteract || bodyUnequipBlocked) && styles.applyBtnDisabled,
+                pressed && canInteract && !bodyUnequipBlocked && { opacity: 0.9 },
+              ]}
+            >
+              <Text style={[styles.applyBtnText, isSelectedApplied && !bodyUnequipBlocked && styles.unequipBtnText]}>
+                {!selectedAccessory 
+                  ? 'Select an Item' 
+                  : bodyUnequipBlocked
+                    ? 'Body is always equipped'
+                    : isSelectedApplied 
+                    ? `Unequip ${selectedAccessory.slot}` 
+                    : `Equip to ${selectedAccessory.slot}`
+                }
+              </Text>
+            </Pressable>
+          </View>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
