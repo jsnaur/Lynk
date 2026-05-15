@@ -219,7 +219,7 @@ const ProfileSetupScreenB: FC<Props> = ({ navigation, route }) => {
 
       </Animated.View>
 
-      <Animated.View style={createFadeSlideStyle(motion[2], 12)}>
+      <Animated.View style={[{ flex: 1 }, createFadeSlideStyle(motion[2], 12)]}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
 
         <View style={[styles.avatarSelectionBlock, styles.setupProgressHeaderFlexBox]}>
