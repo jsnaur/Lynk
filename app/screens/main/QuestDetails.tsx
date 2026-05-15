@@ -532,14 +532,29 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
           .channel(`public:comments:quest_id=eq.${quest.id}`)
           .on(
             'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'quests', filter: `id=eq.${quest.id}` },
+            (payload) => {
+              if (!mounted) return;
+              const updated = payload.new as any;
+              if (updated?.status) {
+                questStatusRef.current = updated.status;
+              }
+              setQuestData((prev: any) => (prev ? { ...prev, ...updated } : updated));
+            }
+          )
+          .on(
+            'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'comments', filter: `quest_id=eq.${quest.id}` },
             (payload) => {
               if (mounted) {
                 const newC = payload.new;
-                if (newC.user_id === activeUserId) return; 
+                if (newC.user_id === activeUserId) return;
 
-                const expectedVisibility = (questStatusRef.current === 'open' || viewingArchiveRef.current) ? 'public' : 'private';
-                if (newC.visibility !== expectedVisibility) return;
+                // Skip only when explicitly viewing the public archive of a closed quest
+                // and the new message is private (still in-progress chat from poster).
+                if (viewingArchiveRef.current && newC.visibility === 'private') return;
+                // Skip public broadcast if we're already inside the private group chat.
+                if (!viewingArchiveRef.current && questStatusRef.current !== 'open' && newC.visibility === 'public') return;
 
                 supabase
                   .from('profiles')
@@ -558,7 +573,7 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                         visibility: newC.visibility,
                         image_url: newC.image_url,
                       };
-                      setComments((prev) => [...prev, newFormattedComment]);
+                      setComments((prev) => prev.some((c) => c.id === newFormattedComment.id) ? prev : [...prev, newFormattedComment]);
                       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
                     }
                   });
