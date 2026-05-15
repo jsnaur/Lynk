@@ -771,6 +771,24 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
     }
   };
 
+  const handleUnacceptApplicant = async (applicantId: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('quest_participants')
+        .update({ status: 'applied' })
+        .eq('quest_id', questData.id)
+        .eq('user_id', applicantId);
+      if (error) throw error;
+      invalidateQuestScreenCache();
+      await fetchQuestData(currentUserId!);
+    } catch (error: any) {
+      alert("Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleStartManualQuest = async () => {
     try {
       setLoading(true);
@@ -1322,28 +1340,50 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                {applicantsExpanded && (
                  <View style={styles.applicantsList}>
                    {acceptedParticipants.length > 0 && (
-                     <Text style={styles.startQuestHint}>
-                       Accepted ({acceptedParticipants.length}/{maxParticipants})
-                     </Text>
-                   )}
-                   {appliedParticipants.length === 0 ? (
-                     <Text style={styles.emptyApplicants}>No applicants yet.</Text>
-                   ) : (
-                     appliedParticipants.map(p => (
-                       <View key={p.id} style={styles.applicantRow}>
-                         <View style={styles.applicantInfo}>
-                           <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
-                           <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
+                     <>
+                       <Text style={styles.startQuestHint}>
+                         Accepted ({acceptedParticipants.length}/{maxParticipants})
+                       </Text>
+                       {acceptedParticipants.map(p => (
+                         <View key={p.id} style={styles.applicantRow}>
+                           <View style={styles.applicantInfo}>
+                             <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
+                             <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
+                           </View>
+                           <Pressable
+                             style={[styles.unacceptApplicantBtn, loading && {opacity: 0.7}]}
+                             onPress={() => handleUnacceptApplicant(p.user_id)}
+                             disabled={loading}
+                           >
+                             <Text style={styles.unacceptApplicantText}>Unaccept</Text>
+                           </Pressable>
                          </View>
-                         <Pressable 
-                           style={[styles.acceptApplicantBtn, loading && {opacity: 0.7}]} 
-                           onPress={() => handleAcceptApplicant(p.user_id)}
-                           disabled={loading || acceptedParticipants.length >= maxParticipants}
-                         >
-                           <Text style={styles.acceptApplicantText}>Accept</Text>
-                         </Pressable>
-                       </View>
-                     ))
+                       ))}
+                     </>
+                   )}
+                   {appliedParticipants.length === 0 && acceptedParticipants.length === 0 ? (
+                     <Text style={styles.emptyApplicants}>No applicants yet.</Text>
+                   ) : appliedParticipants.length === 0 ? null : (
+                     <>
+                       {acceptedParticipants.length > 0 && (
+                         <Text style={styles.startQuestHint}>Pending Applicants</Text>
+                       )}
+                       {appliedParticipants.map(p => (
+                         <View key={p.id} style={styles.applicantRow}>
+                           <View style={styles.applicantInfo}>
+                             <LayeredAvatar accessories={normalizeAccessories(p.profiles?.equipped_accessories)} size={32} />
+                             <Text style={styles.applicantName}>{p.profiles?.display_name || 'Anonymous'}</Text>
+                           </View>
+                           <Pressable
+                             style={[styles.acceptApplicantBtn, loading && {opacity: 0.7}]}
+                             onPress={() => handleAcceptApplicant(p.user_id)}
+                             disabled={loading || acceptedParticipants.length >= maxParticipants}
+                           >
+                             <Text style={styles.acceptApplicantText}>Accept</Text>
+                           </Pressable>
+                         </View>
+                       ))}
+                     </>
                    )}
                    
                    <View style={styles.startQuestWrap}>
@@ -1874,6 +1914,19 @@ const createStyles = (COLORS: ThemeColors) => StyleSheet.create({
   },
   acceptApplicantText: {
     color: COLORS.bg,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  unacceptApplicantBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  unacceptApplicantText: {
+    color: COLORS.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },
