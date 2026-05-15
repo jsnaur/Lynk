@@ -17,8 +17,8 @@ export default function ShopItemCard({ name, price, isOwned = false, onPress }: 
   const handlePress = async () => {
     if (!onPress) return;
     try {
-      const res = onPress();
-      if (res && typeof (res as any).then === 'function') {
+      const res = onPress() as any;
+      if (res && typeof res.then === 'function') {
         await res;
       }
       void appSoundManager.play(AppSoundCategory.PurchaseSuccess);

@@ -151,12 +151,8 @@ export default function AuthScreen({ navigation }: Props) {
         const citRegex = /^[a-zA-Z0-9._-]+@cit\.edu$/;
         return citRegex.test(emailText);
     };
-    const isGmail = (emailText: string) => {
-        const gmailRegex = /^[a-zA-Z0-9._-]+@gmail\.com$/;
-        return gmailRegex.test(emailText);
-    };
 
-    const isValidEmail = isExactCit(trimmedEmail) || isGmail(trimmedEmail);
+    const isValidEmail = isExactCit(trimmedEmail);
     const showEmailError = trimmedEmail.length > 0 && !isValidEmail;
 
     // Real-time Form Validation
@@ -206,25 +202,7 @@ export default function AuthScreen({ navigation }: Props) {
                 void appSoundManager.playAuthSuccessChime();
             }
         } else {
-            if (isGmail(trimmedEmail)) {
-                // Gmail: standard signUp, no OTP needed
-                const { error } = await supabase.auth.signUp({
-                    email: trimmedEmail,
-                    password: password,
-                });
-
-                if (error) {
-                    alert('Registration Failed', error.message);
-                    setLoading(false);
-                    return;
-                }
-
-                setActiveTab('Left'); // Reset background tab state
-                setPassword('');
-                setConfirmPassword('');
-                // AppNavigator handles auto-routing to ProfileSetup.
-
-            } else if (isExactCit(trimmedEmail)) {
+            if (isExactCit(trimmedEmail)) {
                 // CIT: Proceed to OTP Verification
                 const { error: signUpError } = await supabase.auth.signUp({
                     email: trimmedEmail,
@@ -345,7 +323,7 @@ export default function AuthScreen({ navigation }: Props) {
                                         <TextInput
                                             autoCapitalize="none"
                                             keyboardType="email-address"
-                                            placeholder="email@cit.edu or @gmail.com"
+                                            placeholder="email@cit.edu"
                                             placeholderTextColor={COLORS.textSecondary}
                                             style={styles.input}
                                             value={email}
@@ -368,7 +346,7 @@ export default function AuthScreen({ navigation }: Props) {
                                                 color={COLORS.error}
                                             />
                                             <Text style={styles.errorText}>
-                                                Must be @cit.edu or @gmail.com
+                                                Must be a valid @cit.edu email
                                             </Text>
                                         </View>
                                     )}
