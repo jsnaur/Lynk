@@ -685,7 +685,7 @@ export default function PostScreen({ navigation }: { navigation: any }) {
                   <Text style={styles.toggleTitle}>Auto-Accept Applicants</Text>
                   <Text style={styles.toggleSub}>
                     {maxParticipants > 3
-                      ? `Warning: Auto-accepting ${maxParticipants} helpers might fill your quest instantly. Are you sure?`
+                      ? `Heads up: with ${maxParticipants} slots, auto-accept may fill your quest instantly. Turn off to review applicants first.`
                       : "If off, you will manually review and approve applicants before the quest starts."}
                   </Text>
                 </View>

@@ -1377,6 +1377,10 @@ export default function QuestDetails({ navigation, route }: QuestDetailsProps) {
                   <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
                     <Text style={styles.acceptText}>Quest In Progress</Text>
                   </View>
+                ) : questData?.status === 'open' && acceptedParticipants.length >= maxParticipants ? (
+                  <View style={[styles.acceptButton, { backgroundColor: colors.textSecondary }]}>
+                    <Text style={styles.acceptText}>Quest Full</Text>
+                  </View>
                 ) : questData?.status === 'open' ? (
                   <Pressable style={[styles.acceptButton, loading && { opacity: 0.7 }]} onPress={handleApply} disabled={loading}>
                     <Text style={styles.acceptText}>{isAutoAccept ? 'Accept Quest' : 'Apply for Quest'}</Text>

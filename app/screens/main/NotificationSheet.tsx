@@ -71,6 +71,7 @@ export default function NotificationSheet({
         'new_comment',
         'new_reply',
         'quest_accepted',
+        'quest_applied',
         'applicant_accepted',
         'quest_started',
         'quest_completed',
