@@ -55,61 +55,52 @@ Follow these steps to get a local copy up and running.
 
 1. Clone the repository
    ```sh
-   git clone https://github.com/jsnaur/lynk.git
-   ```
 
-2.  Navigate to the project directory
+# LYNK
+
+LYNK is a campus questing app for CIT-U students. Register with your `@cit.edu` email to join campus quests, earn XP and tokens, and unlock avatars, badges, and shop rewards. The app uses AI for feed curation, quest review, and content moderation.
+
+**Preview the latest build:**
+
+[Install via Expo (Preview Build)](https://expo.dev/accounts/lynk2026/projects/LYNK/builds/bab67344-3a7d-4a0a-9c8c-3eb67a8a5255)
+
+## Features
+
+- Campus quests and challenges
+- Social feed and sharing
+- Customizable avatars and badges
+- In-app shop for cosmetics
+- Real-time notifications
+
+## Tech Stack
+
+- React Native (Expo)
+- TypeScript
+- Tailwind CSS
+- Supabase (backend)
+
+## Getting Started
+
+1. Clone the repo
     ```sh
+    git clone https://github.com/jsnaur/lynk.git
     cd lynk
     ```
-3.  Install NPM packages
+2. Install dependencies
     ```sh
     npm install
-    ```
-    *or if using yarn:*
-    ```sh
+    # or
     yarn install
     ```
-4.  Start the Expo development server
+3. Start the app
     ```sh
     npx expo start
     ```
 
-## Meet The Team
+## Team
 
-We are the creators behind LYNK. Click on our profiles below to see more of our work!
-
-<div align="center">
-<table>
-<tr>
+- [jsnaur](https://github.com/jsnaur) — Project Manager, Fullstack
+- [aldrich-star](https://github.com/aldrich-star) — Fullstack
+- [Jobanned](https://github.com/Jobanned) — Fullstack
+- [markuu-exe](https://github.com/markuu-exe) — Fullstack, Designer
 <td align="center">
-<a href="https://github.com/jsnaur">
-<img src="https://github.com/jsnaur.png" width="100px;" alt="jsnaur" style="border-radius: 50%;"/><br />
-<sub><b>jsnaur</b></sub>
-</a><br />
-<sub>Project Manager | Fullstack Developer</sub>
-</td>
-<td align="center">
-<a href="https://github.com/aldrich-star">
-<img src="https://github.com/aldrich-star.png" width="100px;" alt="aldrich-star" style="border-radius: 50%;"/><br />
-<sub><b>aldrich-star</b></sub>
-</a><br />
-<sub>Fullstack Developer</sub>
-</td>
-<td align="center">
-<a href="https://github.com/Jobanned">
-<img src="https://github.com/Jobanned.png" width="100px;" alt="Jobanned" style="border-radius: 50%;"/><br />
-<sub><b>Jobanned</b></sub>
-</a><br />
-<sub>Fullstack Developer</sub>
-</td>
-<td align="center">
-<a href="https://github.com/markuu-exe">
-<img src="https://github.com/markuu-exe.png" width="100px;" alt="markuu-exe" style="border-radius: 50%;"/><br />
-<sub><b>markuu-exe</b></sub>
-</a><br />
-<sub>Fullstack Developer | Designer</sub>
-</td>
-</tr>
-</table>
-</div>
