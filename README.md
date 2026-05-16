@@ -97,10 +97,42 @@ LYNK is a campus questing app for CIT-U students. Register with your `@cit.edu` 
     npx expo start
     ```
 
-## Team
+## Meet The Team
 
-- [jsnaur](https://github.com/jsnaur) — Project Manager, Fullstack
-- [aldrich-star](https://github.com/aldrich-star) — Fullstack
-- [Jobanned](https://github.com/Jobanned) — Fullstack
-- [markuu-exe](https://github.com/markuu-exe) — Fullstack, Designer
+We are the creators behind LYNK. Click on our profiles below to see more of our work!
+
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/jsnaur">
+<img src="https://github.com/jsnaur.png" width="100px;" alt="jsnaur" style="border-radius: 50%;"/><br />
+<sub><b>jsnaur</b></sub>
+</a><br />
+<sub>Project Manager | Fullstack Developer</sub>
+</td>
+<td align="center">
+<a href="https://github.com/aldrich-star">
+<img src="https://github.com/aldrich-star.png" width="100px;" alt="aldrich-star" style="border-radius: 50%;"/><br />
+<sub><b>aldrich-star</b></sub>
+</a><br />
+<sub>Fullstack Developer</sub>
+</td>
+<td align="center">
+<a href="https://github.com/Jobanned">
+<img src="https://github.com/Jobanned.png" width="100px;" alt="Jobanned" style="border-radius: 50%;"/><br />
+<sub><b>Jobanned</b></sub>
+</a><br />
+<sub>Fullstack Developer</sub>
+</td>
+<td align="center">
+<a href="https://github.com/markuu-exe">
+<img src="https://github.com/markuu-exe.png" width="100px;" alt="markuu-exe" style="border-radius: 50%;"/><br />
+<sub><b>markuu-exe</b></sub>
+</a><br />
+<sub>Fullstack Developer | Designer</sub>
+</td>
+</tr>
+</table>
+</div>
 <td align="center">
