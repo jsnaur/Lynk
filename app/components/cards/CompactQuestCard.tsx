@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -21,6 +22,7 @@ interface CompactQuestCardProps {
     token_bounty?: number; 
     accepted_by?: string;
     status?: string;
+    image_url?: string | null;
   };
   isExpanded: boolean;
   onToggle: () => void;
@@ -45,6 +47,7 @@ export default function CompactQuestCard({
   const description = quest?.description ?? quest?.preview ?? '';
   const xp = quest?.bonus_xp != null ? 50 + quest.bonus_xp : (quest?.xp ?? 0);
   const token = quest?.token_bounty ?? quest?.token ?? 0;
+  const imageUrl = quest?.image_url ?? null;
 
   return (
     <View style={styles.container}>
